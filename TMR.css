@@ -231,7 +231,6 @@ body.triangle-background .tmr-menu {
     border: none;
     border-radius: 20px;
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
-    transition: all 0.1s ease-out;
     position: relative;
 }
 
@@ -243,7 +242,7 @@ body.triangle-background .tmr-menu {
     box-shadow: 8px 8px 0 rgba(128,128,128,0.5);
 }
 
-.small-tmr-btn:hover { transform: translate(6px,6px); }
+.small-tmr-btn:hover { }
 
 /* Menu button styling - no border, nav-btn style appearance */
 .tmr-menu button,
@@ -921,13 +920,11 @@ select option {
 
 .tmr-btn:hover {
     background-color: var(--accent-hover, #006fab);
-    transform: translate(10px, 10px);
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
 }
 
 /* Bottom buttons hover styles */
 .bottom-buttons .tmr-btn:hover {
-    transform: translate(10px, 10px) !important; /* Override any other transforms */
 }
 
 .bottom-buttons2 button:hover {
@@ -1058,15 +1055,12 @@ body.currentschedules-page #clock {
 
 .cs-buttons .tmr-btn:hover {
     background-color: #b15900;
-    transform: translate(15px, 15px);
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
 }
 
 /* Make New + Schedule use the same hover behavior as other cs-buttons */
 .cs-buttons .tmr-btn:not(.schedule-button):not(.schedule-button2):hover {
     background-color: #b15900;
-    /* reintroduce the slight rightward shift while preserving center: move right 15px and down 15px */
-    transform: translate(calc(-50% + 15px), 15px);
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
 }
 
