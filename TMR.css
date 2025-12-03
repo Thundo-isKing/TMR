@@ -232,6 +232,7 @@ body.triangle-background .tmr-menu {
     border-radius: 20px;
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
     position: relative;
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out;
 }
 
 /* Smaller variant of the site button for compact controls (nav/export/import) */
@@ -240,9 +241,12 @@ body.triangle-background .tmr-menu {
     font-size: 16px;
     border-radius: 12px;
     box-shadow: 8px 8px 0 rgba(128,128,128,0.5);
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out;
 }
 
-.small-tmr-btn:hover { }
+.small-tmr-btn:hover { 
+    transform: translate(6px, 6px);
+}
 
 /* Menu button styling - no border, nav-btn style appearance */
 .tmr-menu button,
@@ -679,7 +683,10 @@ body.triangle-background .tmr-menu {
     text-align: left;
 }
 .calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
-.calendar-day:hover { }
+.calendar-day:hover { 
+    background: var(--accent-color, #0089f1) !important;
+    box-shadow: 10px 10px 0 rgba(80,80,80,0.18) !important;
+}
 .calendar-cell .day-number {
     font-size: 14px;
     font-weight: 600;
@@ -920,6 +927,7 @@ select option {
 
 .tmr-btn:hover {
     background-color: var(--accent-hover, #006fab);
+    transform: translate(10px, 10px);
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
 }
 
@@ -1021,6 +1029,7 @@ body.currentschedules-page #clock {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out;
 }
 
 /* Specific styles for the main schedule buttons */
@@ -1055,12 +1064,14 @@ body.currentschedules-page #clock {
 
 .cs-buttons .tmr-btn:hover {
     background-color: #b15900;
+    transform: translate(15px, 15px);
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
 }
 
 /* Make New + Schedule use the same hover behavior as other cs-buttons */
 .cs-buttons .tmr-btn:not(.schedule-button):not(.schedule-button2):hover {
     background-color: #b15900;
+    transform: translate(15px, 15px);
     box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
 }
 
