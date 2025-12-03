@@ -230,7 +230,7 @@ body.triangle-background .tmr-menu {
     color: white;
     border: none;
     border-radius: 20px;
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
     position: relative;
     transition: transform 0.08s ease-out, background-color 0.08s ease-out;
 }
@@ -240,12 +240,13 @@ body.triangle-background .tmr-menu {
     padding: 8px 14px;
     font-size: 16px;
     border-radius: 12px;
-    box-shadow: 8px 8px 0 rgba(128,128,128,0.5);
+    box-shadow: 8px 8px 0 rgba(128,128,128,0.5) !important;
     transition: transform 0.08s ease-out, background-color 0.08s ease-out;
 }
 
 .small-tmr-btn:hover { 
     transform: translate(6px, 6px);
+    box-shadow: 8px 8px 0 rgba(128,128,128,0.5) !important;
 }
 
 /* Menu button styling - no border, nav-btn style appearance */
@@ -928,7 +929,7 @@ select option {
 .tmr-btn:hover {
     background-color: var(--accent-hover, #006fab);
     transform: translate(10px, 10px);
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
 }
 
 /* Bottom buttons hover styles */
@@ -1025,7 +1026,7 @@ body.currentschedules-page #clock {
 /* Base styles for all buttons in cs-buttons */
 .cs-buttons .tmr-btn {
     background-color: #f19100;
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1065,14 +1066,14 @@ body.currentschedules-page #clock {
 .cs-buttons .tmr-btn:hover {
     background-color: #b15900;
     transform: translate(15px, 15px);
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
 }
 
 /* Make New + Schedule use the same hover behavior as other cs-buttons */
 .cs-buttons .tmr-btn:not(.schedule-button):not(.schedule-button2):hover {
     background-color: #b15900;
     transform: translate(15px, 15px);
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
 }
 
 /* ========== CLEAN MOBILE-FRIENDLY MEDIA QUERIES ========== */
