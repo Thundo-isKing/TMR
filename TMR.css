@@ -1021,6 +1021,7 @@ body.currentschedules-page #clock {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: none;
 }
 
 /* Specific styles for the main schedule buttons */
@@ -1029,7 +1030,8 @@ body.currentschedules-page #clock {
     height: 400px !important;
     font-size: 24px;
     position: absolute;
-    right: calc(50% + 75px); /* 300px (button width) + 100px (gap) = 400px total space, so 50px (half of gap) from center */
+    right: calc(50% + 75px);
+    transition: none;
 }
 
 .cs-buttons .schedule-button2.tmr-btn {
@@ -1037,7 +1039,8 @@ body.currentschedules-page #clock {
     height: 400px !important;
     font-size: 24px;
     position: absolute;
-    left: calc(50% + 75px); /* 50px (half of gap) from center */
+    left: calc(50% + 75px);
+    transition: none;
 }
 
 /* Style for the New + Schedule button */
@@ -1051,6 +1054,7 @@ body.currentschedules-page #clock {
     top: 475px; /* Increased by 75px from 440px */
     left: 50%;
     transform: translateX(-50%);
+    transition: none;
 }
 
 .cs-buttons .tmr-btn:hover {
