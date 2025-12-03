@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMR</title>
+    <link rel="stylesheet" href="TMR.css?v=20251116c">
+     <link rel="stylesheet" href="backgrounds.css">
+    <!-- Comprehensive mobile layout override (v3) -->
+    <style>
+    @media (max-width:600px){
+      /* Reset body and main layout */
+      body { padding-top:160px !important; margin:0; overflow-x:hidden}
+      
+      /* Keep TMR tag in top corner, small */
+      #TMR-tag { position:fixed !important; top:8px !important; left:8px !important; z-index:3000 !important}
+      
+      /* Keep dropdown menu small in corner */
+      .tmr-menu { position:absolute !important; left:0 !important; right:auto !important; top:100% !important; margin-top:8px !important; width:auto !important; max-width:none !important; min-width:220px !important}
+      .tmr-menu input, .tmr-menu select, .tmr-menu button, .tmr-menu .small-tmr-btn { width:100% !important; box-sizing:border-box !important}
+      
+      /* Clock fixed at top, narrow, centered */
+      .clock-container { position:fixed !important; top:56px !important; left:50% !important; transform:translateX(-50%) !important; width:320px !important; margin:0 !important; z-index:2500 !important}
+      .clock-outer-box { width:100% !important}
+      
+      /* Reset all side buttons: remove fixed positioning and absolute child positioning */
+      .side-buttons { position:relative !important; top:auto !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important; transform:none !important; pointer-events:auto !important; padding:0}
+      
+      /* Reset schedule buttons: remove absolute left/right positioning */
+      .schedule-button, .schedule-button2 { 
+        position:relative !important; left:auto !important; right:auto !important; top:auto !important;
+        width:70vw !important; max-width:360px !important; min-width:180px !important;
+        height:auto !important; min-height:48px !important;
+        padding:12px 16px !important; margin:0 auto !important;
+        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
+      }
+      
+      /* Reset todo button: remove fixed absolute positioning */
+      .todo-button, .schedule-button { 
+        position:relative !important; right:auto !important; left:auto !important;
+        width:70vw !important; max-width:360px !important; min-width:180px !important;
+        height:auto !important; min-height:48px !important;
+        padding:12px 16px !important; margin:0 auto !important;
+        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
+      }
+      
+      /* Reset bottom buttons */
+      .bottom-buttons { position:relative !important; top:auto !important; left:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
+      .bottom-buttons button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; box-shadow:none !important}
+      
+      /* Ensure all .tmr-btn follow the mobile style */
+      .tmr-btn { width:70vw !important; max-width:360px !important; min-width:180px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; margin:0 auto !important; box-shadow:none !important; border-radius:10px !important}
+      .small-tmr-btn { padding:10px 14px !important; font-size:16px !important}
+      
+      /* Reset button-group */
+      .button-group { position:relative !important; top:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
+      .button-group button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important}
+      
+      /* Hide or reposition cs-buttons for mobile */
+      .cs-buttons { display:none}
+    }
+    /* Landscape mode adjustments */
+    @media (max-width:600px) and (orientation:landscape){
+      body { padding-top:100px !important}
+      .clock-container { top:50px !important; width:280px !important}
+      .tmr-btn, .small-tmr-btn, .schedule-button, .schedule-button2, .todo-button, .bottom-buttons button { width:65vw !important; max-width:340px !important; min-height:40px !important; padding:8px 12px !important; font-size:16px !important}
+    }
+    </style></head>
+
+<body class="page-background triangle-background-blue">
+
+    <div id="TMR-tag" class="tmr-tag">
+        <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
+            <h1 style="margin:0;">TMR</h1>
+            <span class="caret">▾</span>
+        </button>
+        <div id="tmr-menu" class="tmr-menu" hidden>
+            <div class="tmr-menu-item">
+                <label for="accent-picker">Accent
+                    <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color">
+                </label>
+            </div>
+            <div class="tmr-menu-item">
+                <label>
+                    <input id="notify-toggle" type="checkbox" /> Enable notifications
+                </label>
+            </div>
+            <div class="tmr-menu-item">
+                <label for="notify-mode">Notification mode
+                    <select id="notify-mode" style="margin-left:8px;">
+                        <option value="both">Local + Server (default)</option>
+                        <option value="local">Local only</option>
+                        <option value="server">Server only</option>
+                    </select>
+                </label>
+            </div>
+            <div class="tmr-menu-item">
+                <label for="todo-default-reminder">Default todo reminder (minutes)
+                    <input id="todo-default-reminder" type="number" min="0" value="10" title="Default minutes before reminder">
+                </label>
+            </div>
+            <div class="tmr-menu-item">
+                <button id="notify-test-btn" class="small-tmr-btn" type="button">Test notification</button>
+            </div>
+            <div class="tmr-menu-item">
+                <label>
+                    <input id="push-enable" type="checkbox" /> Enable background push (Service Worker)
+                </label>
+                <div style="margin-top:6px;">
+                    <input id="vapid-public-input" placeholder="VAPID public key (optional)" style="width:100%" />
+                    <button id="push-subscribe-btn" class="small-tmr-btn" type="button" style="margin-top:6px;">Subscribe for push</button>
+                    <button id="manage-subs-btn" class="small-tmr-btn" type="button" style="margin-top:6px;margin-left:6px;">Manage subscriptions</button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+        <div class="side-buttons">
+        <button type="button" class="schedule-button tmr-btn">Meibot (AI Helper)</button>
+        <button type="button" class="new-sched tmr-btn" onclick="window.location.href='CurrentSchedules.html'">Calendar</button>
+        <button type="button" class="todo-button tmr-btn">
+            <span class="todo-label">To Do</span>
+            <span id="todo-badge" class="todo-badge" hidden>0</span>
+        </button>
+    </div>
+
+    <!-- Spacer to visually move the clock down -->
+    <div style="height:30px;"></div>
+
+    <div class="clock-container">
+        <div class="clock-outer-box">
+            <div class="clock-inner-box">
+                <div id="clock"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- .button-group removed (new-sched moved into .side-buttons) -->
+
+    <div class="bottom-buttons">
+        <button type="button" class="refresh-button tmr-btn">
+            <div class="button-content">
+                <span>Refresh</span>
+            </div>
+        </button>
+        <button type="button" class="leave-button tmr-btn">
+            <div class="button-content">
+                <span>Leave</span>
+            </div>
+        </button>
+    </div>
+    
+    <script src="TMR.js"></script>
+    <script src="calendar.js"></script>
+    <script src="meibot.js"></script>
+    <!-- To-Do modal (opened from dropdown To-Do button) -->
+    <div id="todo-modal-backdrop" class="todo-modal-backdrop" hidden>
+        <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
+            <h3 id="todo-modal-title">To Do</h3>
+            <div class="todo-input-row">
+                <input id="todo-modal-input" type="text" placeholder="Add a todo..." />
+                <input id="todo-modal-minutes" type="number" min="0" placeholder="remind in (min)" style="width:110px;" />
+                <button id="todo-modal-add" class="small-tmr-btn">Add</button>
+                <button id="todo-modal-close" class="small-tmr-btn">Close</button>
+            </div>
+            <ul id="todo-modal-list" class="todo-list"></ul>
+        </div>
+    </div>
+    <div id="sub-manager-backdrop" class="todo-modal-backdrop" hidden>
+        <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="sub-manager-title">
+            <h3 id="sub-manager-title">Subscriptions</h3>
+            <div style="margin-bottom:8px;">
+                <button id="sub-refresh-btn" class="small-tmr-btn">Refresh</button>
+                <button id="sub-close-btn" class="small-tmr-btn">Close</button>
+            </div>
+            <ul id="sub-list" class="todo-list"></ul>
+        </div>
+    </div>
+</body>
+</html>

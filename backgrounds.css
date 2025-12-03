@@ -1,0 +1,70 @@
+/* Animated stripe background for TMR page */
+.stripe-background {
+    background-color: white;
+    background-image: 
+        linear-gradient(
+            35deg,
+            transparent 0%,
+            transparent 45%,
+            rgba(var(--accent-rgb, 0,157,255), 0.5) 45%,
+            rgba(var(--accent-rgb, 0,157,255), 0.5) 55%,
+            transparent 55%
+        ),
+        linear-gradient(
+            35deg,
+            transparent 0%,
+            transparent 45%,
+            rgba(var(--accent-rgb, 0,157,255), 0.5) 45%,
+            rgba(var(--accent-rgb, 0,157,255), 0.5) 55%,
+            transparent 55%
+        );
+    background-size: 1000px 100%, 1000px 100%;
+    animation: stripe-scroll 20s linear infinite;
+}
+
+/* Animated triangle background for CurrentSchedules page */
+.triangle-background {
+    background-color: white;
+    background-image: 
+        linear-gradient(60deg, transparent 45%, rgba(var(--accent-rgb, 241,145,0), 0.1) 45%, rgba(var(--accent-rgb, 241,145,0), 0.1) 55%, transparent 55%),
+        linear-gradient(-60deg, transparent 45%, rgba(var(--accent-rgb, 241,145,0), 0.1) 45%, rgba(var(--accent-rgb, 241,145,0), 0.1) 55%, transparent 55%),
+        linear-gradient(60deg, rgba(var(--accent-rgb, 241,145,0), 0.05) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 241,145,0), 0.05) 55%),
+        linear-gradient(-60deg, rgba(var(--accent-rgb, 241,145,0), 0.05) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 241,145,0), 0.05) 55%);
+    background-size: 300px 300px, 300px 300px, 300px 300px, 300px 300px;
+    animation: triangle-scroll 20s linear infinite;
+}
+
+/* Blue variant of the triangle background (used on CurrentSchedules but in blue) */
+.triangle-background-blue {
+    background-color: white;
+    background-image:
+        linear-gradient(60deg, transparent 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 55%, transparent 55%),
+        linear-gradient(-60deg, transparent 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 55%, transparent 55%),
+        linear-gradient(60deg, rgba(var(--accent-rgb, 0,157,255), 0.09) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 0,157,255), 0.09) 55%),
+        linear-gradient(-60deg, rgba(var(--accent-rgb, 0,157,255), 0.09) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 0,157,255), 0.09) 55%);
+    background-size: 300px 300px, 300px 300px, 300px 300px, 300px 300px;
+    animation: triangle-scroll 20s linear infinite;
+}
+
+@keyframes stripe-scroll {
+    0% {
+        background-position: 0 0, 0 0;
+    }
+    100% {
+        background-position: 1000px 0, -1000px 0;
+    }
+}
+
+@keyframes triangle-scroll {
+    0% {
+        background-position: 0 0, 0 0, 0 0, 0 0;
+    }
+    100% {
+        background-position: 200px 200px, 200px 200px, -200px -200px, -200px -200px;
+    }
+}
+
+/* Transition effect for background changes */
+.page-background {
+    transition: background 0.3s ease-in-out;
+}

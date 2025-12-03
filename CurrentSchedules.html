@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>~Current Schedules~</title>
+    <link rel="stylesheet" href="TMR.css">
+    <link rel="stylesheet" href="backgrounds.css">
+</head>
+<body class="page-background triangle-background currentschedules-page">
+
+    <!-- TMR dropdown menu at very top for reliable JS init -->
+    <div id="TMR-tag" class="tmr-tag">
+        <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
+            <h1 style="margin:0;">TMR</h1>
+            <span class="caret">▾</span>
+        </button>
+        <div id="tmr-menu" class="tmr-menu" hidden>
+            <div class="tmr-menu-item">
+                <label for="accent-picker">Accent
+                    <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color">
+                </label>
+            </div>
+            <div class="tmr-menu-item">
+                <button id="menu-todo-toggle" type="button" class="small-tmr-btn">To-Do</button>
+            </div>
+            <div id="tmr-menu-todo-list" class="tmr-menu-todo" hidden></div>
+            <div class="tmr-menu-item">
+                <button type="button" class="leave-button tmr-btn" style="width:100%;" onclick="window.location.href='TMR.html'">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar app -->
+    <div id="calendar-app" class="calendar-app">
+        <div class="calendar-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button id="prev-month" class="nav-btn tmr-btn small-tmr-btn">&lt;</button>
+                <div id="month-year" class="month-year"></div>
+                <button id="next-month" class="nav-btn tmr-btn small-tmr-btn">&gt;</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button id="export-btn" class="nav-btn tmr-btn small-tmr-btn">Export</button>
+                <button id="import-btn" class="nav-btn tmr-btn small-tmr-btn">Import</button>
+                <input id="import-file" type="file" accept=".json" style="display:none">
+            </div>
+        </div>
+        <!-- To-do app (saves to browser localStorage) -->
+        <div id="todo-app" class="todo-app">
+            <h3 style="margin:0 0 8px 0;">To Do</h3>
+            <div class="todo-input-row">
+                <input id="todo-input" type="text" placeholder="Add a todo..." />
+                <button id="add-todo" class="small-tmr-btn">Add</button>
+            </div>
+            <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
+        </div>
+        <div id="weekday-row" class="weekday-row" aria-hidden="false"></div>
+    <div id="calendar" class="calendar-grid" aria-label="Monthly calendar"></div>
+    </div>
+
+    <!-- Clock (moved below calendar) -->
+    <div class="clock-container">
+        <div class="clock-outer-box">
+            <div class="clock-inner-box">
+                <div id="clock"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day / event modal -->
+    <div id="event-modal" class="modal hidden" aria-hidden="true">
+        <div class="modal-content">
+            <button id="close-modal" class="modal-close" aria-label="Close">&times;</button>
+            <h3 id="modal-title">Add Event</h3>
+            <form id="event-form">
+                <input type="hidden" id="event-id">
+                <label>Title
+                    <input id="event-title" required />
+                </label>
+                <label>Date
+                    <input id="event-date" type="date" required />
+                </label>
+                <label>Time
+                    <input id="event-time" type="time" />
+                </label>
+                <label>Notes
+                    <textarea id="event-notes"></textarea>
+                </label>
+                <div class="modal-actions">
+                    <button type="submit" id="save-event" class="tmr-btn">Save</button>
+                    <button type="button" id="delete-event" class="tmr-btn danger">Delete</button>
+                    <button type="button" id="cancel-event" class="tmr-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Back button moved to dropdown menu -->
+
+    <!-- Only one TMR.js, loaded after dropdown markup -->
+    <script src="TMR.js"></script>
+    <script src="calendar.js"></script>
+</body>
+</html>

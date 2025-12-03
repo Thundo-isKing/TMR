@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TMR Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <main>
+    <h1>TMR Admin</h1>
+
+    <section id="controls">
+      <label for="payload">Payload JSON</label>
+      <textarea id="payload" rows="4">{"title":"Test","body":"Hello from admin","url":"/TMR.html"}</textarea>
+      <div class="buttons">
+        <button id="sendAll">Send To All (via admin/send)</button>
+        <button id="cleanup">Run Cleanup</button>
+        <span id="status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Subscriptions</h2>
+      <div id="list">Loading…</div>
+    </section>
+  </main>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,1354 @@
+.side-buttons + .clock-container {
+    margin-top: 100px !important;
+}
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    transform: none;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Remove the global 20px shift specifically for CurrentSchedules page */
+.triangle-background {
+    transform: none;
+}
+
+/* Make the TMR tag visually flush to the viewport corner even when the
+   document body has a translateX applied. We counteract that translate
+   so the tag sits snug in the top-left of the screen. */
+#TMR-tag {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: auto;
+    width: auto;
+    background-color: #c3c3c3;
+    padding: 6px 8px;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    z-index: 1500;
+    transform: none;
+}
+
+.tmr-tag {
+    border-radius: 16px !important;
+}
+
+/* Page-specific override for CurrentSchedules.html to nudge TMR tag inwards */
+body.triangle-background #TMR-tag {
+    top: 12px !important;
+    left: 12px !important;
+}
+body.triangle-background #TMR-tag {
+    top: 12px !important;
+    left: 12px !important;
+}
+
+body.triangle-background .tmr-menu {
+    left: 0 !important;
+    right: auto !important;
+    min-width: 220px;
+    min-height: 44px;
+         /* This selector is now unused due to the spacer div method */
+         /* Removed margin-top as it is no longer needed */
+         /* This entire selector is being removed */
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    padding: 12px 18px 12px 18px;
+    /* Remove forced always-visible so JS can control menu visibility */
+}
+
+.tmr-tag-btn {
+    width: 100%;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 6px 4px;
+}
+
+.tmr-tag h1 { margin: 0; color: rgb(0,0,0); font-size: 28px; }
+
+.tmr-menu {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 8px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    padding: 12px 18px 12px 18px;
+    min-width: 220px;
+    min-height: 44px;
+    z-index: 2000;
+    /* Prevent menu from being cut off at the edge */
+    left: 0;
+    right: auto;
+}
+
+/* Compact Back button inside the TMR dropdown menu: half size, no drop shadow or movement */
+.tmr-menu .leave-button {
+    width: 45px;
+    height: 22px;
+    padding: 0 6px;
+    font-size: 12px;
+    background-color: var(--accent-color, #0089f1);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+    transition: background 0.15s ease;
+}
+
+/* Prevent menu buttons from translating or showing box-shadow on hover; keep only color change */
+.tmr-menu .tmr-btn:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    background-color: var(--accent-hover, #006fab) !important;
+}
+
+.tmr-menu-item { margin-bottom: 8px; }
+
+.tmr-menu label { display:flex; align-items:center; gap:8px; }
+
+.side-buttons {
+    position: fixed;
+    top: calc(33.33vh - 160px);  /* Adjusted down from -200px */
+    width: 100%;
+    pointer-events: none;
+}
+
+/* Scoped right-shift: move only the interface controls that need nudging
+   instead of moving the entire page. This reproduces the previous behavior
+   but only for the side buttons, clock, and bottom buttons. */
+.side-buttons,
+.clock-container,
+.bottom-buttons {
+    transform: none;
+}
+
+.schedule-button {
+    position: absolute;
+    right: calc(50% + 300px);  /* Increased spacing from center */
+    pointer-events: auto;
+    height: 370px;  /* Fixed height instead of viewport-based */
+    width: 280px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15px;
+    border-radius: 20px;
+    font-size: 24px !important;
+}
+
+.schedule-button2 {
+    position: absolute;
+    left: calc(50% + 300px);  /* Increased spacing from center */
+    pointer-events: auto;
+    height: 420px;  /* Fixed height instead of viewport-based */
+    width: 280px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15px;
+    border-radius: 20px;
+    font-size: 24px !important;
+}
+
+.todo-button {
+    /* keep absolute variant for other contexts, but when inside .side-buttons we'll show a simple stacked button */
+    position: absolute;
+    right: calc(50% - 420px);  /* Adjusted position */
+    pointer-events: auto;
+    height: calc(66.66vh - (33.33vh - 255px));
+    width: 160px;  /* Increased width */
+    display: flex;
+    align-items: flex-start;  /* Align text to top */
+    justify-content: center;  /* Center text horizontally */
+    padding-top: 10px;  /* Add some space at the top */
+    border-radius: 15px;  /* Round all corners */
+}
+
+/* Override when buttons are inside the left .side-buttons stack */
+/* (left intentionally blank - stacked overrides for .side-buttons were removed to restore original layout) */
+
+.button-group {
+    position: fixed;
+    top: calc(66.66vh + 60px);  /* Adjusted down from +20px */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+}
+
+.button-group button {
+    width: 680px;  /* Increased width by 50px */
+    height: 90px;
+}
+
+/* Permanently place the New + Schedules button under the Current Schedules
+   button (aligned horizontally) and leave ~60px vertical gap. This makes
+   the button independent of the .button-group positioning. */
+.side-buttons .new-sched {
+    /* Place New + Schedules under the Current Schedules button inside .side-buttons
+       .side-buttons is fixed, so absolute positioning here is relative to that container. */
+    position: absolute;
+    /* Keep the left edge aligned with .schedule-button while increasing width.
+       right_new = right_sched + width_sched - width_new -> simplifies to 50% when
+       width_new = width_sched + 300px (here 580px = 280px + 300px). */
+    right: 40%; /* aligns left edge with .schedule-button */
+    top: calc(370px + 60px);  /* schedule-button height (370px) + 60px gap */
+    width: 750px; /* extend 300px to the right while keeping left edge aligned */
+    height: 110px;
+    pointer-events: auto;
+}
+
+.bottom-buttons {
+    position: fixed;
+    top: calc(33.33vh + 60px);  /* Adjusted down from +20px */
+    left: calc(50% + 50px);
+    transform: translateX(-50%);
+    display: flex;
+    gap: 80px;  /* Increased gap between buttons */
+    justify-content: center;
+    width: 700px;  /* Increased width */
+}
+
+.tmr-btn {
+    padding: 25px 50px;
+    font-size: 22px;
+    cursor: pointer;
+    background-color: var(--accent-color, #0089f1);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    transition: all 0.1s ease-out;
+    position: relative;
+}
+
+/* Smaller variant of the site button for compact controls (nav/export/import) */
+.small-tmr-btn {
+    padding: 8px 14px;
+    font-size: 16px;
+    border-radius: 12px;
+    box-shadow: 8px 8px 0 rgba(128,128,128,0.5);
+}
+
+.small-tmr-btn:hover { transform: translate(6px,6px); }
+
+/* Menu button styling - no border, nav-btn style appearance */
+.tmr-menu button,
+.tmr-menu .small-tmr-btn {
+    background: #d7dbdf !important;
+    border: none !important;
+    color: #333 !important;
+    padding: 8px 14px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    transition: background 0.15s ease !important;
+    transform: none !important;
+}
+
+.tmr-menu button:hover,
+.tmr-menu .small-tmr-btn:hover {
+    background: var(--accent-color, #0089f1) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bottom-buttons2 {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: auto;
+    margin: 0;
+    padding: 0;
+    z-index: 1000;
+    transform: none;
+    /* No extra shift, so it's flush in the corner */
+}
+
+.bottom-buttons2 .leave-button {
+    position: static;
+    width: 45px;
+    height: 22px;
+    padding: 0 5px;
+    font-size: 12px;
+    cursor: pointer;
+    background-color: var(--accent-color, #0089f1);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    box-shadow: none;
+}
+
+/* Ensure Back text is perfectly centered inside the leave button */
+.bottom-buttons2 .leave-button .button-content {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 0;
+}
+
+.bottom-buttons button {
+    width: 160px;  /* Reduced width */
+    height: 130px;  /* Reduced height */
+    padding: 12px;
+}
+
+.button-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.image-placeholder {
+    width: 65px;  /* Reduced size */
+    height: 65px;  /* Reduced size */
+    background-color: rgba(255, 255, 255, 0.418);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.button-icon {
+    width: 65px;
+    height: 65px;
+    object-fit: contain;
+    margin-bottom: 12px;
+    border-radius: 8px;
+}
+
+/* Calendar styles */
+.calendar-app {
+    max-width: 1100px;
+    margin: 18px auto;
+    padding: 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius: 12px;
+    /* Keep calendar within viewport without forcing page scroll */
+    max-height: calc(100vh - 160px);
+    display: flex;
+    flex-direction: column;
+    /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
+}
+.todo-app {
+    margin: 8px 0 12px 0;
+    padding: 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01));
+    border-radius: 8px;
+    display: none; /* hidden by default; toggled from the dropdown menu */
+}
+.todo-input-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.todo-input-row input[type="text"] {
+    flex: 1 1 auto;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+}
+.todo-list { list-style: none; margin: 0; padding: 0; display:flex; flex-direction: column; gap:6px; }
+.todo-item {
+    display:flex; align-items:center; gap:8px; padding:8px; border-radius:8px; background: #fff; border:1px solid rgba(0,0,0,0.04);
+}
+.todo-item .todo-text { flex: 1 1 auto; }
+.todo-item .todo-actions { display:flex; gap:6px; }
+.todo-item input[type="text"] { flex:1 1 auto; padding:6px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.06); }
+
+/* Compact todo list inside the TMR dropdown menu */
+.tmr-menu-todo { max-height: 220px; overflow: auto; padding-top: 6px; }
+.tmr-menu-todo .todo-item { padding:6px; background: transparent; border: none; box-shadow: none; }
+.tmr-menu-todo .todo-text span { font-size: 13px; }
+.tmr-menu-todo button.small-tmr-btn { padding: 4px 8px; font-size: 12px; }
+
+/* Unified modal backdrop for all modals */
+.modal-backdrop, .todo-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    backdrop-filter: blur(4px);
+}
+.modal-backdrop.active, .todo-modal-backdrop.active { display: flex; }
+
+/* Unified modal styling (based on Meibot design) */
+.unified-modal, .todo-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    font-family: inherit;
+    width: 420px;
+    max-width: calc(100% - 32px);
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.unified-modal-header, .todo-modal-header {
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+    color: white;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: none;
+}
+
+/* Style h3 inside todo-modal (not in a separate header) */
+.todo-modal > h3 {
+    margin: 0;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+    color: white;
+    border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+}
+
+.unified-modal-header h3, .todo-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-close-btn, .unified-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close-btn:hover, .unified-modal-close:hover {
+    opacity: 0.8;
+}
+
+.unified-modal-content, .todo-modal-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Style the input row in todo modal (since it's not wrapped in a content div) */
+.todo-modal > .todo-input-row {
+    padding: 16px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: white;
+    flex-shrink: 0;
+    border-bottom: 1px solid #eee;
+}
+
+.todo-modal-input-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.todo-modal input[type="text"], .todo-modal input[type="number"] {
+    flex: 1;
+    min-width: 150px;
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.todo-modal input:focus {
+    outline: none;
+    border-color: var(--accent-color, #0089f1);
+    box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
+}
+
+/* Todo modal buttons styling */
+.todo-modal .small-tmr-btn {
+    background: #d7dbdf !important;
+    border: none !important;
+    color: #333 !important;
+    padding: 8px 14px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    transition: background 0.15s ease !important;
+    transform: none !important;
+}
+
+.todo-modal .small-tmr-btn:hover {
+    background: var(--accent-color, #0089f1) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.todo-modal .todo-list { 
+    max-height: 320px; 
+    overflow: auto; 
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    padding: 0 16px 16px 16px;
+}
+
+.todo-modal .todo-item { 
+    background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
+    border: 1px solid #e0e8f0;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.todo-modal .todo-item:hover {
+    background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
+    border-color: var(--accent-color, #0089f1);
+    box-shadow: 0 2px 8px rgba(0,137,241,0.1);
+}
+
+/* To-do badge (small, non-intrusive). Do NOT change .todo-button positioning — it
+   is intentionally absolute elsewhere in the stylesheet. Only the badge styles
+   are applied so layout is preserved. */
+.todo-badge {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    min-width: 18px;
+    padding: 2px 6px;
+    height: 18px;
+    line-height: 14px;
+    font-size: 12px;
+    border-radius: 999px;
+    background: var(--accent-color, #e33);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2500; /* keep badge above other UI elements */
+}
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.nav-btn {
+    background: #d7dbdf; /* slightly darker grey for better contrast */
+    border: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+/* Ensure nav/export/import labels are black (override .tmr-btn color) */
+.calendar-header .nav-btn,
+#export-btn,
+#import-btn {
+    color: #333 !important; /* softer dark-gray instead of full black */
+}
+
+/* Remove default outlines but keep a subtle focus-visible ring for keyboard users */
+.calendar-header .nav-btn,
+#export-btn,
+#import-btn,
+#save-event,
+#cancel-event {
+    outline: none;
+}
+
+.calendar-header .nav-btn:focus,
+#export-btn:focus,
+#import-btn:focus,
+#save-event:focus,
+#cancel-event:focus {
+    outline: none;
+}
+
+/* Accessible keyboard focus indicator (subtle) */
+.calendar-header .nav-btn:focus-visible,
+#export-btn:focus-visible,
+#import-btn:focus-visible,
+#save-event:focus-visible,
+#cancel-event:focus-visible {
+    box-shadow: 0 0 0 3px rgba(0,137,241,0.16);
+}
+
+/* Compact controls: prev/next month, export/import, and modal save/cancel
+   Make them half-size, remove shadow/translate on hover, keep only color change */
+.calendar-header .nav-btn,
+#export-btn,
+#import-btn {
+    /* Keep original sizing; only remove decorative shadow and preserve hover color change */
+    box-shadow: none;
+    transition: background 0.15s ease;
+}
+
+/* Modal action buttons (Save/Cancel) compact styling */
+#save-event,
+#cancel-event {
+    /* Preserve modal button sizing; only remove decorative shadow and preserve hover color change */
+    box-shadow: none;
+    transition: background 0.15s ease;
+}
+
+/* Prevent translate/box-shadow on hover for these compact controls; only change color */
+.calendar-header .nav-btn:hover,
+#export-btn:hover,
+#import-btn:hover,
+#save-event:hover,
+#cancel-event:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    background-color: var(--accent-color, #0089f1) !important;
+}
+.month-year {
+    font-weight: 700;
+    font-size: 18px;
+}
+.weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 6px;
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    align-content: start;
+    /* allow calendar days to scroll independently of the header */
+    overflow: auto;
+    /* make grid take remaining space inside .calendar-app */
+    flex: 1 1 auto;
+    padding-right: 6px; /* room for scrollbar */
+}
+.calendar-cell {
+    /* reduced min-height so the calendar fits vertically on most screens */
+    min-height: 90px;
+    padding: 6px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+.calendar-day {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 12px;
+    background: #b3b3b3;
+    color: #fff;
+    border-radius: 10px;
+    box-shadow: 10px 10px 0 rgba(80,80,80,0.18);
+    text-align: left;
+}
+.calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
+.calendar-day:hover { transform: translate(6px,6px); }
+.calendar-cell .day-number {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.event-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.cell-events {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* Modal (uses unified styling above) */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.35);
+    z-index: 3000;
+    backdrop-filter: blur(4px);
+}
+.modal.hidden { display: none; }
+.modal-content {
+    background: white;
+    color: #111;
+    padding: 0;
+    border-radius: 12px;
+    width: 420px;
+    max-width: calc(100% - 32px);
+    max-height: 80vh;
+    font-family: inherit;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-content > h3 {
+    margin: 0;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+    color: white;
+    border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+}
+
+#event-form {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-content label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.modal-content input[type="text"],
+.modal-content input[type="date"],
+.modal-content input[type="time"],
+.modal-content textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+    font-family: inherit;
+}
+
+.modal-content input:focus,
+.modal-content textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #0089f1);
+    box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
+}
+
+.modal-content textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.modal .modal-events {
+    max-height: 180px;
+    overflow: auto;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.modal .modal-event-item {
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e0e8f0;
+    background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
+    transition: all 0.2s ease;
+}
+
+.modal .modal-event-item:hover {
+    background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
+    border-color: var(--accent-color, #0089f1);
+    box-shadow: 0 2px 8px rgba(0,137,241,0.1);
+}
+
+.modal .modal-event-item button {
+    background: transparent;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.modal .modal-event-item button:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    cursor: pointer;
+    color: white;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+}
+
+.modal-close:hover {
+    opacity: 0.8;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+
+.modal-actions button {
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.modal-actions button.tmr-btn {
+    background: var(--accent-color, #0089f1);
+    color: white;
+}
+
+.modal-actions button.tmr-btn:hover {
+    background: var(--accent-hover, #0073d1);
+}
+
+.modal .danger {
+    background: #e74c3c;
+    color: white;
+}
+
+.modal .danger:hover {
+    background: #c0392b;
+}
+
+
+/* Select/dropdown styling */
+select {
+    padding: 10px 12px !important;
+    padding-right: 36px !important;
+    border: 2px solid #e0e0e0 !important;
+    border-radius: 6px !important;
+    background-color: white !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    font-family: inherit !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 8px center !important;
+    background-size: 20px !important;
+    color: #333 !important;
+    line-height: 1.4 !important;
+}
+
+select:hover {
+    border-color: var(--accent-color, #0089f1) !important;
+}
+
+select:focus {
+    outline: none !important;
+    border-color: var(--accent-color, #0089f1) !important;
+    box-shadow: 0 0 0 3px rgba(0,137,241,0.15) !important;
+}
+
+select option {
+    padding: 8px 12px;
+    background: white;
+    color: #333;
+}
+
+.tmr-btn:hover {
+    background-color: var(--accent-hover, #006fab);
+    transform: translate(10px, 10px);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+}
+
+/* Bottom buttons hover styles */
+.bottom-buttons .tmr-btn:hover {
+    transform: translate(10px, 10px) !important; /* Override any other transforms */
+}
+
+.bottom-buttons2 button:hover {
+    background-color: var(--accent-hover, #006fab);
+    box-shadow: none;
+}
+
+/* Remove the diagonal positional shift on hover for the Back button but keep
+   the color/box-shadow hover feedback. Using !important ensures this rule
+   overrides any generic .tmr-btn:hover transforms. */
+.bottom-buttons2 .leave-button:hover {
+    transform: none !important;
+    background-color: var(--accent-hover, #006fab);
+    box-shadow: none;
+}
+
+.clock-container {
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 100px 0 0 0;
+    width: 100%;
+    z-index: 10;
+}
+
+
+.clock-outer-box {
+    background-color: var(--accent-color, #0089f1); /* Accent color */
+    padding: 15px;
+    border-radius: 25px;
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.583);
+    width: 350px;
+}
+
+body.currentschedules-page .clock-outer-box {
+    padding: 8px;
+    border-radius: 18px;
+    box-shadow: 10px 10px 0 rgba(128, 128, 128, 0.45);
+    width: 220px;
+}
+
+body.currentschedules-page .clock-container {
+    margin-top: 80px !important;
+}
+
+.clock-inner-box {
+    background-color: var(--accent-light, #b3d8fa); /* Lighter accent */
+    padding: 20px;
+    border-radius: 30px;
+}
+
+body.currentschedules-page .clock-inner-box {
+    padding: 10px;
+    border-radius: 16px;
+}
+
+#clock {
+    font-size: 43px;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #333;
+    margin: 0;
+    padding: 15px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.currentschedules-page #clock {
+    font-size: 22px;
+    padding: 6px;
+    height: 28px;
+}
+
+.cs-buttons {
+    position: fixed;
+    top: 110px; /* Moved down by 30px from 60px */
+    left:50%;
+    transform: translateX(-50%);
+    width: 100%;
+    padding: 20px;
+    max-width: 100%;
+}
+
+/* Base styles for all buttons in cs-buttons */
+.cs-buttons .tmr-btn {
+    background-color: #f19100;
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Specific styles for the main schedule buttons */
+.cs-buttons .schedule-button.tmr-btn {
+    width: 300px;
+    height: 400px !important;
+    font-size: 24px;
+    position: absolute;
+    right: calc(50% + 75px); /* 300px (button width) + 100px (gap) = 400px total space, so 50px (half of gap) from center */
+}
+
+.cs-buttons .schedule-button2.tmr-btn {
+    width: 300px;
+    height: 400px !important;
+    font-size: 24px;
+    position: absolute;
+    left: calc(50% + 75px); /* 50px (half of gap) from center */
+}
+
+/* Style for the New + Schedule button */
+.cs-buttons .tmr-btn:not(.schedule-button):not(.schedule-button2) {
+    width: 750px;
+    height: 110px;
+    font-size: 16px;
+    padding: 20px 40px;
+    background-color: #e68300; /* Slightly different shade */
+    position: absolute;
+    top: 475px; /* Increased by 75px from 440px */
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.cs-buttons .tmr-btn:hover {
+    background-color: #b15900;
+    transform: translate(15px, 15px);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+}
+
+/* Make New + Schedule use the same hover behavior as other cs-buttons */
+.cs-buttons .tmr-btn:not(.schedule-button):not(.schedule-button2):hover {
+    background-color: #b15900;
+    /* reintroduce the slight rightward shift while preserving center: move right 15px and down 15px */
+    transform: translate(calc(-50% + 15px), 15px);
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+}
+
+/* ========== CLEAN MOBILE-FRIENDLY MEDIA QUERIES ========== */
+/* Desktop layout (1025px and up) - absolute positioning for wide screens */
+@media (min-width: 1025px) {
+    /* Desktop buttons use absolute positioning */
+    .schedule-button {
+        position: absolute;
+        right: calc(50% + 300px);
+        height: 370px;
+        width: 280px;
+        box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    }
+    
+    .schedule-button2 {
+        position: absolute;
+        left: calc(50% + 300px);
+        height: 420px;
+        width: 280px;
+        box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    }
+    
+    .todo-button {
+        position: absolute;
+        right: calc(50% - 420px);
+        box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
+    }
+    
+    .side-buttons {
+        position: fixed;
+        pointer-events: none;
+        transform: translateX(50px);
+    }
+    
+    .clock-container {
+        transform: translateX(50px);
+    }
+    
+    .schedule-button,
+    .schedule-button2,
+    .todo-button {
+        pointer-events: auto;
+    }
+}
+
+/* Tablet/medium screens (601px - 1024px) - iPad friendly layout */
+@media (min-width: 601px) and (max-width: 1024px) {
+    /* Reduce clock size for tablet */
+    .clock-container {
+        position: fixed !important;
+        top: 12px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 2500 !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+    
+    .clock-outer-box {
+        width: 380px !important;
+        padding: 12px !important;
+        border-radius: 20px !important;
+        box-shadow: 10px 10px 0 rgba(128, 128, 128, 0.4) !important;
+    }
+    
+    .clock-inner-box {
+        padding: 14px !important;
+        border-radius: 16px !important;
+    }
+    
+    #clock {
+        font-size: 32px !important;
+        padding: 10px !important;
+        height: 50px !important;
+    }
+    
+    /* Add top padding to body to prevent content overlap with fixed clock */
+    body {
+        padding-top: 120px !important;
+    }
+    
+    /* Horizontal layout for main buttons (320px × 230px each, 40px gap) */
+    .side-buttons {
+        position: relative !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 40px !important;
+        padding: 20px !important;
+        margin-top: 30px !important;
+        transform: none !important;
+        top: auto !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Main buttons: 320px height × 230px width (Meibot 370×280 minus 50px) */
+    .schedule-button,
+    .schedule-button2,
+    .todo-button {
+        position: relative !important;
+        right: auto !important;
+        left: auto !important;
+        width: 230px !important;
+        max-width: none !important;
+        height: 320px !important;
+        margin: 0 !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        font-size: 18px !important;
+        border-radius: 16px !important;
+        padding: 12px !important;
+    }
+    
+    /* iPad button hover: move onto shadow */
+    .schedule-button:hover,
+    .schedule-button2:hover,
+    .todo-button:hover {
+        transform: translate(8px, 8px) !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+    }
+    
+    /* Calendar button (new-sched) in horizontal layout */
+    .side-buttons .new-sched {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        left: auto !important;
+        width: 230px !important;
+        height: 320px !important;
+        margin: 0 !important;
+        padding: 12px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 18px !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        border-radius: 16px !important;
+    }
+    
+    /* iPad calendar button hover: move onto shadow */
+    .side-buttons .new-sched:hover {
+        transform: translate(8px, 8px) !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+    }
+    
+    /* Refresh/Leave buttons: 75px below the main buttons, centered */
+    .bottom-buttons {
+        position: fixed !important;
+        top: calc(140px + 30px + 320px + 60px) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: auto !important;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 36px !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    .bottom-buttons button {
+        width: auto !important;
+        height: auto !important;
+        padding: 27px 35px !important;
+        font-size: 16px !important;
+        border-radius: 16px !important;
+        box-shadow: 6px 6px 0 rgba(128, 128, 128, 0.4) !important;
+    }
+    
+    /* Scale down modals for tablet */
+    .todo-modal,
+    .unified-modal,
+    .modal-content {
+        width: 90% !important;
+        max-width: 600px !important;
+    }
+    
+    /* Calendar fits better on tablet */
+    .calendar-app {
+        max-width: 95% !important;
+        margin: 16px auto !important;
+    }
+}
+
+/* Mobile screens (max 600px) */
+@media (max-width: 600px) {
+    body { padding-top: 160px !important; }
+    
+    .side-buttons {
+        position: relative !important;
+        top: auto !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 12px !important;
+        transform: none !important;
+        pointer-events: auto !important;
+    }
+    
+    .schedule-button,
+    .schedule-button2,
+    .todo-button {
+        position: relative !important;
+        right: auto !important;
+        left: auto !important;
+        top: auto !important;
+        width: 85vw !important;
+        max-width: 360px !important;
+        height: auto !important;
+        min-height: 48px !important;
+        margin: 6px auto !important;
+        padding: 12px 16px !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+    }
+    
+    .button-group {
+        position: relative !important;
+        top: auto !important;
+        transform: none !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+    
+    .button-group button {
+        width: 85vw !important;
+        max-width: 360px !important;
+        height: auto !important;
+        min-height: 48px !important;
+    }
+    
+    .bottom-buttons {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        transform: none !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+    
+    .bottom-buttons button {
+        width: 85vw !important;
+        max-width: 360px !important;
+        height: auto !important;
+        min-height: 48px !important;
+        box-shadow: none !important;
+    }
+    
+    .tmr-btn {
+        width: 85vw !important;
+        max-width: 360px !important;
+        padding: 12px 16px !important;
+        font-size: 16px !important;
+        margin: 0 auto !important;
+    }
+    
+    .clock-container {
+        position: fixed !important;
+        top: 56px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 320px !important;
+        z-index: 2500 !important;
+    }
+    
+    .tmr-menu {
+        position: absolute !important;
+        left: 0 !important;
+        right: auto !important;
+        top: 100% !important;
+        margin-top: 8px !important;
+        min-width: 220px !important;
+    }
+}
+
+
+
