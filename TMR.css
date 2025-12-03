@@ -679,7 +679,7 @@ body.triangle-background .tmr-menu {
     text-align: left;
 }
 .calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
-.calendar-day:hover { transform: translate(6px,6px); }
+.calendar-day:hover { }
 .calendar-cell .day-number {
     font-size: 14px;
     font-weight: 600;
@@ -1175,11 +1175,10 @@ body.currentschedules-page #clock {
         padding: 12px !important;
     }
     
-    /* iPad button hover: move onto shadow */
+    /* iPad button hover: no animation */
     .schedule-button:hover,
     .schedule-button2:hover,
     .todo-button:hover {
-        transform: translate(8px, 8px) !important;
         box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
     }
     
@@ -1201,9 +1200,8 @@ body.currentschedules-page #clock {
         border-radius: 16px !important;
     }
     
-    /* iPad calendar button hover: move onto shadow */
+    /* iPad calendar button hover: no animation */
     .side-buttons .new-sched:hover {
-        transform: translate(8px, 8px) !important;
         box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
     }
     
