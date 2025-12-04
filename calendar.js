@@ -432,8 +432,7 @@
     const evs = eventsForDate(dateStr);
     clearChildren(dayEventsList);
     if(evs.length === 0){
-      const hint = document.createElement('div'); hint.textContent = 'No events for this day.'; hint.style.marginBottom = '8px';
-      dayEventsList.appendChild(hint);
+      // No events - just leave empty
     } else {
       evs.forEach(ev => {
         const item = document.createElement('div'); item.className = 'modal-event-item';
