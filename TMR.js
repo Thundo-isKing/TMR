@@ -22,6 +22,14 @@ if (refreshBtn) {
     });
 }
 
+// Add refresh button to menu (CurrentSchedules)
+const refreshMenuBtn = document.getElementById('refresh-btn-menu');
+if (refreshMenuBtn) {
+    refreshMenuBtn.addEventListener('click', () => {
+        window.location.reload();
+    });
+}
+
 // Add leave button functionality (only if present)
 const leaveBtn = document.querySelector('.leave-button');
 if (leaveBtn) {
