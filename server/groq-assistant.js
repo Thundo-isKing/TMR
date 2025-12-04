@@ -16,17 +16,15 @@ class GroqAssistant {
   }
 
   /**
-   * Get or create conversation history for a user/session
+   * Get the current system prompt with up-to-date date/time
    */
-  getConversationHistory(userId = 'default') {
-    if (!this.conversationHistory.has(userId)) {
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-      this.conversationHistory.set(userId, [
-        {
-          role: 'system',
-          content: `You are a helpful scheduling and task management AI assistant called Meibot. 
+  getSystemPrompt() {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    return `You are a helpful scheduling and task management AI assistant called Meibot. 
 Your primary responsibilities are:
 1. Help users create, manage, and organize calendar events and to-do items
 2. Parse natural language requests to extract event/task details (title, date, time)
@@ -51,10 +49,16 @@ IMPORTANT: Only include "reminder" field if the user explicitly asks for a remin
 
 Be conversational but concise. Ask clarifying questions if needed (date, time, priority, etc.).
 
-CURRENT DATE/TIME: ${todayStr} at ${timeStr}
-Use this current date/time as a reference when the user mentions relative times like "tomorrow", "next week", "in 2 hours", etc.`
-        }
-      ]);
+CURRENT DATE/TIME: ${todayStr} (${dayOfWeek}) at ${timeStr}
+Use this current date/time as a reference when the user mentions relative times like "tomorrow", "next week", "in 2 hours", etc.`;
+  }
+
+  /**
+   * Get or create conversation history for a user/session
+   */
+  getConversationHistory(userId = 'default') {
+    if (!this.conversationHistory.has(userId)) {
+      this.conversationHistory.set(userId, []);
     }
     return this.conversationHistory.get(userId);
   }
@@ -81,16 +85,17 @@ Use this current date/time as a reference when the user mentions relative times 
       console.log('[Groq] Calling API with model:', this.model);
       console.log('[Groq] Message count:', history.length);
       
-      // Call Groq API
+      // Call Groq API with fresh system prompt (updated on each call for current time)
+      const systemPrompt = this.getSystemPrompt();
       const response = await this.client.chat.completions.create({
         model: this.model,
         max_tokens: 1024,
         messages: [
           {
             role: 'system',
-            content: history[0].content
+            content: systemPrompt
           },
-          ...history.slice(1).map(msg => ({
+          ...history.map(msg => ({
             role: msg.role,
             content: msg.content
           }))
