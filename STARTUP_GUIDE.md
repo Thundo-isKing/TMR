@@ -73,8 +73,8 @@ node index.js
 
 **Expected output:**
 ```
-VAPID keys loaded from .env
 Scheduler started (checking every minute)
+[Meibot] Groq assistant initialized
 TMR push server listening on port 3002
 ```
 
@@ -108,7 +108,7 @@ Open **a separate PowerShell window** and start ngrok:
 
 ```powershell
 cd c:\Users\akenj\TMR_Project\TMR_redo
-ngrok http 3001
+ngrok http 3002
 ```
 
 **Expected output:**
@@ -122,7 +122,7 @@ Region                         us (United States)
 Latency                         45ms
 Web Interface                   http://127.0.0.1:4040
 
-Forwarding                      https://sensationistic-taunya-palingenesian.ngrok-free.dev -> http://localhost:3001
+Forwarding                      https://sensationistic-taunya-palingenesian.ngrok-free.dev -> http://localhost:3002
 ```
 
 **Note the public URL** (e.g., `https://sensationistic-taunya-palingenesian.ngrok-free.dev`). This is your public address.
@@ -156,7 +156,7 @@ Forwarding                      https://sensationistic-taunya-palingenesian.ngro
 #### Option A: Local (Desktop/Same Machine)
 Open a browser and navigate to:
 ```
-http://localhost:3001/TMR.html
+http://localhost:3002/TMR.html
 ```
 
 #### Option B: Remote (Mobile or Another Device)
@@ -170,11 +170,11 @@ http://localhost:3001/TMR.html
 **Troubleshooting:**
 
 **Issue: "Connection refused" or "Cannot reach server"**
-- Ensure the push server (Step 2) is running and listening on port 3001.
-- Verify ngrok (Step 3) is running and shows "Forwarding" to `localhost:3001`.
+- Ensure the push server (Step 2) is running and listening on port 3002.
+- Verify ngrok (Step 3) is running and shows "Forwarding" to `localhost:3002`.
 - Test locally first:
   ```powershell
-  Invoke-WebRequest -Uri 'http://127.0.0.1:3001/TMR.html' -UseBasicParsing
+  Invoke-WebRequest -Uri 'http://127.0.0.1:3002/TMR.html' -UseBasicParsing
   ```
 
 **Issue: App loads but push notifications don't work**
@@ -220,7 +220,7 @@ http://localhost:3001/TMR.html
 
 #### Local:
 ```
-http://127.0.0.1:3001/admin.html
+http://127.0.0.1:3002/admin.html
 ```
 
 #### Remote (ngrok):
@@ -275,7 +275,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:3001/admin/send/11' -Method Post `
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| "Port 3001 in use" | Another process is using the port. | Kill Node: `Get-Process node -ErrorAction SilentlyContinue \| Stop-Process -Force` |
+| "Port 3002 in use" | Another process is using the port. | Kill Node: `Get-Process node -ErrorAction SilentlyContinue \| Stop-Process -Force` |
 | "Cannot find module" | Dependencies not installed. | Run `npm install` in `server/` dir. |
 | "VAPID keys missing" | `.env` corrupted or deleted. | Delete `.env`, restart server (it will regenerate). |
 | "ENOENT: no such file or directory, open 'tmr_server.db'" | DB path issue. | Ensure you're running `node index.js` from the `server/` directory. |
@@ -293,11 +293,11 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:3001/admin/send/11' -Method Post `
 
 | Issue | Solution |
 |-------|----------|
-| "command not found" | Add ngrok to PATH or run with full path: `C:\Program Files\ngrok\ngrok.exe http 3001` |
+| "command not found" | Add ngrok to PATH or run with full path: `C:\Program Files\ngrok\ngrok.exe http 3002` |
 | ERR_NGROK_334 (endpoint already online) | Kill existing ngrok process: `Get-Process ngrok -ErrorAction SilentlyContinue \| Stop-Process -Force`, wait 2 seconds, then restart. |
 | ERR_NGROK_6024 interstitial | Open the public URL in a browser, accept, then it will work. |
 | URL changes every restart | Free plan behavior. Copy the new URL and use it. |
-| No traffic reaching local server | Verify `ngrok http 3001` shows "Forwarding" to `localhost:3001`. Test locally first. |
+| No traffic reaching local server | Verify `ngrok http 3002` shows "Forwarding" to `localhost:3002`. Test locally first. |
 
 ### Database/Subscription issues
 
@@ -326,7 +326,7 @@ ngrok http 3002
 ```
 
 **Terminal 3 or Browser:**
-- Local: `http://localhost:3001/TMR.html`
+- Local: `http://localhost:3002/TMR.html`
 - Remote: Open the ngrok HTTPS forwarding URL and append `/TMR.html` (e.g., `https://sensationistic-taunya-palingenesian.ngrok-free.dev/TMR.html`)
 
 ### Making changes to client code:
@@ -357,14 +357,14 @@ ngrok http 3002
 |------|---------|
 | Install dependencies | `cd server; npm install` |
 | Start push server | `cd server; node index.js` |
-| Start ngrok | `ngrok http 3001` |
-| Open app (local) | Browser: `http://localhost:3001/TMR.html` |
-| Open admin panel (local) | Browser: `http://127.0.0.1:3001/admin.html` |
+| Start ngrok | `ngrok http 3002` |
+| Open app (local) | Browser: `http://localhost:3002/TMR.html` |
+| Open admin panel (local) | Browser: `http://127.0.0.1:3002/admin.html` |
 | Send test push to all | `cd server; node send_test_push.js` |
 | Send push to ID 11 | `cd server; node send_targeted_push.js 11` |
 | Run cleanup | `Invoke-RestMethod -Uri 'http://127.0.0.1:3001/admin/cleanup' -Method Post` |
 | Kill running Node process | `Get-Process node -ErrorAction SilentlyContinue \| Stop-Process -Force` |
-| Check if server is responding | `Invoke-RestMethod -Uri 'http://127.0.0.1:3001/debug/subscriptions' -Method Get` |
+| Check if server is responding | `Invoke-RestMethod -Uri 'http://127.0.0.1:3002/debug/subscriptions' -Method Get` |
 
 ---
 
@@ -388,16 +388,20 @@ If you want to add more features:
 
 | File | Purpose |
 |------|---------|
-| `server/index.js` | Main Express server; handles API and static files. |
-| `server/db.js` | SQLite database wrapper. |
-| `server/scheduler.js` | Cron job to send reminders. |
+| `server/index.js` | Main Express server; handles API, Meibot endpoint, and static files. |
+| `server/db.js` | SQLite database wrapper for subscriptions and reminders. |
+| `server/scheduler.js` | Cron job to send reminders at scheduled times. |
+| `server/groq-assistant.js` | Groq AI assistant for Meibot conversation and action parsing. |
 | `server/package.json` | Node dependencies. |
-| `.env` | VAPID keys (auto-generated). |
-| `TMR.html` | Main app page. |
-| `TMR.js` | Client logic and push subscription. |
-| `TMR.css` | App styles. |
+| `.env` | VAPID keys (auto-generated) and Groq API key. |
+| `TMR.html` | Main app page with calendar, todos, and Meibot. |
+| `TMR.js` | Client logic, push subscription, and calendar functions. |
+| `TMR.css` | App styles with responsive layouts (Desktop/iPad/Mobile). |
+| `TMR.env` | Environment configuration for the application. |
 | `sw.js` | Service Worker for push notifications. |
-| `admin.html` | Admin UI. |
+| `meibot.js` | Meibot chatbot UI and AI response handling. |
+| `calendar.js` | Calendar event management and reminder scheduling. |
+| `admin.html` | Admin UI for managing subscriptions and testing push. |
 | `admin.js` | Admin client logic. |
 | `admin.css` | Admin styles. |
 
@@ -414,18 +418,21 @@ If you want to add more features:
 
 2. Open another PowerShell in `c:\Users\akenj\TMR_Project\TMR_redo` and run:
    ```powershell
-   ngrok http 3001
+   ngrok http 3002
    ```
 
 3. Open your browser and go to:
-   - Local: `http://localhost:3001/TMR.html`
+   - Local: `http://localhost:3002/TMR.html`
    - Mobile/Remote: Use the ngrok URL from the ngrok terminal
 
 4. Enable push notifications in the app.
 
 5. (Optional) Open the admin panel to manage subscriptions and send test pushes:
-   - Local: `http://127.0.0.1:3001/admin.html`
+   - Local: `http://127.0.0.1:3002/admin.html`
    - Remote: Use the ngrok URL + `/admin.html`
 
-That's it! You're running the TMR application with cross-device push notifications.
+6. Use Meibot to create todos and events:
+   - Ask "what's the time?" to verify Meibot has correct date/time
+   - Say "Create a todo to..." or "Schedule an event for..."
+   - Meibot will parse your request and suggest creating tasks with reminders
 
