@@ -305,8 +305,8 @@
         btn.style.cursor = 'pointer';
         btn.style.fontSize = '12px';
         btn.addEventListener('click', () => {
-          if (window.meibotCreateTodo) {
-            window.meibotCreateTodo(data.actionData.text, data.actionData.reminder);
+          if (window.calendarAddTodo) {
+            window.calendarAddTodo(data.actionData.text, data.actionData.reminder);
             appendMessage('meibot', 'Task created! 📝');
             btn.disabled = true;
             lastSuggestedAction = null;
@@ -327,8 +327,21 @@
         btn.style.cursor = 'pointer';
         btn.style.fontSize = '12px';
         btn.addEventListener('click', () => {
-          if (window.meibotCreateEvent) {
-            window.meibotCreateEvent(data.actionData);
+          if (window.calendarAddOrUpdateEvent) {
+            // Create event object from parsed data
+            const eventDate = new Date(data.actionData.date);
+            const [hours, minutes] = (data.actionData.time || '09:00').split(':').map(Number);
+            eventDate.setHours(hours, minutes, 0);
+            
+            const event = {
+              id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+              title: data.actionData.title,
+              start: eventDate.toISOString(),
+              duration: data.actionData.duration || 60,
+              description: ''
+            };
+            
+            window.calendarAddOrUpdateEvent(event);
             appendMessage('meibot', 'Event scheduled! 📅');
             btn.disabled = true;
             lastSuggestedAction = null;
