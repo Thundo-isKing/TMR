@@ -230,9 +230,15 @@ body.triangle-background .tmr-menu {
     color: white;
     border: none;
     border-radius: 20px;
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
     position: relative;
-    transition: transform 0.08s ease-out, background-color 0.08s ease-out;
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
+}
+
+.tmr-btn:hover {
+    transform: translate(10px, 10px);
+    background-color: var(--accent-hover, #006fab);
+    box-shadow: 0 0 0 rgba(128, 128, 128, 0.674);
 }
 
 /* Smaller variant of the site button for compact controls (nav/export/import) */
@@ -240,13 +246,21 @@ body.triangle-background .tmr-menu {
     padding: 8px 14px;
     font-size: 16px;
     border-radius: 12px;
-    box-shadow: 8px 8px 0 rgba(128,128,128,0.5) !important;
-    transition: transform 0.08s ease-out, background-color 0.08s ease-out;
+    box-shadow: 8px 8px 0 rgba(128,128,128,0.5);
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
 }
 
 .small-tmr-btn:hover { 
     transform: translate(6px, 6px);
-    box-shadow: 8px 8px 0 rgba(128,128,128,0.5) !important;
+    box-shadow: 0 0 0 rgba(128,128,128,0.5);
+}
+
+/* Nav/export/import buttons: no transform, shadow removed */
+.calendar-header .nav-btn.small-tmr-btn:hover,
+#export-btn.small-tmr-btn:hover,
+#import-btn.small-tmr-btn:hover {
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 /* Menu button styling - no border, nav-btn style appearance */
@@ -682,11 +696,13 @@ body.triangle-background .tmr-menu {
     border-radius: 10px;
     box-shadow: 10px 10px 0 rgba(80,80,80,0.18);
     text-align: left;
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
 }
 .calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
 .calendar-day:hover { 
-    background: var(--accent-color, #0089f1) !important;
-    box-shadow: 10px 10px 0 rgba(80,80,80,0.18) !important;
+    transform: translate(6px, 6px);
+    background: var(--accent-color, #0089f1);
+    box-shadow: 0 0 0 rgba(80,80,80,0.18);
 }
 .calendar-cell .day-number {
     font-size: 14px;
@@ -929,7 +945,7 @@ select option {
 .tmr-btn:hover {
     background-color: var(--accent-hover, #006fab);
     transform: translate(10px, 10px);
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
+    box-shadow: 0 0 0 rgba(128, 128, 128, 0.674);
 }
 
 /* Bottom buttons hover styles */
@@ -1026,11 +1042,11 @@ body.currentschedules-page #clock {
 /* Base styles for all buttons in cs-buttons */
 .cs-buttons .tmr-btn {
     background-color: #f19100;
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
+    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.08s ease-out, background-color 0.08s ease-out;
+    transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
 }
 
 /* Specific styles for the main schedule buttons */
@@ -1066,14 +1082,14 @@ body.currentschedules-page #clock {
 .cs-buttons .tmr-btn:hover {
     background-color: #b15900;
     transform: translate(15px, 15px);
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
+    box-shadow: 0 0 0 rgba(128, 128, 128, 0.674);
 }
 
 /* Make New + Schedule use the same hover behavior as other cs-buttons */
 .cs-buttons .tmr-btn:not(.schedule-button):not(.schedule-button2):hover {
     background-color: #b15900;
-    transform: translate(15px, 15px);
-    box-shadow: 15px 15px 0 rgba(128, 128, 128, 0.674) !important;
+    transform: translate(calc(-50% + 15px), 15px);
+    box-shadow: 0 0 0 rgba(128, 128, 128, 0.674);
 }
 
 /* ========== CLEAN MOBILE-FRIENDLY MEDIA QUERIES ========== */
@@ -1187,11 +1203,12 @@ body.currentschedules-page #clock {
         padding: 12px !important;
     }
     
-    /* iPad button hover: no animation */
+    /* iPad button hover: shadow disappears, button moves */
     .schedule-button:hover,
     .schedule-button2:hover,
     .todo-button:hover {
-        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        transform: translate(8px, 8px) !important;
+        box-shadow: 0 0 0 rgba(128, 128, 128, 0.4) !important;
     }
     
     /* Calendar button (new-sched) in horizontal layout */
@@ -1212,9 +1229,10 @@ body.currentschedules-page #clock {
         border-radius: 16px !important;
     }
     
-    /* iPad calendar button hover: no animation */
+    /* iPad calendar button hover: shadow disappears, button moves */
     .side-buttons .new-sched:hover {
-        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        transform: translate(8px, 8px) !important;
+        box-shadow: 0 0 0 rgba(128, 128, 128, 0.4) !important;
     }
     
     /* Refresh/Leave buttons: 75px below the main buttons, centered */
@@ -1240,6 +1258,12 @@ body.currentschedules-page #clock {
         box-shadow: 6px 6px 0 rgba(128, 128, 128, 0.4) !important;
     }
     
+    /* iPad bottom buttons hover: shadow disappears, button moves */
+    .bottom-buttons button:hover {
+        transform: translate(6px, 6px) !important;
+        box-shadow: 0 0 0 rgba(128, 128, 128, 0.4) !important;
+    }
+    
     /* Scale down modals for tablet */
     .todo-modal,
     .unified-modal,
@@ -1257,7 +1281,9 @@ body.currentschedules-page #clock {
 
 /* Mobile screens (max 600px) */
 @media (max-width: 600px) {
-    body { padding-top: 160px !important; }
+    body { 
+        padding-top: 300px !important; 
+    }
     
     .side-buttons {
         position: relative !important;
@@ -1269,6 +1295,24 @@ body.currentschedules-page #clock {
         gap: 12px !important;
         transform: none !important;
         pointer-events: auto !important;
+        margin-top: 100px !important;
+        margin-bottom: 40px !important;
+    }
+    
+    /* Mobile tmr-btn override for consistent sizing */
+    .side-buttons .tmr-btn {
+        width: 85vw !important;
+        max-width: 360px !important;
+        height: 60px !important;
+        min-height: 60px !important;
+        padding: 12px 16px !important;
+        font-size: 16px !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        border-radius: 12px !important;
     }
     
     .schedule-button,
@@ -1280,13 +1324,36 @@ body.currentschedules-page #clock {
         top: auto !important;
         width: 85vw !important;
         max-width: 360px !important;
-        height: auto !important;
-        min-height: 48px !important;
-        margin: 6px auto !important;
+        height: 60px !important;
+        min-height: 60px !important;
+        margin: 0 auto !important;
         padding: 12px 16px !important;
         box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
         border-radius: 12px !important;
         font-size: 16px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Stack calendar button with other buttons on mobile - must override desktop rule */
+    .side-buttons .new-sched {
+        position: relative !important;
+        right: auto !important;
+        left: auto !important;
+        top: auto !important;
+        width: 85vw !important;
+        max-width: 360px !important;
+        height: 60px !important;
+        min-height: 60px !important;
+        margin: 0 auto !important;
+        padding: 12px 16px !important;
+        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.4) !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
     .button-group {
