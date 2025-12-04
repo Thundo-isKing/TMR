@@ -576,3 +576,78 @@ if (leaveBtn) {
     }
 
 })();
+
+// Export/Import functionality
+(function(){
+    const exportBtn = document.getElementById('export-data-btn');
+    const importBtn = document.getElementById('import-data-btn');
+    const importInput = document.getElementById('import-file-input');
+
+    if(exportBtn){
+        exportBtn.addEventListener('click', ()=>{
+            // Collect all data from localStorage
+            const dataToExport = {
+                accent: localStorage.getItem('tmr_accent'),
+                notifyToggle: localStorage.getItem('notify_toggle'),
+                notifyMode: localStorage.getItem('notify_mode'),
+                todoDefaultReminder: localStorage.getItem('todo_default_reminder'),
+                pushEnable: localStorage.getItem('push_enable'),
+                deviceId: localStorage.getItem('tmr_device_id'),
+                todos: localStorage.getItem('todos'),
+                timestamp: new Date().toISOString()
+            };
+
+            // Convert to JSON and download
+            const jsonString = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tmr-export-${new Date().getTime()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            console.log('Data exported successfully');
+        });
+    }
+
+    if(importBtn){
+        importBtn.addEventListener('click', ()=>{
+            importInput.click();
+        });
+    }
+
+    if(importInput){
+        importInput.addEventListener('change', (e)=>{
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event)=>{
+                try{
+                    const data = JSON.parse(event.target.result);
+                    
+                    // Restore data to localStorage
+                    if(data.accent) localStorage.setItem('tmr_accent', data.accent);
+                    if(data.notifyToggle) localStorage.setItem('notify_toggle', data.notifyToggle);
+                    if(data.notifyMode) localStorage.setItem('notify_mode', data.notifyMode);
+                    if(data.todoDefaultReminder) localStorage.setItem('todo_default_reminder', data.todoDefaultReminder);
+                    if(data.pushEnable) localStorage.setItem('push_enable', data.pushEnable);
+                    if(data.todos) localStorage.setItem('todos', data.todos);
+                    
+                    console.log('Data imported successfully');
+                    alert('Data imported! Page will refresh to apply changes.');
+                    window.location.reload();
+                }catch(err){
+                    console.error('Failed to import data:', err);
+                    alert('Failed to import data. Please check the file format.');
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset input so same file can be selected again
+            e.target.value = '';
+        });
+    }
+})();
