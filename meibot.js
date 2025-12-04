@@ -272,7 +272,7 @@
       const consent = consentEl.checked;
       const contextStr = consent ? JSON.stringify(gatherContext()) : '';
       
-      const res = await fetch('http://localhost:3001/api/meibot', {
+      const res = await fetch('http://localhost:3000/api/meibot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMsg, context: contextStr, consent })

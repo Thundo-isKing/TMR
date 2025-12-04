@@ -20,7 +20,7 @@
         const res = await fetch(path, opts);
         if(res.ok) return res;
       }catch(e){ /* try fallback */ }
-      const url = 'http://localhost:3003' + path;
+      const url = 'http://localhost:3000' + path;
       const res = await fetch(url, opts);
       return res;
     }catch(e){
