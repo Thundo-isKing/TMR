@@ -272,8 +272,8 @@
       const consent = consentEl.checked;
       const contextStr = consent ? JSON.stringify(gatherContext()) : '';
       
-      const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : 'http://192.168.1.218:3001';
-      const res = await fetch(serverUrl + '/api/meibot', {
+      // Use the same origin (works for both localhost and ngrok)
+      const res = await fetch('/api/meibot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMsg, context: contextStr, consent })
@@ -329,17 +329,14 @@
         btn.style.fontSize = '12px';
         btn.addEventListener('click', () => {
           if (window.calendarAddOrUpdateEvent) {
-            // Create event object from parsed data
-            const eventDate = new Date(data.actionData.date);
-            const [hours, minutes] = (data.actionData.time || '09:00').split(':').map(Number);
-            eventDate.setHours(hours, minutes, 0);
-            
+            // Create event object with calendar format (date: YYYY-MM-DD, time: HH:MM)
             const event = {
               id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
               title: data.actionData.title,
-              start: eventDate.toISOString(),
+              date: data.actionData.date,
+              time: data.actionData.time || '09:00',
               duration: data.actionData.duration || 60,
-              description: ''
+              notes: ''
             };
             
             window.calendarAddOrUpdateEvent(event);
