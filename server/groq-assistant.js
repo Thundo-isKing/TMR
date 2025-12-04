@@ -20,7 +20,8 @@ class GroqAssistant {
    */
   getSystemPrompt() {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    // Use local date formatting for both date and time
+    const todayStr = now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
     
