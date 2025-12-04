@@ -1,4 +1,4 @@
-// Minimal Meibot AI backend proxy for OpenAI
+// Minimal Meibot AI backend proxy for Groq
 require('dotenv').config();
 const express = require('express');
 const rateLimit = require('express-rate-limit');
@@ -22,14 +22,14 @@ app.post('/api/meibot', async (req, res) => {
   ].filter(Boolean);
 
   try {
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'mixtral-8x7b-32768',
         messages,
         max_tokens: 600
       })
