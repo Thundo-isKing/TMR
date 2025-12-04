@@ -7,7 +7,7 @@ const cors = require('cors');
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: ['http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3002', 'http://192.168.1.218:3002', 'http://192.168.1.218:3001'] } })); // Allow local network access
+app.use(cors({ origin: ['http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3002', 'http://192.168.1.218:3002', 'http://192.168.1.218:3001'] })); // Allow local network access
 app.use(rateLimit({ windowMs: 60_000, max: 30 })); // 30 requests/min
 
 app.post('/api/meibot', async (req, res) => {

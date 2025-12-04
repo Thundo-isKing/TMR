@@ -445,7 +445,13 @@ if (leaveBtn) {
                         // Already subscribed — send to server (if not already there) and exit
                         console.log('[TMR] Already subscribed to push');
                         try{ 
-                            await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: existing }) }); 
+                            // Get or create device ID
+                            let deviceId = localStorage.getItem('tmr_device_id');
+                            if (!deviceId) {
+                                deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                                localStorage.setItem('tmr_device_id', deviceId);
+                            }
+                            await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: existing, userId: deviceId }) }); 
                         }catch(e){ console.debug('[TMR] Server already has subscription', e); }
                         return;
                     }
@@ -464,7 +470,13 @@ if (leaveBtn) {
 
                     // send to server for storage (with fallback)
                     try{
-                        const res = await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }) });
+                        // Get or create device ID
+                        let deviceId = localStorage.getItem('tmr_device_id');
+                        if (!deviceId) {
+                            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                            localStorage.setItem('tmr_device_id', deviceId);
+                        }
+                        const res = await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub, userId: deviceId }) });
                         if(res && res.ok){ 
                             const j = await res.json(); 
                             localStorage.setItem('tmr_push_sub_id', j.id || ''); 
