@@ -16,6 +16,14 @@
       "dest": "server.js"
     },
     {
+      "src": "/static/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/(.*\\.css|.*\\.js|.*\\.html|.*\\.json)",
+      "dest": "server.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "server.js"
     }
