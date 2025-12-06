@@ -1,24 +1,4 @@
 {
   "version": 2,
-  "functions": {
-    "server.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": "*.html,*.css,*.js,*.json"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
-    }
-  ]
+  "public": true
 }
