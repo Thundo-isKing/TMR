@@ -272,11 +272,14 @@
       const consent = consentEl.checked;
       const contextStr = consent ? JSON.stringify(gatherContext()) : '';
       
+      // Get user's timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
       // Use the same origin (works for both localhost and ngrok)
       const res = await fetch('/api/meibot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, context: contextStr, consent })
+        body: JSON.stringify({ message: userMsg, context: contextStr, consent, timezone })
       });
 
       const data = await res.json();

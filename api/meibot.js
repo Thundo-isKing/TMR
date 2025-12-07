@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, context, consent } = req.body;
+  const { message, context, consent, timezone } = req.body;
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Invalid message' });
   }
@@ -25,17 +25,23 @@ module.exports = async (req, res) => {
     return res.status(403).json({ error: 'Consent required for calendar context.' });
   }
 
+  // Get current date/time in user's timezone (default to user's local if provided)
+  const userTimezone = timezone || 'en-US';
+  const now = new Date();
+  const dateTimeStr = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+    timeZone: userTimezone
+  }).format(now);
+
   const systemPrompt = `You are Meibot, a helpful assistant for scheduling and calendars.
-Current date and time: ${new Date().toLocaleString('en-US', { 
-  weekday: 'long', 
-  year: 'numeric', 
-  month: 'long', 
-  day: 'numeric', 
-  hour: '2-digit', 
-  minute: '2-digit', 
-  second: '2-digit',
-  hour12: true
-})}
+Current date and time: ${dateTimeStr} (${userTimezone})
 
 If the user wants to create a todo or event, respond with a clear confirmation and include an action in your message like this:
 - For todos: "[ACTION: CREATE_TODO] Title: <task title> | Reminder: <reminder description like 'in 1 hour' or 'tomorrow at 9am'>"
