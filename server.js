@@ -152,5 +152,30 @@ app.get('/debug/subscriptions', (req, res) => {
   res.json({ count: subscriptions.size, ids: Array.from(subscriptions.keys()) });
 });
 
+// Reminder scheduling endpoint - stores reminders to send later
+const reminders = new Map();
+let reminderIdCounter = 1;
+
+app.post('/reminder', (req, res) => {
+  const { title, body, deliverAt } = req.body;
+  if (!deliverAt) {
+    return res.status(400).json({ error: 'Missing deliverAt timestamp' });
+  }
+
+  const reminderId = String(reminderIdCounter++);
+  reminders.set(reminderId, {
+    title,
+    body,
+    deliverAt,
+    createdAt: Date.now()
+  });
+
+  res.json({ reminderId, status: 'scheduled' });
+});
+
+app.get('/debug/reminders', (req, res) => {
+  res.json({ count: reminders.size, reminders: Array.from(reminders.entries()) });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
