@@ -5,12 +5,23 @@ const rateLimit = require('express-rate-limit');
 const fetch = require('node-fetch');
 const cors = require('cors');
 const path = require('path');
+const webpush = require('web-push');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname))); // Serve static files from current directory
-app.use(cors({ origin: ['http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3002', 'http://192.168.1.218:3002', 'http://192.168.1.218:3001'] })); // Allow local network access
+app.use(cors({ origin: ['http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3002', 'http://192.168.1.218:3002', 'http://192.168.1.218:3001', '*'] })); // Allow local network access
 app.use(rateLimit({ windowMs: 60_000, max: 30 })); // 30 requests/min
+
+// Setup VAPID for push notifications
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  webpush.setVapidDetails('mailto:you@example.com', VAPID_PUBLIC, VAPID_PRIVATE);
+}
+
+// In-memory subscription store (in production, use a database)
+const subscriptions = new Map();
 
 // Serve TMR.html as the root
 app.get('/', (req, res) => {
@@ -96,5 +107,50 @@ Always include the action tag with clear structured data so the client can parse
   }
 });
 
+// Push notification endpoints
+app.get('/vapidPublicKey', (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC });
+});
+
+app.post('/subscribe', (req, res) => {
+  const sub = req.body.subscription;
+  if (!sub) return res.status(400).json({ error: 'Missing subscription' });
+  const deviceId = req.body.deviceId || Math.random().toString(36).substr(2, 9);
+  subscriptions.set(deviceId, sub);
+  res.json({ deviceId });
+});
+
+app.post('/unsubscribe', (req, res) => {
+  const deviceId = req.body.deviceId;
+  if (!deviceId || !subscriptions.has(deviceId)) {
+    return res.status(404).json({ error: 'Subscription not found' });
+  }
+  subscriptions.delete(deviceId);
+  res.json({ success: true });
+});
+
+app.post('/sendNotification', async (req, res) => {
+  const { deviceId, payload } = req.body;
+  if (!deviceId || !subscriptions.has(deviceId)) {
+    return res.status(404).json({ error: 'Device not found' });
+  }
+  
+  try {
+    const sub = subscriptions.get(deviceId);
+    await webpush.sendNotification(sub, JSON.stringify(payload));
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Push error:', err.message);
+    if (err.statusCode === 410) {
+      subscriptions.delete(deviceId);
+    }
+    res.status(500).json({ error: 'Failed to send notification' });
+  }
+});
+
+app.get('/debug/subscriptions', (req, res) => {
+  res.json({ count: subscriptions.size, ids: Array.from(subscriptions.keys()) });
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Meibot backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
