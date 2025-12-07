@@ -26,11 +26,12 @@ module.exports = async (req, res) => {
   }
 
   const systemPrompt = `You are Meibot, a helpful assistant for scheduling and calendars. 
-If the user wants to create a todo or event, respond with a clear confirmation and include a JSON action in your message like this:
-- For todos: "[ACTION: CREATE_TODO] Title: <task title>"
+If the user wants to create a todo or event, respond with a clear confirmation and include an action in your message like this:
+- For todos: "[ACTION: CREATE_TODO] Title: <task title> | Reminder: <reminder description like 'in 1 hour' or 'tomorrow at 9am'>"
 - For events: "[ACTION: CREATE_EVENT] Title: <event name> | Date: <YYYY-MM-DD> | Time: <HH:MM> | Duration: <minutes>"
 
-Always include the action tag with clear structured data so the client can parse and execute it.`;
+Always include the action tag with clear structured data so the client can parse and execute it.
+For reminders, use natural language like "in 30 minutes", "in 2 hours", "tomorrow at 9am", "today at 3pm", etc.`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -66,9 +67,13 @@ Always include the action tag with clear structured data so the client can parse
     
     if (aiText.includes('[ACTION: CREATE_TODO]')) {
       actionType = 'createTodo';
-      const match = aiText.match(/\[ACTION: CREATE_TODO\]\s*Title:\s*(.+?)(?:\n|$)/);
+      const match = aiText.match(/\[ACTION: CREATE_TODO\]\s*Title:\s*(.+?)(?:\||\n|$)/);
+      const reminderMatch = aiText.match(/Reminder:\s*(.+?)(?:\n|$)/);
       if (match) {
-        actionData = { text: match[1].trim() };
+        actionData = { 
+          text: match[1].trim(),
+          reminder: reminderMatch ? reminderMatch[1].trim() : undefined
+        };
       }
     } else if (aiText.includes('[ACTION: CREATE_EVENT]')) {
       actionType = 'createEvent';
