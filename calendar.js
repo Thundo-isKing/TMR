@@ -187,7 +187,7 @@
       
       const reminderAtNum = Number(todo.reminderAt);
       console.log('[calendar] reminderAt as number:', reminderAtNum);
-      const payload = { userId: deviceId, title: 'To-do: ' + (todo.text || ''), body: todo.text || '', deliverAt: reminderAtNum };
+      const payload = { deviceId, title: 'To-do: ' + (todo.text || ''), body: todo.text || '', deliverAt: reminderAtNum };
       console.log('[calendar] posting todo reminder with payload:', payload);
       const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       console.log('[calendar] posted todo reminder to server, response status:', res.status);
@@ -511,6 +511,11 @@
   // initial render
   renderCalendar();
 
+  // Listen for event changes (from Meibot or other sources)
+  window.addEventListener('tmr:events:changed', () => {
+    renderCalendar();
+  });
+
 })();
 
 /* To-do app: saves to localStorage (key: tmr_todos)
@@ -570,6 +575,12 @@
 
   // initial
   render();
+
+  // Listen for todo changes (from Meibot or other sources)
+  window.addEventListener('tmr:todos:changed', () => {
+    render();
+    renderMenu();
+  });
 
   // Menu integration: optional compact todo list inside the TMR dropdown
   const menuToggle = document.getElementById('menu-todo-toggle');
