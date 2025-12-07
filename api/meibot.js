@@ -25,7 +25,18 @@ module.exports = async (req, res) => {
     return res.status(403).json({ error: 'Consent required for calendar context.' });
   }
 
-  const systemPrompt = `You are Meibot, a helpful assistant for scheduling and calendars. 
+  const systemPrompt = `You are Meibot, a helpful assistant for scheduling and calendars.
+Current date and time: ${new Date().toLocaleString('en-US', { 
+  weekday: 'long', 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric', 
+  hour: '2-digit', 
+  minute: '2-digit', 
+  second: '2-digit',
+  hour12: true
+})}
+
 If the user wants to create a todo or event, respond with a clear confirmation and include an action in your message like this:
 - For todos: "[ACTION: CREATE_TODO] Title: <task title> | Reminder: <reminder description like 'in 1 hour' or 'tomorrow at 9am'>"
 - For events: "[ACTION: CREATE_EVENT] Title: <event name> | Date: <YYYY-MM-DD> | Time: <HH:MM> | Duration: <minutes>"
