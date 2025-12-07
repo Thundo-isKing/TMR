@@ -1,4 +1,19 @@
 {
   "version": 2,
-  "public": true
+  "builds": [
+    {
+      "src": "api/meibot.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/meibot",
+      "dest": "api/meibot.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
 }
