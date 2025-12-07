@@ -115,9 +115,9 @@ app.get('/vapidPublicKey', (req, res) => {
 app.post('/subscribe', (req, res) => {
   const sub = req.body.subscription;
   if (!sub) return res.status(400).json({ error: 'Missing subscription' });
-  const deviceId = req.body.deviceId || Math.random().toString(36).substr(2, 9);
+  const deviceId = req.body.deviceId || req.body.userId || Math.random().toString(36).substr(2, 9);
   subscriptions.set(deviceId, sub);
-  res.json({ deviceId });
+  res.json({ deviceId, id: deviceId });
 });
 
 app.post('/unsubscribe', (req, res) => {
@@ -127,25 +127,6 @@ app.post('/unsubscribe', (req, res) => {
   }
   subscriptions.delete(deviceId);
   res.json({ success: true });
-});
-
-app.post('/sendNotification', async (req, res) => {
-  const { deviceId, payload } = req.body;
-  if (!deviceId || !subscriptions.has(deviceId)) {
-    return res.status(404).json({ error: 'Device not found' });
-  }
-  
-  try {
-    const sub = subscriptions.get(deviceId);
-    await webpush.sendNotification(sub, JSON.stringify(payload));
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Push error:', err.message);
-    if (err.statusCode === 410) {
-      subscriptions.delete(deviceId);
-    }
-    res.status(500).json({ error: 'Failed to send notification' });
-  }
 });
 
 app.get('/debug/subscriptions', (req, res) => {
@@ -162,11 +143,19 @@ app.post('/reminder', (req, res) => {
     return res.status(400).json({ error: 'Missing deliverAt timestamp' });
   }
 
+  // Get device ID from request or generate one
+  let deviceId = req.body.deviceId;
+  if (!deviceId) {
+    // Try to extract from subscription or use a default
+    deviceId = req.headers['x-device-id'] || 'unknown';
+  }
+
   const reminderId = String(reminderIdCounter++);
   reminders.set(reminderId, {
     title,
     body,
     deliverAt,
+    deviceId, // Store which device created this reminder
     createdAt: Date.now()
   });
 
@@ -176,6 +165,37 @@ app.post('/reminder', (req, res) => {
 app.get('/debug/reminders', (req, res) => {
   res.json({ count: reminders.size, reminders: Array.from(reminders.entries()) });
 });
+
+// Background job to send reminders to the specific device that created them
+setInterval(async () => {
+  const now = Date.now();
+  for (const [reminderId, reminder] of reminders.entries()) {
+    if (reminder.deliverAt <= now && !reminder.sent) {
+      // Send only to the device that created this reminder
+      const deviceId = reminder.deviceId;
+      if (subscriptions.has(deviceId)) {
+        try {
+          const sub = subscriptions.get(deviceId);
+          await webpush.sendNotification(sub, JSON.stringify({
+            title: reminder.title || 'Reminder',
+            body: reminder.body || 'You have a reminder',
+            icon: '/favicon.ico'
+          }));
+          console.log(`Sent reminder to device ${deviceId}`);
+        } catch (err) {
+          console.error(`Failed to send to device ${deviceId}:`, err.message);
+          if (err.statusCode === 410) {
+            subscriptions.delete(deviceId);
+          }
+        }
+      } else {
+        console.warn(`Device ${deviceId} not subscribed for reminder ${reminderId}`);
+      }
+      reminder.sent = true;
+      reminders.delete(reminderId);
+    }
+  }
+}, 5000); // Check every 5 seconds
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

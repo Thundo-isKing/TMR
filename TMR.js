@@ -558,7 +558,8 @@ if (leaveBtn) {
             if(item.reminderAt && getNotifyMode() !== 'local'){
                 (async ()=>{
                     try{
-                        const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt) };
+                        const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
+                        const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
                         const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                         if(res && res.ok){ /* optionally handle id from server */ }
                     }catch(err){ console.warn('Failed to persist reminder to server', err); }
