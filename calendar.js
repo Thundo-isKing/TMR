@@ -58,7 +58,7 @@
       const [hh, mm] = event.time.split(':').map(Number);
       if(!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return;
       const ts = new Date(y, mo-1, d, hh||0, mm||0).getTime();
-      const payload = { userId: deviceId, title: 'Event: ' + (event.title||''), body: event.notes || event.title || '', deliverAt: ts };
+      const payload = { deviceId, title: 'Event: ' + (event.title||''), body: event.notes || event.title || '', deliverAt: ts };
       await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       console.debug('[calendar] posted event reminder to server', event.id);
     }catch(err){
