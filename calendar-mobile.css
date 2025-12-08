@@ -297,12 +297,15 @@
 /* Mobile clock positioning - below calendar */
 @media (max-width: 600px) {
     #mobile-calendar-container .clock-container {
-        position: static !important;
-        margin: 16px auto 0 !important;
         width: auto;
+        position: static !important;
+        margin: 16px 0 16px 0 !important;
+        padding: 0 8px;
         display: flex;
         justify-content: center;
-        padding: 0 8px 16px 8px;
+        left: auto;
+        top: auto;
+        transform: none !important;
     }
     
     #mobile-calendar-container .clock-container .clock-outer-box {
