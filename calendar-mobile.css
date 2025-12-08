@@ -1,7 +1,7 @@
 /* Mobile-only calendar stylesheet - completely separate from desktop calendar */
 
-/* Hide desktop calendar on mobile */
-@media (max-width: 600px) {
+/* Hide desktop calendar on mobile - both portrait and landscape phone sizes */
+@media (max-width: 900px) and (max-height: 600px), (max-width: 600px) {
     #calendar-app {
         display: none;
     }
@@ -16,7 +16,7 @@
     display: none;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px) and (max-height: 600px), (max-width: 600px) {
     #mobile-calendar-container {
         display: flex;
         flex-direction: column;
@@ -317,7 +317,7 @@
     opacity: 0.8;
 }
 /* Mobile clock positioning - below calendar */
-@media (max-width: 600px) {
+@media (max-width: 900px) and (max-height: 600px), (max-width: 600px) {
     #mobile-calendar-container .clock-container {
         width: auto;
         position: static !important;
@@ -339,7 +339,7 @@
 }
 
 /* Desktop: hide mobile calendar */
-@media (min-width: 601px) {
+@media (min-width: 601px) and (min-height: 601px) {
     #mobile-calendar-container {
         display: none;
     }
