@@ -1010,14 +1010,14 @@ body.currentschedules-page .clock-container {
 
 body.currentschedules-page .clock-container.schedule-page-clock {
     position: fixed;
-    top: 6px;
-    right: 0;
+    top: 8px;
+    right: 8px;
     left: auto;
-    width: auto;
     margin: 0 !important;
     z-index: 1400;
     transform: none !important;
-    padding-right: 8px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .clock-inner-box {
