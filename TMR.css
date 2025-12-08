@@ -1010,8 +1010,8 @@ body.currentschedules-page .clock-container {
 
 body.currentschedules-page .clock-container.schedule-page-clock {
     position: fixed;
-    top: 8px;
-    right: 8px;
+    top: 0;
+    right: 20px;
     left: auto;
     margin: 0 !important;
     z-index: 1400;

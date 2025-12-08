@@ -147,46 +147,46 @@
     background: #ff6b6b;
 }
 
-/* Mobile modal - 40% of viewport */
+/* Mobile modal - centered with blur backdrop */
 .mobile-modal-backdrop {
     position: fixed;
-    bottom: 12px;
-    left: 0;
-    right: 0;
-    top: auto;
-    height: 40vh;
+    inset: 0;
     background: rgba(0, 0, 0, 0.35);
     display: none;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     z-index: 3000;
     backdrop-filter: blur(4px);
-    pointer-events: none;
+    padding: 16px;
 }
 
 .mobile-modal-backdrop.active {
     display: flex;
-    pointer-events: auto;
 }
 
 .mobile-modal-content {
     background: white;
-    border-radius: 16px 16px 0 0;
-    flex: 1;
+    border-radius: 12px;
+    max-width: calc(100% - 32px);
+    max-height: 80vh;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    width: 420px;
 }
 
 .mobile-modal-header {
-    padding: 12px;
+    padding: 12px 16px;
     background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-color, #0089f1));
     color: white;
     font-weight: 600;
     font-size: 14px;
-    border-radius: 16px 16px 0 0;
+    border-radius: 12px 12px 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .mobile-modal-close {
@@ -204,7 +204,7 @@
 }
 
 .mobile-modal-body {
-    padding: 12px;
+    padding: 16px;
     flex: 1;
     overflow-y: auto;
 }
@@ -292,6 +292,21 @@
 
 .mobile-form-actions button:active {
     opacity: 0.8;
+}
+
+/* Mobile clock positioning - below calendar */
+@media (max-width: 600px) {
+    body.currentschedules-page .clock-container:not(.schedule-page-clock) {
+        position: static;
+        margin-top: 16px !important;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    
+    body.currentschedules-page .clock-container:not(.schedule-page-clock) .clock-outer-box {
+        width: 220px;
+    }
 }
 
 /* Desktop: hide mobile calendar */
