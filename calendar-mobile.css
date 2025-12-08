@@ -26,6 +26,7 @@
         border-radius: 12px;
         background: transparent;
         overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 }
 
@@ -81,6 +82,7 @@
     padding: 8px;
     background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 0 0 12px 12px;
 }
 
 .mobile-weekday-row {
@@ -314,7 +316,6 @@
 .mobile-form-actions button:active {
     opacity: 0.8;
 }
-
 /* Mobile clock positioning - below calendar */
 @media (max-width: 600px) {
     #mobile-calendar-container .clock-container {
@@ -327,14 +328,14 @@
         left: auto;
         top: auto;
         transform: none !important;
-        background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+        background: transparent;
         padding-bottom: 8px;
-        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
     }
     
     #mobile-calendar-container .clock-container .clock-outer-box {
         width: 220px;
     }
+}   }
 }
 
 /* Desktop: hide mobile calendar */
