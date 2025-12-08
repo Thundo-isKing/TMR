@@ -26,19 +26,21 @@
         border-radius: 12px;
         background: white;
         overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 }
 
 /* Mobile calendar header */
 .mobile-calendar-header {
     padding: 8px;
-    background: color-mix(in srgb, var(--accent-color, #0089f1) 20%, white);
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
     border-bottom: 1px solid #ddd;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .mobile-calendar-header .month-year {
@@ -51,7 +53,7 @@
 .mobile-calendar-header button {
     padding: 6px 12px;
     font-size: 12px;
-    background: rgba(255, 255, 255, 0.6);
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
     color: #333;
     border: none;
     border-radius: 6px;
@@ -71,7 +73,8 @@
     max-height: 60vh;
     overflow-y: auto;
     padding: 8px;
-    background: color-mix(in srgb, var(--accent-color, #0089f1) 20%, white);
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .mobile-weekday-row {
@@ -311,8 +314,9 @@
         left: auto;
         top: auto;
         transform: none !important;
-        background: color-mix(in srgb, var(--accent-color, #0089f1) 20%, white);
+        background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
         padding-bottom: 8px;
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
     }
     
     #mobile-calendar-container .clock-container .clock-outer-box {
