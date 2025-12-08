@@ -84,7 +84,7 @@
   window.calendarAddOrUpdateEvent = function(event) {
     addOrUpdateEvent(event);
     // Trigger calendar re-render if it exists
-    try { window.dispatchEvent(new CustomEvent('tmr:calendar:needsRender')); } catch(e) {}
+    try { window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id: event.id } })); } catch(e) {}
   };
 
   // Expose Meibot todo creator - called by meibot.js

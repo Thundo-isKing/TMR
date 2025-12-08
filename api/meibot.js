@@ -45,7 +45,7 @@ Current date and time: ${dateTimeStr} (${userTimezone})
 
 If the user wants to create a todo or event, respond with a clear confirmation and include an action in your message like this:
 - For todos: "[ACTION: CREATE_TODO] Title: <task title> | Reminder: <reminder description like 'in 1 hour' or 'tomorrow at 9am'>"
-- For events: "[ACTION: CREATE_EVENT] Title: <event name> | Date: <YYYY-MM-DD> | Time: <HH:MM> | Duration: <minutes>"
+- For events: "[ACTION: CREATE_EVENT] Title: <event name> | Date: <today/tomorrow/tdy/tmr or YYYY-MM-DD> | Time: <HH:MM> | Duration: <minutes>"
 
 Always include the action tag with clear structured data so the client can parse and execute it.
 For reminders, use natural language like "in 30 minutes", "in 2 hours", "tomorrow at 9am", "today at 3pm", etc.`;
@@ -95,14 +95,37 @@ For reminders, use natural language like "in 30 minutes", "in 2 hours", "tomorro
     } else if (aiText.includes('[ACTION: CREATE_EVENT]')) {
       actionType = 'createEvent';
       const titleMatch = aiText.match(/Title:\s*(.+?)\s*\|/);
-      const dateMatch = aiText.match(/Date:\s*(\d{4}-\d{2}-\d{2})/);
+      const dateMatch = aiText.match(/Date:\s*(.+?)\s*\|/);
       const timeMatch = aiText.match(/Time:\s*(\d{2}:\d{2})/);
       const durationMatch = aiText.match(/Duration:\s*(\d+)/);
       
       if (titleMatch && dateMatch) {
+        let dateStr = dateMatch[1].trim().toLowerCase();
+        
+        // Convert natural language dates to YYYY-MM-DD
+        const nowForDate = new Date();
+        let eventDate = new Date(nowForDate);
+        
+        if (dateStr === 'today' || dateStr === 'tdy') {
+          // Use today's date
+        } else if (dateStr === 'tomorrow' || dateStr === 'tmr') {
+          eventDate.setDate(eventDate.getDate() + 1);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          // Already in correct format
+          eventDate = new Date(dateStr + 'T00:00:00Z');
+        } else {
+          // Try to parse as a date
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+            eventDate = parsed;
+          }
+        }
+        
+        const finalDate = eventDate.toISOString().split('T')[0];
+        
         actionData = {
           title: titleMatch[1].trim(),
-          date: dateMatch[1],
+          date: finalDate,
           time: timeMatch ? timeMatch[1] : '09:00',
           duration: durationMatch ? parseInt(durationMatch[1]) : 60
         };
