@@ -296,19 +296,16 @@
 
 /* Mobile clock positioning - below calendar */
 @media (max-width: 600px) {
-    body.currentschedules-page .clock-container.schedule-page-clock {
-        display: none;
-    }
-    
-    body.currentschedules-page .clock-container:not(.schedule-page-clock) {
+    #mobile-calendar-container .clock-container {
         position: static !important;
-        margin-top: 16px !important;
-        width: 100%;
+        margin: 16px auto 0 !important;
+        width: auto;
         display: flex;
         justify-content: center;
+        padding: 0 8px 16px 8px;
     }
     
-    body.currentschedules-page .clock-container:not(.schedule-page-clock) .clock-outer-box {
+    #mobile-calendar-container .clock-container .clock-outer-box {
         width: 220px;
     }
 }
