@@ -357,15 +357,17 @@ body.triangle-background .tmr-menu {
 /* Calendar styles */
 .calendar-app {
     max-width: 1100px;
-    margin: 18px auto;
-    padding: 10px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    margin: 8px;
+    padding: 0;
+    background: transparent;
     border-radius: 12px;
     /* Keep calendar within viewport without forcing page scroll */
     max-height: calc(100vh - 160px);
     display: flex;
     flex-direction: column;
     /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
 }
 .todo-app {
     margin: 8px 0 12px 0;
@@ -582,22 +584,37 @@ body.triangle-background .tmr-menu {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    padding: 12px;
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 12px 12px 0 0;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 .nav-btn {
-    background: #d7dbdf; /* slightly darker grey for better contrast */
+    background: var(--accent-color, #0089f1);
+    color: white;
     border: none;
-    padding: 8px 10px;
-    border-radius: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.15s ease;
+    font-size: 12px;
+    transition: background-color 0.15s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Ensure nav/export/import labels are black (override .tmr-btn color) */
+.nav-btn:active,
+.nav-btn:hover {
+    background: var(--accent-color, #0089f1);
+    color: white;
+}
+
+/* Ensure nav/export/import labels are correct */
 .calendar-header .nav-btn,
 #export-btn,
 #import-btn {
-    color: #333 !important; /* softer dark-gray instead of full black */
+    color: white !important;
 }
 
 /* Remove default outlines but keep a subtle focus-visible ring for keyboard users */
@@ -656,24 +673,40 @@ body.triangle-background .tmr-menu {
 }
 .month-year {
     font-weight: 700;
-    font-size: 18px;
+    font-size: 16px;
+    flex: 1;
+    text-align: center;
 }
 .weekday-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    margin-bottom: 6px;
+    gap: 2px;
+    margin-bottom: 2px;
+    padding: 0 8px;
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+}
+
+.weekday-row > div {
+    text-align: center;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 4px 2px;
+    color: #666;
 }
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
+    gap: 2px;
     align-content: start;
     /* allow calendar days to scroll independently of the header */
     overflow: auto;
     /* make grid take remaining space inside .calendar-app */
     flex: 1 1 auto;
-    padding-right: 6px; /* room for scrollbar */
+    padding: 8px;
+    padding-right: 14px; /* room for scrollbar */
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 0 0 12px 12px;
 }
 .calendar-cell {
     /* reduced min-height so the calendar fits vertically on most screens */
@@ -690,13 +723,15 @@ body.triangle-background .tmr-menu {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 12px;
-    background: #b3b3b3;
-    color: #fff;
-    border-radius: 10px;
-    box-shadow: 10px 10px 0 rgba(80,80,80,0.18);
+    padding: 8px;
+    background: transparent;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    box-shadow: none;
     text-align: left;
-    transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+    cursor: pointer;
 }
 
 /* Mobile responsive calendar days */
@@ -707,11 +742,11 @@ body.triangle-background .tmr-menu {
         border-radius: 4px !important;
     }
 }
-.calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
+.calendar-day .day-number { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
 .calendar-day:hover { 
-    transform: translate(6px, 6px);
+    transform: none;
     background: var(--accent-color, #0089f1);
-    box-shadow: 0 0 0 rgba(80,80,80,0.18);
+    color: white;
 }
 
 /* Today styling for desktop calendar */
