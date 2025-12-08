@@ -368,13 +368,13 @@ body.triangle-background .tmr-menu {
     /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
 }
 
-/* Mobile: shrink calendar to top 50% and add padding for modal space */
+/* Mobile: shrink calendar to top 60% (more space for calendar) and add padding for modal space */
 @media (max-width: 600px) {
     .calendar-app {
         max-width: 100%;
-        margin: 8px;
-        padding: 8px;
-        max-height: 50vh;
+        margin: 4px;
+        padding: 6px;
+        max-height: 60vh;
         border-radius: 8px;
         margin-bottom: 0;
     }
@@ -448,7 +448,7 @@ body.triangle-background .tmr-menu {
     .unified-modal, .todo-modal {
         width: 100%;
         max-width: 100%;
-        max-height: 50vh;
+        max-height: 40vh;
         border-radius: 16px 16px 0 0;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
     }
@@ -706,6 +706,15 @@ body.triangle-background .tmr-menu {
     flex: 1 1 auto;
     padding-right: 6px; /* room for scrollbar */
 }
+
+/* Mobile: constrain grid width and use auto heights */
+@media (max-width: 600px) {
+    .calendar-grid {
+        gap: 4px;
+        padding-right: 4px;
+        max-width: 100%;
+    }
+}
 .calendar-cell {
     /* reduced min-height so the calendar fits vertically on most screens */
     min-height: 90px;
@@ -715,11 +724,13 @@ body.triangle-background .tmr-menu {
     flex-direction: column;
 }
 
-/* Mobile responsive calendar cells */
+/* Mobile responsive calendar cells - use aspect ratio to keep square-ish */
 @media (max-width: 600px) {
     .calendar-cell {
-        min-height: 50px;
-        padding: 4px;
+        aspect-ratio: 1;
+        min-height: auto;
+        height: auto;
+        padding: 3px;
     }
 }
 .calendar-day {
@@ -741,8 +752,8 @@ body.triangle-background .tmr-menu {
 /* Mobile responsive calendar days */
 @media (max-width: 600px) {
     .calendar-day {
-        padding: 6px;
-        box-shadow: 4px 4px 0 rgba(80,80,80,0.12);
+        padding: 4px;
+        box-shadow: 2px 2px 0 rgba(80,80,80,0.12);
     }
 }
 .calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
@@ -750,8 +761,9 @@ body.triangle-background .tmr-menu {
 /* Mobile responsive day number */
 @media (max-width: 600px) {
     .calendar-day .day-number {
-        font-size: 11px;
-        margin-bottom: 3px;
+        font-size: 12px;
+        margin-bottom: 2px;
+        font-weight: 700;
     }
 }
 .calendar-day:hover { 
@@ -827,7 +839,7 @@ body.triangle-background .tmr-menu {
     .modal-content {
         width: 100%;
         max-width: 100%;
-        max-height: 50vh;
+        max-height: 40vh;
         border-radius: 16px 16px 0 0;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
     }
