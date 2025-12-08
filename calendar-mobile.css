@@ -429,8 +429,8 @@
     }
 
     .mobile-weekday {
-        font-size: 7px;
-        padding: 0px 0;
+        font-size: 9px;
+        padding: 1px 0;
         font-weight: 700;
     }
 
@@ -445,12 +445,12 @@
 
     .mobile-calendar-day {
         padding: 0;
-        font-size: 5px;
-        border-radius: 3px;
+        font-size: 7px;
+        border-radius: 6px;
     }
 
     .mobile-day-number {
-        font-size: 7px;
+        font-size: 12px;
         font-weight: 700;
     }
 }
@@ -481,7 +481,7 @@
         left: 8px;
         top: 70px;
         width: 70px;
-        height: 135px;
+        height: 210px;
         padding: 0;
         background: transparent;
         gap: 0;
