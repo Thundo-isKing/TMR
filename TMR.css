@@ -250,6 +250,16 @@ body.triangle-background .tmr-menu {
     transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
 }
 
+/* Mobile: remove shadows from all small buttons */
+@media (max-width: 600px) {
+    .small-tmr-btn {
+        padding: 6px 10px !important;
+        font-size: 13px !important;
+        box-shadow: none !important;
+        border-radius: 6px !important;
+    }
+}
+
 .small-tmr-btn:hover { 
     transform: translate(6px, 6px);
     box-shadow: 0 0 0 rgba(128,128,128,0.5);
@@ -261,6 +271,18 @@ body.triangle-background .tmr-menu {
 #import-btn.small-tmr-btn:hover {
     transform: none !important;
     box-shadow: none !important;
+}
+
+/* Mobile: shrink calendar header buttons dramatically */
+@media (max-width: 600px) {
+    .calendar-header .nav-btn.small-tmr-btn,
+    #export-btn.small-tmr-btn,
+    #import-btn.small-tmr-btn {
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        box-shadow: none !important;
+        border-radius: 6px !important;
+    }
 }
 
 /* Menu button styling - no border, nav-btn style appearance */
@@ -614,6 +636,23 @@ body.triangle-background .tmr-menu {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
+}
+
+/* Mobile: compress calendar header and wrap button groups */
+@media (max-width: 600px) {
+    .calendar-header {
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 4px;
+    }
+    
+    .calendar-header > div {
+        display: flex;
+        gap: 4px;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
 }
 .nav-btn {
     background: #d7dbdf; /* slightly darker grey for better contrast */
