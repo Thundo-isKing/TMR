@@ -7,7 +7,23 @@ const displayClock = () => {
     hrs = hrs ? hrs : 12; // convert 0 to 12
     const min = String(now.getMinutes()).padStart(2, '0');
     const sec = String(now.getSeconds()).padStart(2, '0');
-    document.getElementById('clock').textContent = `${hrs}:${min}:${sec} ${ampm}`;
+    
+    // Update portrait clock (if present)
+    const portraitClock = document.getElementById('clock');
+    if (portraitClock) {
+        portraitClock.textContent = `${hrs}:${min}:${sec} ${ampm}`;
+    }
+    
+    // Update landscape clock with vertical formatting (if present)
+    const landscapeClock = document.getElementById('landscape-clock');
+    if (landscapeClock) {
+        // Format: 11, . . (dots for seconds), 59, PM
+        const hourStr = String(hrs).padStart(2, '0');
+        const minStr = String(min).padStart(2, '0');
+        const dotStr = ' . . '; // Visual representation of seconds
+        
+        landscapeClock.innerHTML = `${hourStr}<br>${dotStr}<br>${minStr}<br>${ampm}`;
+    }
 };
 
 // Update clock immediately and then every second

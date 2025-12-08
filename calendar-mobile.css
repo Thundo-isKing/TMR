@@ -1,5 +1,8 @@
 /* Mobile-only calendar stylesheet - completely separate from desktop calendar */
 
+/* PORTRAIT MODE: max-width 600px */
+/* LANDSCAPE MODE: max-width 900px AND max-height 600px */
+
 /* Hide desktop calendar on mobile - both portrait and landscape phone sizes */
 @media (max-width: 900px) and (max-height: 600px), (max-width: 600px) {
     #calendar-app {
@@ -11,12 +14,16 @@
     }
 }
 
-/* Mobile calendar container */
+/* =============================================
+   PORTRAIT MODE (max-width: 600px)
+   ============================================= */
+
+/* Mobile calendar container - portrait */
 #mobile-calendar-container {
     display: none;
 }
 
-@media (max-width: 900px) and (max-height: 600px), (max-width: 600px) {
+@media (max-width: 600px) {
     #mobile-calendar-container {
         display: flex;
         flex-direction: column;
@@ -30,7 +37,7 @@
     }
 }
 
-/* Mobile calendar header */
+/* Mobile calendar header - portrait */
 .mobile-calendar-header {
     padding: 8px;
     background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
@@ -75,7 +82,7 @@
     color: white;
 }
 
-/* Mobile calendar grid - max 60% of viewport */
+/* Mobile calendar grid - portrait */
 .mobile-calendar-grid-container {
     max-height: 60vh;
     overflow-y: auto;
@@ -316,8 +323,11 @@
 .mobile-form-actions button:active {
     opacity: 0.8;
 }
-/* Mobile clock positioning - below calendar */
-@media (max-width: 900px) and (max-height: 600px), (max-width: 600px) {
+
+/* =============================================
+   PORTRAIT MODE CLOCK STYLING
+   ============================================= */
+@media (max-width: 600px) {
     #mobile-calendar-container .clock-container {
         width: auto;
         position: static !important;
@@ -335,12 +345,169 @@
     #mobile-calendar-container .clock-container .clock-outer-box {
         width: 220px;
     }
-}   }
 }
+
+/* Hide landscape clock in portrait mode */
+@media (max-width: 600px) {
+    #landscape-clock-container {
+        display: none;
+    }
+}
+
+/* =============================================
+   LANDSCAPE MODE (max-width: 900px AND max-height: 600px)
+   ============================================= */
+
+/* Landscape: Show mobile calendar with different layout */
+@media (max-width: 900px) and (max-height: 600px) {
+    #mobile-calendar-container {
+        display: flex;
+        flex-direction: row;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        align-items: stretch;
+        gap: 0;
+    }
+}
+
+/* Landscape: Calendar takes 60-70% on the right */
+@media (max-width: 900px) and (max-height: 600px) {
+    .mobile-calendar-header {
+        flex-direction: column;
+        padding: 4px;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .mobile-calendar-header .month-year {
+        font-size: 14px;
+    }
+
+    .mobile-calendar-header button {
+        padding: 4px 8px;
+        font-size: 10px;
+        flex: 1;
+    }
+}
+
+/* Landscape: Grid container sizing */
+@media (max-width: 900px) and (max-height: 600px) {
+    .mobile-calendar-grid-container {
+        flex: 1;
+        max-height: none;
+        overflow-y: hidden;
+        padding: 4px;
+        margin-left: auto;
+        width: 65%;
+        height: 100%;
+    }
+}
+
+/* Landscape: Compact grid cells */
+@media (max-width: 900px) and (max-height: 600px) {
+    .mobile-weekday-row {
+        margin-bottom: 2px;
+    }
+
+    .mobile-weekday {
+        font-size: 9px;
+        padding: 2px 1px;
+    }
+
+    .mobile-calendar-grid {
+        gap: 1px;
+    }
+
+    .mobile-calendar-day {
+        padding: 2px;
+        font-size: 10px;
+    }
+
+    .mobile-day-number {
+        font-size: 12px;
+    }
+}
+
+/* Landscape: Hide portrait clock */
+@media (max-width: 900px) and (max-height: 600px) {
+    #mobile-calendar-container .clock-container {
+        display: none !important;
+    }
+}
+
+/* =============================================
+   LANDSCAPE CLOCK CONTAINER
+   ============================================= */
+
+#landscape-clock-container {
+    display: none;
+}
+
+/* Landscape: Show and position vertical clock */
+@media (max-width: 900px) and (max-height: 600px) {
+    #landscape-clock-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        width: 35%;
+        height: 100vh;
+        padding: 8px 4px;
+        background: transparent;
+        gap: 0;
+    }
+}
+
+/* Landscape: Vertical clock styling */
+@media (max-width: 900px) and (max-height: 600px) {
+    .landscape-clock-outer-box {
+        width: 60px;
+        height: auto;
+        padding: 8px 4px;
+        background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-top: 90px;
+    }
+
+    .landscape-clock-inner-box {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    #landscape-clock {
+        font-size: 11px;
+        font-weight: 600;
+        color: #333;
+        text-align: center;
+        line-height: 1.2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+    }
+}
+
+/* =============================================
+   DESKTOP MODE
+   ============================================= */
 
 /* Desktop: hide mobile calendar */
 @media (min-width: 601px) and (min-height: 601px) {
     #mobile-calendar-container {
         display: none;
     }
+
+    #landscape-clock-container {
+        display: none;
+    }
 }
+
