@@ -326,7 +326,7 @@
 
 /* =============================================
    PORTRAIT MODE CLOCK STYLING
-   ============================================= */
+/* Portrait mode clock - below calendar */
 @media (max-width: 600px) {
     #mobile-calendar-container .clock-container {
         width: auto;
@@ -344,6 +344,7 @@
     
     #mobile-calendar-container .clock-container .clock-outer-box {
         width: 220px;
+        box-shadow: none;
     }
 }
 
@@ -428,8 +429,8 @@
     }
 
     .mobile-weekday {
-        font-size: 9px;
-        padding: 1px 0;
+        font-size: 7px;
+        padding: 0px 0;
         font-weight: 700;
     }
 
@@ -444,12 +445,12 @@
 
     .mobile-calendar-day {
         padding: 0;
-        font-size: 7px;
-        border-radius: 6px;
+        font-size: 5px;
+        border-radius: 3px;
     }
 
     .mobile-day-number {
-        font-size: 11px;
+        font-size: 7px;
         font-weight: 700;
     }
 }
@@ -477,10 +478,10 @@
         align-items: center;
         justify-content: flex-start;
         position: fixed;
-        left: 38px;
+        left: 8px;
         top: 70px;
-        width: auto;
-        height: auto;
+        width: 70px;
+        height: 135px;
         padding: 0;
         background: transparent;
         gap: 0;
@@ -494,8 +495,9 @@
         background-color: var(--accent-color, #0089f1);
         padding: 12px 10px;
         border-radius: 14px;
-        box-shadow: 8px 8px 0 rgba(128, 128, 128, 0.45);
-        width: auto;
+        box-shadow: none;
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -506,8 +508,10 @@
         padding: 10px 8px;
         border-radius: 12px;
         width: 100%;
+        height: 100%;
         display: flex;
         justify-content: center;
+        align-items: center;
     }
 
     #landscape-clock {
