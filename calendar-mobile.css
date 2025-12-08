@@ -177,7 +177,7 @@
 
 .mobile-modal-header {
     padding: 12px;
-    background: linear-gradient(135deg, #0089f1, #0073d1);
+    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-color, #0089f1));
     color: white;
     font-weight: 600;
     font-size: 14px;
@@ -230,7 +230,7 @@
 
 .mobile-event-item-btn {
     padding: 4px 8px;
-    background: #0089f1;
+    background: var(--accent-color, #0089f1);
     color: white;
     border: none;
     border-radius: 4px;
@@ -275,7 +275,7 @@
 .mobile-form-actions button {
     flex: 1;
     padding: 8px;
-    background: #0089f1;
+    background: var(--accent-color, #0089f1);
     color: white;
     border: none;
     border-radius: 6px;
