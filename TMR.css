@@ -1015,6 +1015,7 @@ body.currentschedules-page .clock-container.schedule-page-clock {
     left: auto;
     margin: 0 !important;
     z-index: 1400;
+    transform: none !important;
 }
 
 .clock-inner-box {

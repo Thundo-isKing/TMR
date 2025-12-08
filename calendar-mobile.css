@@ -6,7 +6,7 @@
         display: none;
     }
     
-    .clock-container {
+    .clock-container:not(.schedule-page-clock) {
         display: none;
     }
 }
