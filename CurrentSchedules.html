@@ -6,6 +6,7 @@
     <title>~Current Schedules~</title>
     <link rel="stylesheet" href="TMR.css?v=20251208d">
     <link rel="stylesheet" href="backgrounds.css">
+    <link rel="stylesheet" href="calendar-mobile.css">
 </head>
 <body class="page-background triangle-background currentschedules-page">
 
@@ -98,10 +99,56 @@
         </div>
     </div>
 
+    <!-- Mobile Calendar Container (hidden on desktop, shown on mobile) -->
+    <div id="mobile-calendar-container">
+        <div class="mobile-calendar-header">
+            <button id="mobile-prev-month" class="mobile-nav-btn">&lt;</button>
+            <div class="month-year"></div>
+            <button id="mobile-next-month" class="mobile-nav-btn">&gt;</button>
+        </div>
+
+        <div class="mobile-calendar-grid-container">
+            <div class="mobile-weekday-row" id="mobile-weekday-row"></div>
+            <div class="mobile-calendar-grid" id="mobile-calendar-grid"></div>
+        </div>
+
+        <div id="mobile-modal-backdrop" class="mobile-modal-backdrop">
+            <div class="mobile-modal-content">
+                <div class="mobile-modal-header">
+                    <span id="mobile-modal-title">Events</span>
+                    <button id="mobile-modal-close" class="mobile-modal-close">&times;</button>
+                </div>
+                <div class="mobile-modal-body">
+                    <div id="mobile-event-list" class="mobile-event-list"></div>
+                    <form id="mobile-event-form" class="mobile-event-form">
+                        <div class="mobile-form-group">
+                            <label>Title</label>
+                            <input id="mobile-event-title" type="text" required />
+                        </div>
+                        <div class="mobile-form-group">
+                            <label>Time</label>
+                            <input id="mobile-event-time" type="time" />
+                        </div>
+                        <div class="mobile-form-group">
+                            <label>Notes</label>
+                            <textarea id="mobile-event-notes" rows="3"></textarea>
+                        </div>
+                        <div class="mobile-form-actions">
+                            <button type="submit" class="mobile-save-btn">Save</button>
+                            <button type="button" id="mobile-delete-btn" class="mobile-delete-btn danger" style="display:none;">Delete</button>
+                            <button type="button" class="mobile-cancel-btn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Back button moved to dropdown menu -->
 
     <!-- Only one TMR.js, loaded after dropdown markup -->
     <script src="TMR.js"></script>
     <script src="calendar.js"></script>
+    <script src="calendar-mobile.js"></script>
 </body>
 </html>
