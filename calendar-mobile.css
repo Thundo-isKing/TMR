@@ -22,13 +22,17 @@
         flex-direction: column;
         height: auto;
         overflow: visible;
+        margin: 8px;
+        border-radius: 12px;
+        background: white;
+        overflow: hidden;
     }
 }
 
 /* Mobile calendar header */
 .mobile-calendar-header {
     padding: 8px;
-    background: transparent;
+    background: white;
     border-bottom: 1px solid #ddd;
     display: flex;
     justify-content: space-between;
