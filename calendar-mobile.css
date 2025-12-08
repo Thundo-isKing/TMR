@@ -311,6 +311,8 @@
         left: auto;
         top: auto;
         transform: none !important;
+        background: #e8d4ff;
+        padding-bottom: 8px;
     }
     
     #mobile-calendar-container .clock-container .clock-outer-box {
