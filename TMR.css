@@ -367,6 +367,18 @@ body.triangle-background .tmr-menu {
     flex-direction: column;
     /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
 }
+
+/* Mobile: shrink calendar to top 50% and add padding for modal space */
+@media (max-width: 600px) {
+    .calendar-app {
+        max-width: 100%;
+        margin: 8px;
+        padding: 8px;
+        max-height: 50vh;
+        border-radius: 8px;
+        margin-bottom: 0;
+    }
+}
 .todo-app {
     margin: 8px 0 12px 0;
     padding: 8px;
@@ -407,6 +419,14 @@ body.triangle-background .tmr-menu {
     z-index: 3000;
     backdrop-filter: blur(4px);
 }
+
+/* Mobile: position backdrop to push modal to bottom */
+@media (max-width: 600px) {
+    .modal-backdrop, .todo-modal-backdrop {
+        align-items: flex-end;
+        justify-content: stretch;
+    }
+}
 .modal-backdrop.active, .todo-modal-backdrop.active { display: flex; }
 
 /* Unified modal styling (based on Meibot design) */
@@ -421,6 +441,17 @@ body.triangle-background .tmr-menu {
     max-width: calc(100% - 32px);
     max-height: 80vh;
     overflow: hidden;
+}
+
+/* Mobile: position modal at bottom, full width */
+@media (max-width: 600px) {
+    .unified-modal, .todo-modal {
+        width: 100%;
+        max-width: 100%;
+        max-height: 50vh;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    }
 }
 
 .unified-modal-header, .todo-modal-header {
@@ -683,6 +714,14 @@ body.triangle-background .tmr-menu {
     display: flex;
     flex-direction: column;
 }
+
+/* Mobile responsive calendar cells */
+@media (max-width: 600px) {
+    .calendar-cell {
+        min-height: 50px;
+        padding: 4px;
+    }
+}
 .calendar-day {
     width: 100%;
     height: 100%;
@@ -698,7 +737,23 @@ body.triangle-background .tmr-menu {
     text-align: left;
     transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
 }
+
+/* Mobile responsive calendar days */
+@media (max-width: 600px) {
+    .calendar-day {
+        padding: 6px;
+        box-shadow: 4px 4px 0 rgba(80,80,80,0.12);
+    }
+}
 .calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
+
+/* Mobile responsive day number */
+@media (max-width: 600px) {
+    .calendar-day .day-number {
+        font-size: 11px;
+        margin-bottom: 3px;
+    }
+}
 .calendar-day:hover { 
     transform: translate(6px, 6px);
     background: var(--accent-color, #0089f1);
@@ -715,6 +770,15 @@ body.triangle-background .tmr-menu {
     border-radius: 50%;
     display: inline-block;
     margin-right: 6px;
+}
+
+/* Mobile responsive event dots */
+@media (max-width: 600px) {
+    .event-dot {
+        width: 6px;
+        height: 6px;
+        margin-right: 4px;
+    }
 }
 .cell-events {
     margin-top: auto;
@@ -734,6 +798,14 @@ body.triangle-background .tmr-menu {
     z-index: 3000;
     backdrop-filter: blur(4px);
 }
+
+/* Mobile: position modal at bottom */
+@media (max-width: 600px) {
+    .modal {
+        align-items: flex-end;
+        justify-content: stretch;
+    }
+}
 .modal.hidden { display: none; }
 .modal-content {
     background: white;
@@ -748,6 +820,17 @@ body.triangle-background .tmr-menu {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* Mobile: full width modal at bottom */
+@media (max-width: 600px) {
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: 50vh;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    }
 }
 
 .modal-content > h3 {

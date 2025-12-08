@@ -6,6 +6,102 @@
     <title>~Current Schedules~</title>
     <link rel="stylesheet" href="TMR.css?v=20251203a">
     <link rel="stylesheet" href="backgrounds.css">
+    <style>
+    /* Mobile responsive layout for calendar page */
+    @media (max-width: 600px) {
+        body {
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* TMR tag in corner */
+        #TMR-tag {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 3000;
+        }
+
+        /* Menu dropdown */
+        .tmr-menu {
+            position: absolute;
+            left: 0;
+            right: auto;
+            top: 100%;
+            margin-top: 8px;
+            width: auto;
+            max-width: none;
+            min-width: 220px;
+            z-index: 2500;
+        }
+
+        .tmr-menu input,
+        .tmr-menu select,
+        .tmr-menu button,
+        .tmr-menu .small-tmr-btn {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Hide clock on mobile calendar page to save space */
+        .clock-container {
+            display: none;
+        }
+
+        /* Calendar app takes top 50% of viewport */
+        .calendar-app {
+            max-height: 50vh !important;
+            margin: 50px 8px 0 8px;
+            padding: 8px;
+        }
+
+        /* Navigation buttons in calendar header */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .calendar-header .nav-btn {
+            padding: 6px 10px !important;
+            font-size: 14px !important;
+            height: auto !important;
+            min-height: 32px !important;
+        }
+
+        .month-year {
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+        }
+
+        /* Todo app - hide by default on mobile (toggled from menu) */
+        .todo-app {
+            display: none !important;
+        }
+    }
+
+    /* Landscape mobile adjustments */
+    @media (max-width: 600px) and (orientation: landscape) {
+        .calendar-app {
+            max-height: 45vh !important;
+            margin: 40px 4px 0 4px;
+        }
+
+        .calendar-header {
+            gap: 4px;
+        }
+
+        .month-year {
+            font-size: 16px;
+        }
+    }
+    </style>
 </head>
 <body class="page-background triangle-background currentschedules-page">
 
