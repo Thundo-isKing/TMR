@@ -150,7 +150,7 @@
 /* Mobile modal - 40% of viewport */
 .mobile-modal-backdrop {
     position: fixed;
-    bottom: 0;
+    bottom: 12px;
     left: 0;
     right: 0;
     top: auto;
@@ -160,10 +160,12 @@
     flex-direction: column;
     z-index: 3000;
     backdrop-filter: blur(4px);
+    pointer-events: none;
 }
 
 .mobile-modal-backdrop.active {
     display: flex;
+    pointer-events: auto;
 }
 
 .mobile-modal-content {

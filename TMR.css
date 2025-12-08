@@ -1008,6 +1008,15 @@ body.currentschedules-page .clock-container {
     margin-top: 80px !important;
 }
 
+body.currentschedules-page .clock-container.schedule-page-clock {
+    position: fixed;
+    top: 0;
+    right: 20px;
+    left: auto;
+    margin: 0 !important;
+    z-index: 1400;
+}
+
 .clock-inner-box {
     background-color: var(--accent-light, #b3d8fa); /* Lighter accent */
     padding: 20px;
