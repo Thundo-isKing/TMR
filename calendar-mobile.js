@@ -113,6 +113,9 @@
     const notesInput = document.getElementById('mobile-event-notes');
     const deleteBtn = document.getElementById('mobile-delete-btn');
     const modalCloseBtn = document.getElementById('mobile-modal-close');
+    const exportBtn = document.getElementById('mobile-export-btn');
+    const importBtn = document.getElementById('mobile-import-btn');
+    const importFileInput = document.getElementById('mobile-import-file');
     
     // State
     let viewDate = new Date();
@@ -249,6 +252,58 @@
         activeEventId = null;
     }
     
+    function exportEventsToFile() {
+        const events = loadEvents();
+        const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+        const name = 'tmr-export-' + new Date().toISOString().slice(0, 10) + '.json';
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+    
+    function importEventsFromFileObj(file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const imported = JSON.parse(reader.result);
+                const mode = confirm('Replace existing events? OK = Replace, Cancel = Merge') ? 'replace' : 'merge';
+                
+                let eventsArr = Array.isArray(imported) ? imported : (imported.events || []);
+                const cleaned = eventsArr.map(item => ({
+                    id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+                    title: String(item.title || '(no title)'),
+                    date: String(item.date || ''),
+                    time: item.time || '',
+                    notes: item.notes || '',
+                    color: item.color || '#f19100'
+                })).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
+                
+                if (mode === 'replace') {
+                    saveEvents(cleaned);
+                } else {
+                    const existing = loadEvents();
+                    const existingIds = new Set(existing.map(e => e.id));
+                    const merged = existing.slice();
+                    cleaned.forEach(item => {
+                        if (!existingIds.has(item.id)) merged.push(item);
+                    });
+                    saveEvents(merged);
+                }
+                
+                renderMobileCalendar();
+                alert('Import successful');
+            } catch (err) {
+                alert('Import failed: invalid JSON');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
     // Event listeners
     prevBtn.addEventListener('click', () => {
         viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
@@ -261,6 +316,17 @@
     });
     
     modalCloseBtn.addEventListener('click', closeModal);
+    
+    exportBtn.addEventListener('click', exportEventsToFile);
+    
+    importBtn.addEventListener('click', () => importFileInput.click());
+    
+    importFileInput.addEventListener('change', (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        importEventsFromFileObj(f);
+        importFileInput.value = '';
+    });
     
     // Form submission
     eventForm.addEventListener('submit', (e) => {

@@ -63,7 +63,7 @@
     flex: 0 0 60vh;
     overflow-y: auto;
     padding: 8px;
-    background: white;
+    background: transparent;
 }
 
 .mobile-weekday-row {
