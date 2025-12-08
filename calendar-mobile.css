@@ -20,8 +20,8 @@
     #mobile-calendar-container {
         display: flex;
         flex-direction: column;
-        height: 100vh;
-        overflow: hidden;
+        height: auto;
+        overflow: visible;
     }
 }
 
@@ -61,9 +61,9 @@
     color: white;
 }
 
-/* Mobile calendar grid - 60% of viewport */
+/* Mobile calendar grid - max 60% of viewport */
 .mobile-calendar-grid-container {
-    flex: 0 0 60vh;
+    max-height: 60vh;
     overflow-y: auto;
     padding: 8px;
     background: transparent;
