@@ -296,8 +296,12 @@
 
 /* Mobile clock positioning - below calendar */
 @media (max-width: 600px) {
+    body.currentschedules-page .clock-container.schedule-page-clock {
+        display: none;
+    }
+    
     body.currentschedules-page .clock-container:not(.schedule-page-clock) {
-        position: static;
+        position: static !important;
         margin-top: 16px !important;
         width: 100%;
         display: flex;
