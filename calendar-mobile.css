@@ -299,7 +299,7 @@
     #mobile-calendar-container .clock-container {
         width: auto;
         position: static !important;
-        margin: 16px 0 16px 0 !important;
+        margin: 16px 0 16px 25px !important;
         padding: 0 8px;
         display: flex;
         justify-content: center;
