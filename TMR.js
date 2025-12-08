@@ -46,6 +46,44 @@ if (refreshMenuBtn) {
     });
 }
 
+// Fullscreen functionality
+const toggleFullscreen = async () => {
+    try {
+        const doc = document.documentElement;
+        if (document.fullscreenElement) {
+            // Exit fullscreen
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            }
+        } else {
+            // Enter fullscreen
+            if (doc.requestFullscreen) {
+                await doc.requestFullscreen();
+            } else if (doc.webkitRequestFullscreen) {
+                await doc.webkitRequestFullscreen();
+            } else if (doc.mozRequestFullScreen) {
+                await doc.mozRequestFullScreen();
+            } else if (doc.msRequestFullscreen) {
+                await doc.msRequestFullscreen();
+            }
+        }
+    } catch (err) {
+        console.warn('Fullscreen request failed:', err);
+    }
+};
+
+// Add fullscreen button to CurrentSchedules
+const fullscreenBtnCS = document.getElementById('fullscreen-btn-cs');
+if (fullscreenBtnCS) {
+    fullscreenBtnCS.addEventListener('click', toggleFullscreen);
+}
+
+// Add fullscreen button to TMR page
+const fullscreenBtnTMR = document.getElementById('fullscreen-btn-tmr');
+if (fullscreenBtnTMR) {
+    fullscreenBtnTMR.addEventListener('click', toggleFullscreen);
+}
+
 // Add leave button functionality (only if present)
 const leaveBtn = document.querySelector('.leave-button');
 if (leaveBtn) {
