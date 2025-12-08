@@ -695,6 +695,14 @@ body.triangle-background .tmr-menu {
     gap: 6px;
     margin-bottom: 6px;
 }
+
+/* Mobile: reduce gap in weekday row */
+@media (max-width: 600px) {
+    .weekday-row {
+        gap: 2px !important;
+        margin-bottom: 2px !important;
+    }
+}
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -710,8 +718,8 @@ body.triangle-background .tmr-menu {
 /* Mobile: constrain grid width and use auto heights */
 @media (max-width: 600px) {
     .calendar-grid {
-        gap: 4px;
-        padding-right: 4px;
+        gap: 2px !important;
+        padding-right: 2px !important;
         max-width: 100%;
     }
 }
@@ -724,13 +732,13 @@ body.triangle-background .tmr-menu {
     flex-direction: column;
 }
 
-/* Mobile responsive calendar cells - use aspect ratio to keep square-ish */
+/* Mobile responsive calendar cells - OVERRIDE min-height completely, use precise dimensions */
 @media (max-width: 600px) {
     .calendar-cell {
-        aspect-ratio: 1;
-        min-height: auto;
-        height: auto;
-        padding: 3px;
+        min-height: 0 !important;
+        height: auto !important;
+        padding: 2px !important;
+        aspect-ratio: 1 / 1;
     }
 }
 .calendar-day {
@@ -752,8 +760,9 @@ body.triangle-background .tmr-menu {
 /* Mobile responsive calendar days */
 @media (max-width: 600px) {
     .calendar-day {
-        padding: 4px;
-        box-shadow: 2px 2px 0 rgba(80,80,80,0.12);
+        padding: 2px !important;
+        box-shadow: none !important;
+        border-radius: 4px !important;
     }
 }
 .calendar-day .day-number { font-size: 14px; font-weight:700; margin-bottom:6px; }
@@ -761,8 +770,8 @@ body.triangle-background .tmr-menu {
 /* Mobile responsive day number */
 @media (max-width: 600px) {
     .calendar-day .day-number {
-        font-size: 12px;
-        margin-bottom: 2px;
+        font-size: 10px !important;
+        margin-bottom: 1px !important;
         font-weight: 700;
     }
 }
@@ -787,9 +796,9 @@ body.triangle-background .tmr-menu {
 /* Mobile responsive event dots */
 @media (max-width: 600px) {
     .event-dot {
-        width: 6px;
-        height: 6px;
-        margin-right: 4px;
+        width: 4px !important;
+        height: 4px !important;
+        margin-right: 2px !important;
     }
 }
 .cell-events {
