@@ -399,6 +399,13 @@
       btn.type = 'button';
       btn.setAttribute('data-date', dateStr);
       btn.title = 'Add or edit events for ' + dateStr;
+      
+      // Check if this is today
+      const today = new Date();
+      const todayStr = ymd(today);
+      if (dateStr === todayStr) {
+          btn.classList.add('today');
+      }
 
       const dayNum = document.createElement('div'); dayNum.className = 'day-number'; dayNum.textContent = day;
       btn.appendChild(dayNum);
@@ -625,5 +632,10 @@
     renderMenu();
     try{ window.dispatchEvent(new CustomEvent('tmr:todos:changed', { detail: { count: loadTodos().length } })); }catch(e){}
   }
+  
+  // Check hourly for day changes to update today styling
+  setInterval(() => {
+    renderCalendar();
+  }, 3600000); // 1 hour in milliseconds
 
 })();

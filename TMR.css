@@ -713,6 +713,15 @@ body.triangle-background .tmr-menu {
     background: var(--accent-color, #0089f1);
     box-shadow: 0 0 0 rgba(80,80,80,0.18);
 }
+
+/* Today styling for desktop calendar */
+.calendar-day.today {
+    border: 3px solid var(--accent-color, #0089f1);
+}
+
+.calendar-day.today .day-number {
+    color: var(--accent-color, #0089f1);
+}
 .calendar-cell .day-number {
     font-size: 14px;
     font-weight: 600;

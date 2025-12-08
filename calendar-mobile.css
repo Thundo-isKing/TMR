@@ -24,9 +24,8 @@
         overflow: visible;
         margin: 8px;
         border-radius: 12px;
-        background: white;
+        background: transparent;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 }
 
@@ -41,6 +40,7 @@
     gap: 8px;
     flex-wrap: wrap;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 12px 12px 0 0;
 }
 
 .mobile-calendar-header .month-year {
@@ -53,13 +53,19 @@
 .mobile-calendar-header button {
     padding: 6px 12px;
     font-size: 12px;
-    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
-    color: #333;
+    background: var(--accent-color, #0089f1);
+    color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.15s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-calendar-header button:active,
+.mobile-calendar-header button:hover {
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, black);
+    color: white;
 }
 
 .mobile-calendar-header button:active,
@@ -142,7 +148,14 @@
     margin-bottom: 0;
 }
 
-.mobile-event-indicators {
+/* Current day styling */
+.mobile-calendar-day.today {
+    border: 2px solid var(--accent-color, #0089f1);
+}
+
+.mobile-calendar-day.today .mobile-day-number {
+    color: var(--accent-color, #0089f1);
+}.mobile-event-indicators {
     display: flex;
     gap: 1px;
     flex-wrap: wrap;

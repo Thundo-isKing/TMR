@@ -171,6 +171,13 @@
             btn.type = 'button';
             btn.setAttribute('data-date', dateStr);
             
+            // Check if this is today
+            const today = new Date();
+            const todayStr = ymd(today);
+            if (dateStr === todayStr) {
+                btn.classList.add('today');
+            }
+            
             // Day number
             const dayNum = document.createElement('div');
             dayNum.className = 'mobile-day-number';
@@ -380,5 +387,10 @@
     window.addEventListener('tmr:events:changed', () => {
         renderMobileCalendar();
     });
+    
+    // Check hourly for day changes to update today styling
+    setInterval(() => {
+        renderMobileCalendar();
+    }, 3600000); // 1 hour in milliseconds
     
 })();
