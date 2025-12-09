@@ -376,7 +376,7 @@
       const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       weekdays.forEach(w => {
         const head = document.createElement('div'); head.className = 'calendar-cell';
-        head.style.background = 'transparent'; head.style.minHeight = 'auto'; head.style.padding = '6px';
+        head.style.background = 'transparent'; head.style.minHeight = 'auto'; head.style.padding = '16px';
         head.style.fontWeight = '700'; head.style.textAlign = 'center'; head.textContent = w; weekdayRow.appendChild(head);
       });
     }

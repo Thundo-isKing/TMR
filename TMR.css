@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;500;700&display=swap');
+
 .side-buttons + .clock-container {
     margin-top: 100px !important;
 }
@@ -8,7 +10,7 @@ body {
     position: relative;
     overflow-x: hidden;
     transform: none;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Product Sans', Arial, Helvetica, sans-serif;
 }
 
 /* Remove the global 20px shift specifically for CurrentSchedules page */
@@ -225,6 +227,7 @@ body.triangle-background .tmr-menu {
 .tmr-btn {
     padding: 25px 50px;
     font-size: 22px;
+    font-family: 'Product Sans', sans-serif !important;
     cursor: pointer;
     background-color: var(--accent-color, #0089f1);
     color: white;
@@ -245,6 +248,7 @@ body.triangle-background .tmr-menu {
 .small-tmr-btn {
     padding: 8px 14px;
     font-size: 16px;
+    font-family: 'Product Sans', sans-serif !important;
     border-radius: 12px;
     box-shadow: 8px 8px 0 rgba(128,128,128,0.5);
     transition: transform 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.15s ease-out;
@@ -356,8 +360,8 @@ body.triangle-background .tmr-menu {
 
 /* Calendar styles */
 .calendar-app {
-    max-width: 1100px;
-    margin: 8px;
+    max-width: 690px;
+    margin: auto;
     padding: 0;
     background: transparent;
     border-radius: 12px;
@@ -368,6 +372,11 @@ body.triangle-background .tmr-menu {
     /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     overflow: hidden;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 16px);
 }
 .todo-app {
     margin: 8px 0 12px 0;
@@ -679,10 +688,10 @@ body.triangle-background .tmr-menu {
 }
 .weekday-row {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, 90px);
     gap: 2px;
-    margin-bottom: 2px;
-    padding: 0 8px;
+    margin-bottom: 0;
+    padding: 8px 8px 2px 8px;
     background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
 }
 
@@ -690,47 +699,53 @@ body.triangle-background .tmr-menu {
     text-align: center;
     font-weight: 700;
     font-size: 11px;
-    padding: 4px 2px;
+    padding: 3px 2px;
     color: #666;
+    aspect-ratio: auto;
+    min-height: auto;
+    height: auto !important;
+    width: auto !important;
 }
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, 90px);
     gap: 2px;
     align-content: start;
     /* allow calendar days to scroll independently of the header */
     overflow: auto;
     /* make grid take remaining space inside .calendar-app */
     flex: 1 1 auto;
-    padding: 8px;
-    padding-right: 14px; /* room for scrollbar */
+    padding: 2px 8px 8px 8px;
     background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
     border-radius: 0 0 12px 12px;
 }
 .calendar-cell {
-    /* reduced min-height so the calendar fits vertically on most screens */
-    min-height: 90px;
-    padding: 6px;
+    /* Fixed size 90px × 90px */
+    width: 90px;
+    height: 90px;
+    min-width: 0;
+    padding: 0;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
 }
 .calendar-day {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
     padding: 8px;
     background: transparent;
     color: #333;
     border: none;
     border-radius: 6px;
     box-shadow: none;
-    text-align: left;
-    transition: background-color 0.15s ease, transform 0.1s ease;
+    text-align: center;
+    transition: background-color 0.15s ease;
     cursor: pointer;
 }
 
@@ -742,26 +757,31 @@ body.triangle-background .tmr-menu {
         border-radius: 4px !important;
     }
 }
-.calendar-day .day-number { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.calendar-day .day-number { font-size: 25px; font-weight: 700; margin-bottom: 4px; flex: 1; display: flex; align-items: center; justify-content: center; }
 .calendar-day:hover { 
-    transform: none;
+    transform: none !important;
     background: var(--accent-color, #0089f1);
     color: white;
 }
 
 /* Today styling for desktop calendar */
 .calendar-day.today {
-    background: var(--accent-color, #0089f1);
-    color: white;
+    background: transparent;
+    color: #333;
+    border: 2px solid var(--accent-color, #0089f1);
 }
 
 .calendar-day.today .day-number {
-    color: white;
+    color: var(--accent-color, #0089f1);
 }
 .calendar-cell .day-number {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 8px;
+    font-size: 25px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .event-dot {
     width: 10px;
@@ -1079,7 +1099,7 @@ body.currentschedules-page .clock-inner-box {
 #clock {
     font-size: 43px;
     text-align: center;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Product Sans', Arial, Helvetica, sans-serif;
     color: #333;
     margin: 0;
     padding: 15px;
