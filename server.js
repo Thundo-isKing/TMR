@@ -37,12 +37,26 @@ app.post('/api/meibot', async (req, res) => {
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Invalid message' });
   if (context && !consent) return res.status(403).json({ error: 'Consent required for calendar context.' });
 
-  const systemPrompt = `You are Meibot, a helpful assistant for scheduling and calendars. 
-If the user wants to create a todo or event, respond with a clear confirmation and include a JSON action in your message like this:
-- For todos: "[ACTION: CREATE_TODO] Title: <task title>"
-- For events: "[ACTION: CREATE_EVENT] Title: <event name> | Date: <YYYY-MM-DD> | Time: <HH:MM> | Duration: <minutes>"
+  const systemPrompt = `You are Meibot, a helpful assistant for scheduling and calendars. You are helpful, clear, and complete in your responses.
 
-Always include the action tag with clear structured data so the client can parse and execute it.`;
+IMPORTANT: When users ask you to create events or todos, ALWAYS create ALL of them, even if it's multiple events.
+
+For creating tasks, use this format for EACH item:
+- "[ACTION: CREATE_TODO] Title: <task title>"
+
+For creating events, use this format for EACH event (create multiple if needed):
+- "[ACTION: CREATE_EVENT] Title: <event name> | Date: <YYYY-MM-DD> | Time: <HH:MM> | Duration: <minutes>"
+
+Guidelines:
+- If someone asks for "meetings all week at 2pm", create 7 events (Monday through Sunday) at 14:00
+- If someone says "Mon, Tue, Wed at 3pm", create 3 events at 15:00 on those dates
+- Today is ${new Date().toISOString().split('T')[0]}
+- Always interpret times in 24-hour format (e.g., "2pm" = "14:00", "3am" = "03:00")
+- If no year is specified, assume the current year or next year if the date has passed
+- Be generous with duration - if not specified, use 60 minutes for meetings
+- Include ALL action tags for ALL events/todos requested - don't skip any
+
+Always confirm what you're creating with specific dates and times.`;
 
   // Get or initialize chat history for this device
   const historyKey = deviceId || 'default';
@@ -90,37 +104,46 @@ Always include the action tag with clear structured data so the client can parse
       history.splice(0, history.length - 20);
     }
     
-    // Parse action from response
+    // Parse actions from response - support multiple actions
     let actionType = null;
     let actionData = null;
+    let allActions = [];
     
-    if (aiText.includes('[ACTION: CREATE_TODO]')) {
-      actionType = 'createTodo';
-      const match = aiText.match(/\[ACTION: CREATE_TODO\]\s*Title:\s*(.+?)(?:\n|$)/);
-      if (match) {
-        actionData = { text: match[1].trim() };
-      }
-    } else if (aiText.includes('[ACTION: CREATE_EVENT]')) {
-      actionType = 'createEvent';
-      const titleMatch = aiText.match(/Title:\s*(.+?)\s*\|/);
-      const dateMatch = aiText.match(/Date:\s*(\d{4}-\d{2}-\d{2})/);
-      const timeMatch = aiText.match(/Time:\s*(\d{2}:\d{2})/);
-      const durationMatch = aiText.match(/Duration:\s*(\d+)/);
-      
-      if (titleMatch && dateMatch) {
-        actionData = {
-          title: titleMatch[1].trim(),
-          date: dateMatch[1],
-          time: timeMatch ? timeMatch[1] : '09:00',
-          duration: durationMatch ? parseInt(durationMatch[1]) : 60
-        };
-      }
+    // Parse all CREATE_TODO actions
+    const todoMatches = aiText.matchAll(/\[ACTION: CREATE_TODO\]\s*Title:\s*(.+?)(?:\n|$)/g);
+    for (const match of todoMatches) {
+      allActions.push({
+        type: 'createTodo',
+        data: { text: match[1].trim() }
+      });
+    }
+    
+    // Parse all CREATE_EVENT actions
+    const eventRegex = /\[ACTION: CREATE_EVENT\]\s*Title:\s*(.+?)\s*\|\s*Date:\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Time:\s*(\d{2}:\d{2})(?:\s*\|\s*Duration:\s*(\d+))?/g;
+    const eventMatches = aiText.matchAll(eventRegex);
+    for (const match of eventMatches) {
+      allActions.push({
+        type: 'createEvent',
+        data: {
+          title: match[1].trim(),
+          date: match[2],
+          time: match[3],
+          duration: match[4] ? parseInt(match[4]) : 60
+        }
+      });
+    }
+    
+    // Set primary action for backward compatibility
+    if (allActions.length > 0) {
+      actionType = allActions[0].type;
+      actionData = allActions[0].data;
     }
     
     res.json({ 
       reply: aiText,
       suggestedAction: actionType,
       actionData: actionData,
+      allActions: allActions, // Send all parsed actions
       meta: data 
     });
   } catch (err) {

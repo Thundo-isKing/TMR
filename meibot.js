@@ -303,8 +303,114 @@
       lastSuggestedAction = data.suggestedAction;
       lastActionData = data.actionData;
 
-      // Show action button if available
-      if (data.suggestedAction === 'createTodo' && data.actionData) {
+      // Handle multiple actions if provided
+      if (data.allActions && data.allActions.length > 0) {
+        if (data.allActions.length === 1) {
+          // Single action - show button as before
+          const action = data.allActions[0];
+          if (action.type === 'createTodo' && action.data) {
+            const btn = document.createElement('button');
+            btn.textContent = `✓ Create: "${action.data.text}"`;
+            btn.style.marginTop = '8px';
+            btn.style.padding = '8px 12px';
+            btn.style.background = '#4caf50';
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '6px';
+            btn.style.cursor = 'pointer';
+            btn.style.fontSize = '12px';
+            btn.addEventListener('click', () => {
+              if (window.calendarAddTodo) {
+                window.calendarAddTodo(action.data.text, action.data.reminder);
+                appendMessage('meibot', 'Task created! 📝');
+                btn.disabled = true;
+                lastSuggestedAction = null;
+                lastActionData = null;
+              }
+            });
+            chatEl.appendChild(btn);
+          } else if (action.type === 'createEvent' && action.data) {
+            const btn = document.createElement('button');
+            btn.textContent = `✓ Schedule: "${action.data.title || 'Event'}"`;
+            btn.style.marginTop = '8px';
+            btn.style.padding = '8px 12px';
+            btn.style.background = '#2196f3';
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '6px';
+            btn.style.cursor = 'pointer';
+            btn.style.fontSize = '12px';
+            btn.addEventListener('click', () => {
+              if (window.calendarAddOrUpdateEvent) {
+                const event = {
+                  id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                  title: action.data.title,
+                  date: action.data.date,
+                  time: action.data.time || '09:00',
+                  duration: action.data.duration || 60,
+                  notes: ''
+                };
+                window.calendarAddOrUpdateEvent(event);
+                appendMessage('meibot', 'Event scheduled! 📅');
+                btn.disabled = true;
+                lastSuggestedAction = null;
+                lastActionData = null;
+              }
+            });
+            chatEl.appendChild(btn);
+          }
+        } else {
+          // Multiple actions - show "Create All" button
+          const btn = document.createElement('button');
+          const todosCount = data.allActions.filter(a => a.type === 'createTodo').length;
+          const eventsCount = data.allActions.filter(a => a.type === 'createEvent').length;
+          let label = '✓ Create All';
+          if (todosCount > 0 && eventsCount > 0) {
+            label += ` (${todosCount} todos, ${eventsCount} events)`;
+          } else if (todosCount > 0) {
+            label += ` (${todosCount} todos)`;
+          } else if (eventsCount > 0) {
+            label += ` (${eventsCount} events)`;
+          }
+          
+          btn.textContent = label;
+          btn.style.marginTop = '8px';
+          btn.style.padding = '8px 12px';
+          btn.style.background = '#ff9800';
+          btn.style.color = 'white';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '6px';
+          btn.style.cursor = 'pointer';
+          btn.style.fontSize = '12px';
+          btn.addEventListener('click', () => {
+            let created = 0;
+            for (const action of data.allActions) {
+              if (action.type === 'createTodo' && action.data && window.calendarAddTodo) {
+                window.calendarAddTodo(action.data.text, action.data.reminder);
+                created++;
+              } else if (action.type === 'createEvent' && action.data && window.calendarAddOrUpdateEvent) {
+                const event = {
+                  id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                  title: action.data.title,
+                  date: action.data.date,
+                  time: action.data.time || '09:00',
+                  duration: action.data.duration || 60,
+                  notes: ''
+                };
+                window.calendarAddOrUpdateEvent(event);
+                created++;
+              }
+            }
+            appendMessage('meibot', `All done! Created ${created} items. ✅`);
+            btn.disabled = true;
+            lastSuggestedAction = null;
+            lastActionData = null;
+          });
+          chatEl.appendChild(btn);
+        }
+        chatEl.scrollTop = chatEl.scrollHeight;
+      } else if (data.suggestedAction === 'createTodo' && data.actionData) {
+        // Fallback for old format
         const btn = document.createElement('button');
         btn.textContent = `✓ Create: "${data.actionData.text}"`;
         btn.style.marginTop = '8px';
@@ -327,6 +433,7 @@
         chatEl.appendChild(btn);
         chatEl.scrollTop = chatEl.scrollHeight;
       } else if (data.suggestedAction === 'createEvent' && data.actionData) {
+        // Fallback for old format
         const btn = document.createElement('button');
         btn.textContent = `✓ Schedule: "${data.actionData.title || 'Event'}"`;
         btn.style.marginTop = '8px';
@@ -339,7 +446,6 @@
         btn.style.fontSize = '12px';
         btn.addEventListener('click', () => {
           if (window.calendarAddOrUpdateEvent) {
-            // Create event object with calendar format (date: YYYY-MM-DD, time: HH:MM)
             const event = {
               id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
               title: data.actionData.title,
@@ -348,7 +454,6 @@
               duration: data.actionData.duration || 60,
               notes: ''
             };
-            
             window.calendarAddOrUpdateEvent(event);
             appendMessage('meibot', 'Event scheduled! 📅');
             btn.disabled = true;
