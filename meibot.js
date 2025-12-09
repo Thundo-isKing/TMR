@@ -272,6 +272,13 @@
       const consent = consentEl.checked;
       const contextStr = consent ? JSON.stringify(gatherContext()) : '';
       
+      // Get or create device ID for chat history persistence
+      let deviceId = localStorage.getItem('tmr_device_id');
+      if (!deviceId) {
+        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem('tmr_device_id', deviceId);
+      }
+      
       // Get user's timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       
@@ -279,7 +286,7 @@
       const res = await fetch('/api/meibot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, context: contextStr, consent, timezone })
+        body: JSON.stringify({ message: userMsg, context: contextStr, consent, timezone, deviceId })
       });
 
       const data = await res.json();

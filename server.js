@@ -23,13 +23,17 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 // In-memory subscription store (in production, use a database)
 const subscriptions = new Map();
 
+// In-memory chat history store - stores conversations by deviceId
+// Structure: { deviceId: [{ role: 'user'|'assistant', content: '...' }, ...] }
+const chatHistory = new Map();
+
 // Serve TMR.html as the root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'TMR.html'));
 });
 
 app.post('/api/meibot', async (req, res) => {
-  const { message, context, consent } = req.body;
+  const { message, context, consent, deviceId } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Invalid message' });
   if (context && !consent) return res.status(403).json({ error: 'Consent required for calendar context.' });
 
@@ -40,9 +44,18 @@ If the user wants to create a todo or event, respond with a clear confirmation a
 
 Always include the action tag with clear structured data so the client can parse and execute it.`;
 
+  // Get or initialize chat history for this device
+  const historyKey = deviceId || 'default';
+  if (!chatHistory.has(historyKey)) {
+    chatHistory.set(historyKey, []);
+  }
+  const history = chatHistory.get(historyKey);
+
+  // Build messages array with chat history
   const messages = [
     { role: 'system', content: systemPrompt },
     context && consent ? { role: 'system', content: `Calendar context: ${context}` } : null,
+    ...history,
     { role: 'user', content: message }
   ].filter(Boolean);
 
@@ -67,6 +80,15 @@ Always include the action tag with clear structured data so the client can parse
     
     const data = await r.json();
     const aiText = data.choices?.[0]?.message?.content ?? 'Sorry, I could not generate a response.';
+    
+    // Save user message and assistant response to history
+    history.push({ role: 'user', content: message });
+    history.push({ role: 'assistant', content: aiText });
+    
+    // Keep history to last 20 messages to avoid bloating memory
+    if (history.length > 20) {
+      history.splice(0, history.length - 20);
+    }
     
     // Parse action from response
     let actionType = null;
@@ -164,6 +186,26 @@ app.post('/reminder', (req, res) => {
 
 app.get('/debug/reminders', (req, res) => {
   res.json({ count: reminders.size, reminders: Array.from(reminders.entries()) });
+});
+
+// Get chat history for a device
+app.get('/api/chat-history/:deviceId', (req, res) => {
+  const { deviceId } = req.params;
+  const history = chatHistory.get(deviceId) || [];
+  res.json({ deviceId, history });
+});
+
+// Clear chat history for a device
+app.post('/api/chat-history/:deviceId/clear', (req, res) => {
+  const { deviceId } = req.params;
+  chatHistory.delete(deviceId);
+  res.json({ deviceId, status: 'cleared' });
+});
+
+// Clear all chat histories
+app.post('/api/chat-history/clear-all', (req, res) => {
+  chatHistory.clear();
+  res.json({ status: 'all cleared' });
 });
 
 // Background job to send reminders to the specific device that created them
