@@ -676,7 +676,6 @@ if (leaveBtn) {
             }
         });
         modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); if(e.key==='Escape') { closeModal(); } });
-        modalClose.addEventListener('click', closeModal);
 
         // close when clicking on backdrop outside modal
         backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
