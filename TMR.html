@@ -362,7 +362,7 @@
             /* Modal sections for tabs - overlay on calendar space */
             #todo-modal-backdrop {
                 position: absolute;
-                top: 45px;
+                top: 0;
                 left: 0;
                 right: 0;
                 bottom: 0;
@@ -373,6 +373,7 @@
                 transition: opacity 0.3s ease;
                 display: flex;
                 flex-direction: column;
+                padding-top: 45px;
             }
 
             #todo-modal-backdrop.active {
@@ -382,7 +383,7 @@
 
             #meibot-modal {
                 position: absolute;
-                top: 45px;
+                top: 0;
                 left: 0;
                 right: 0;
                 bottom: 0;
@@ -393,6 +394,7 @@
                 pointer-events: none;
                 transition: opacity 0.3s ease;
                 display: flex;
+                padding-top: 45px;
             }
 
             #meibot-modal.active {
@@ -724,18 +726,19 @@
             /* Modal sections for tabs - overlay on calendar space */
             #todo-modal-backdrop {
                 position: absolute;
-                top: 45px;
+                top: 0;
                 left: 0;
                 right: 0;
                 bottom: 0;
                 background: none;
-                overflow-y: auto;
+                overflow: hidden;
                 border: none;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
                 display: flex;
                 flex-direction: column;
+                padding-top: 45px;
             }
 
             #todo-modal-backdrop.active {

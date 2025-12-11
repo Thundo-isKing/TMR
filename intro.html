@@ -121,24 +121,20 @@
             const startBtn = document.getElementById('start-tmr-btn');
             const skipBtn = document.getElementById('skip-tutorial-btn');
 
-            // Check if user has already seen tutorial
-            const hasSeen = localStorage.getItem('tmr_tutorial_seen');
-            if (hasSeen) {
-                // Redirect to main calendar page immediately
-                window.location.href = 'TMR.html';
-                return;
+            // Mark tutorial as seen when user clicks start
+            if (startBtn) {
+                startBtn.addEventListener('click', () => {
+                    localStorage.setItem('tmr_tutorial_seen', '1');
+                    window.location.href = 'TMR.html';
+                });
             }
 
-            // Mark tutorial as seen when user clicks start
-            startBtn.addEventListener('click', () => {
-                localStorage.setItem('tmr_tutorial_seen', '1');
-                window.location.href = 'TMR.html';
-            });
-
-            skipBtn.addEventListener('click', () => {
-                localStorage.setItem('tmr_tutorial_seen', '1');
-                window.location.href = 'TMR.html';
-            });
+            if (skipBtn) {
+                skipBtn.addEventListener('click', () => {
+                    localStorage.setItem('tmr_tutorial_seen', '1');
+                    window.location.href = 'TMR.html';
+                });
+            }
         })();
     </script>
 
