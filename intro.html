@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMR - Tutorial</title>
+    <link rel="stylesheet" href="TMR.css?v=20251208d">
+     <link rel="stylesheet" href="backgrounds.css">
+    <!-- Comprehensive mobile layout override (v3) -->
+    <style>
+    @media (max-width:600px){
+      /* Reset body and main layout - add bottom padding for modal space */
+      body { padding-top:160px !important; padding-bottom:10px !important; margin:0; overflow-x:hidden}
+      
+      /* Keep TMR tag in top corner, small */
+      #TMR-tag { position:fixed !important; top:8px !important; left:8px !important; z-index:3000 !important}
+      
+      /* Keep dropdown menu small in corner */
+      .tmr-menu { position:absolute !important; left:0 !important; right:auto !important; top:100% !important; margin-top:8px !important; width:auto !important; max-width:none !important; min-width:220px !important}
+      .tmr-menu input, .tmr-menu select, .tmr-menu button, .tmr-menu .small-tmr-btn { width:100% !important; box-sizing:border-box !important}
+      
+      /* Clock fixed at top, narrow, centered */
+      .clock-container { position:fixed !important; top:56px !important; left:50% !important; transform:translateX(-50%) !important; width:320px !important; margin:0 !important; z-index:2500 !important}
+      .clock-outer-box { width:100% !important}
+      
+      /* Reset all side buttons: remove fixed positioning and absolute child positioning */
+      .side-buttons { position:relative !important; top:auto !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important; transform:none !important; pointer-events:auto !important; padding:0}
+      
+      /* Reset schedule buttons: remove absolute left/right positioning */
+      .schedule-button, .schedule-button2 { 
+        position:relative !important; left:auto !important; right:auto !important; top:auto !important;
+        width:70vw !important; max-width:360px !important; min-width:180px !important;
+        height:auto !important; min-height:48px !important;
+        padding:12px 16px !important; margin:0 auto !important;
+        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
+      }
+      
+      /* Reset todo button: remove fixed absolute positioning */
+      .todo-button, .schedule-button { 
+        position:relative !important; right:auto !important; left:auto !important;
+        width:70vw !important; max-width:360px !important; min-width:180px !important;
+        height:auto !important; min-height:48px !important;
+        padding:12px 16px !important; margin:0 auto !important;
+        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
+      }
+      
+      /* Reset bottom buttons */
+      .bottom-buttons { position:relative !important; top:auto !important; left:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
+      .bottom-buttons button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; box-shadow:none !important}
+      
+      /* Ensure all .tmr-btn follow the mobile style */
+      .tmr-btn { width:70vw !important; max-width:360px !important; min-width:180px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; margin:0 auto !important; box-shadow:none !important; border-radius:10px !important}
+      .small-tmr-btn { padding:10px 14px !important; font-size:16px !important}
+      
+      /* Reset button-group */
+      .button-group { position:relative !important; top:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
+      .button-group button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important}
+      
+      /* Hide or reposition cs-buttons for mobile */
+      .cs-buttons { display:none}
+    }
+    /* Landscape mode adjustments */
+    @media (max-width:600px) and (orientation:landscape){
+      body { padding-top:100px !important}
+      .clock-container { top:50px !important; width:280px !important}
+      .tmr-btn, .small-tmr-btn, .schedule-button, .schedule-button2, .todo-button, .bottom-buttons button { width:65vw !important; max-width:340px !important; min-height:40px !important; padding:8px 12px !important; font-size:16px !important}
+    }
+    </style></head>
+
+<body class="page-background triangle-background-blue">
+
+    <div id="TMR-tag" class="tmr-tag">
+        <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
+            <h1 style="margin:0;">TMR</h1>
+            <span class="caret">▾</span>
+        </button>
+        <div id="tmr-menu" class="tmr-menu" hidden>
+            <div class="tmr-menu-item">
+                <label for="accent-picker">Accent
+                    <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color">
+                </label>
+            </div>
+            <div class="tmr-menu-item">
+                <button id="skip-tutorial-btn" class="small-tmr-btn" type="button">Skip Tutorial</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Overlay (full page) -->
+    <div id="tutorial-overlay" class="tutorial-overlay" style="display: flex;">
+        <div class="tutorial-container">
+            <div class="tutorial-content">
+                <h1>Welcome to TMR</h1>
+                <p>TMR helps you manage your time, schedule events, and get AI-powered assistance.</p>
+                
+                <h2>Key Features:</h2>
+                <ul>
+                    <li><strong>📅 Calendar:</strong> View and manage events</li>
+                    <li><strong>📋 Todo List:</strong> Track your daily tasks</li>
+                    <li><strong>🤖 Meibot:</strong> AI assistant to help schedule events and create todos</li>
+                    <li><strong>🔔 Notifications:</strong> Get reminded about upcoming events</li>
+                </ul>
+
+                <h2>Getting Started:</h2>
+                <ol>
+                    <li>Click "Start Using TMR" below to go to your calendar</li>
+                    <li>Use the buttons to create events, todos, or chat with Meibot</li>
+                    <li>Come back to this tutorial anytime from the menu</li>
+                </ol>
+
+                <button id="start-tmr-btn" class="tmr-btn" style="margin-top: 30px;">Start Using TMR</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="TMR.js"></script>
+    <script>
+        // Tutorial overlay logic
+        (function() {
+            const overlay = document.getElementById('tutorial-overlay');
+            const startBtn = document.getElementById('start-tmr-btn');
+            const skipBtn = document.getElementById('skip-tutorial-btn');
+
+            // Check if user has already seen tutorial
+            const hasSeen = localStorage.getItem('tmr_tutorial_seen');
+            if (hasSeen) {
+                // Redirect to main calendar page immediately
+                window.location.href = 'TMR.html';
+                return;
+            }
+
+            // Mark tutorial as seen when user clicks start
+            startBtn.addEventListener('click', () => {
+                localStorage.setItem('tmr_tutorial_seen', '1');
+                window.location.href = 'TMR.html';
+            });
+
+            skipBtn.addEventListener('click', () => {
+                localStorage.setItem('tmr_tutorial_seen', '1');
+                window.location.href = 'TMR.html';
+            });
+        })();
+    </script>
+
+    <style>
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .tutorial-container {
+            background: white;
+            border-radius: 16px;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .tutorial-content h1 {
+            margin-top: 0;
+            color: #0089f1;
+            font-size: 32px;
+        }
+
+        .tutorial-content h2 {
+            color: #333;
+            margin-top: 24px;
+            font-size: 20px;
+        }
+
+        .tutorial-content ul, .tutorial-content ol {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #555;
+        }
+
+        .tutorial-content li {
+            margin: 10px 0;
+        }
+
+        @media (max-width: 600px) {
+            .tutorial-container {
+                max-width: 95vw;
+                padding: 24px;
+            }
+
+            .tutorial-content h1 {
+                font-size: 24px;
+            }
+
+            .tutorial-content h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</body>
+</html>

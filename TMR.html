@@ -3,72 +3,433 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMR</title>
-    <link rel="stylesheet" href="TMR.css?v=20251208d">
-     <link rel="stylesheet" href="backgrounds.css">
-    <!-- Comprehensive mobile layout override (v3) -->
+    <title>TMR - Calendar</title>
+    <link rel="stylesheet" href="TMR.css?v=20251208e">
+    <link rel="stylesheet" href="backgrounds.css?v=20251208a">
+    <link rel="stylesheet" href="calendar-mobile.css?v=20251208b">
     <style>
-    @media (max-width:600px){
-      /* Reset body and main layout - add bottom padding for modal space */
-      body { padding-top:160px !important; padding-bottom:10px !important; margin:0; overflow-x:hidden}
-      
-      /* Keep TMR tag in top corner, small */
-      #TMR-tag { position:fixed !important; top:8px !important; left:8px !important; z-index:3000 !important}
-      
-      /* Keep dropdown menu small in corner */
-      .tmr-menu { position:absolute !important; left:0 !important; right:auto !important; top:100% !important; margin-top:8px !important; width:auto !important; max-width:none !important; min-width:220px !important}
-      .tmr-menu input, .tmr-menu select, .tmr-menu button, .tmr-menu .small-tmr-btn { width:100% !important; box-sizing:border-box !important}
-      
-      /* Clock fixed at top, narrow, centered */
-      .clock-container { position:fixed !important; top:56px !important; left:50% !important; transform:translateX(-50%) !important; width:320px !important; margin:0 !important; z-index:2500 !important}
-      .clock-outer-box { width:100% !important}
-      
-      /* Reset all side buttons: remove fixed positioning and absolute child positioning */
-      .side-buttons { position:relative !important; top:auto !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important; transform:none !important; pointer-events:auto !important; padding:0}
-      
-      /* Reset schedule buttons: remove absolute left/right positioning */
-      .schedule-button, .schedule-button2 { 
-        position:relative !important; left:auto !important; right:auto !important; top:auto !important;
-        width:70vw !important; max-width:360px !important; min-width:180px !important;
-        height:auto !important; min-height:48px !important;
-        padding:12px 16px !important; margin:0 auto !important;
-        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
-      }
-      
-      /* Reset todo button: remove fixed absolute positioning */
-      .todo-button, .schedule-button { 
-        position:relative !important; right:auto !important; left:auto !important;
-        width:70vw !important; max-width:360px !important; min-width:180px !important;
-        height:auto !important; min-height:48px !important;
-        padding:12px 16px !important; margin:0 auto !important;
-        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
-      }
-      
-      /* Reset bottom buttons */
-      .bottom-buttons { position:relative !important; top:auto !important; left:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
-      .bottom-buttons button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; box-shadow:none !important}
-      
-      /* Ensure all .tmr-btn follow the mobile style */
-      .tmr-btn { width:70vw !important; max-width:360px !important; min-width:180px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; margin:0 auto !important; box-shadow:none !important; border-radius:10px !important}
-      .small-tmr-btn { padding:10px 14px !important; font-size:16px !important}
-      
-      /* Reset button-group */
-      .button-group { position:relative !important; top:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
-      .button-group button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important}
-      
-      /* Hide or reposition cs-buttons for mobile */
-      .cs-buttons { display:none}
-    }
-    /* Landscape mode adjustments */
-    @media (max-width:600px) and (orientation:landscape){
-      body { padding-top:100px !important}
-      .clock-container { top:50px !important; width:280px !important}
-      .tmr-btn, .small-tmr-btn, .schedule-button, .schedule-button2, .todo-button, .bottom-buttons button { width:65vw !important; max-width:340px !important; min-height:40px !important; padding:8px 12px !important; font-size:16px !important}
-    }
-    </style></head>
+        /* ===== NEW: Desktop Layout (1025px+) ===== */
+        @media (min-width: 1025px) {
+            body {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: visible !important;
+            }
 
-<body class="page-background triangle-background-blue">
+            .calendar-page {
+                display: flex;
+                flex-direction: row;
+                min-height: 100vh;
+                gap: 12px;
+                padding: 12px;
+                padding-right: 250px;
+                align-items: center;
+                justify-content: flex-start;
+                overflow: visible !important;
+                width: calc(100vw - 100px);
+            }
 
+            /* TODO Panel on LEFT - modal-sized (420px) */
+            .todo-panel {
+                flex: 0 0 420px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+                height: 60vh;
+                max-height: calc(100vh - 24px);
+                overflow: hidden;
+                margin-left: 15px;
+            }
+
+            .todo-panel h3 {
+                margin: 0;
+                padding: 16px;
+                font-size: 18px;
+                font-weight: 600;
+                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                color: white;
+                border-radius: 12px 12px 0 0;
+                flex-shrink: 0;
+            }
+
+            .todo-panel .todo-input-row {
+                padding: 16px;
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                background: white;
+                flex-shrink: 0;
+                border-bottom: 1px solid #eee;
+            }
+
+            .todo-panel input[type="text"],
+            .todo-panel input[type="number"] {
+                flex: 1;
+                min-width: 150px;
+                padding: 10px 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                font-size: 14px;
+                transition: border-color 0.2s ease;
+            }
+
+            .todo-panel input:focus {
+                outline: none;
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
+            }
+
+            .todo-panel .todo-list {
+                flex: 1;
+                overflow-y: auto;
+                list-style: none;
+                padding: 0 16px 16px 16px;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .todo-panel .todo-item {
+                background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
+                border: 1px solid #e0e8f0;
+                padding: 12px;
+                border-radius: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: all 0.2s ease;
+            }
+
+            .todo-panel .todo-item:hover {
+                background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 2px 8px rgba(0,137,241,0.1);
+            }
+
+            .todo-panel .small-tmr-btn {
+                background: #d7dbdf !important;
+                border: none !important;
+                color: #333 !important;
+                padding: 8px 14px !important;
+                border-radius: 8px !important;
+                box-shadow: none !important;
+                transition: background 0.15s ease !important;
+                transform: none !important;
+            }
+
+            .todo-panel .small-tmr-btn:hover {
+                background: var(--accent-color, #0089f1) !important;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* MEIBOT Panel on RIGHT - modal-sized (400px) */
+            .meibot-panel {
+                flex: 0 0 400px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                display: flex;
+                flex-direction: column;
+                height: 60vh;
+                max-height: calc(100vh - 24px);
+                overflow: hidden;
+            }
+
+            .meibot-panel h3 {
+                margin: 0;
+                padding: 16px;
+                font-size: 18px;
+                font-weight: 600;
+                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                color: white;
+                border-radius: 12px 12px 0 0;
+                flex-shrink: 0;
+            }
+
+            .meibot-panel #meibot-chat {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                background: white;
+            }
+
+            .meibot-message {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+
+            .meibot-message.user {
+                justify-content: flex-end;
+            }
+
+            .meibot-message-text {
+                max-width: 80%;
+                padding: 10px 14px;
+                border-radius: 8px;
+                word-wrap: break-word;
+                font-size: 14px;
+            }
+
+            .meibot-message.user .meibot-message-text {
+                background: var(--accent-color, #0089f1);
+                color: white;
+                border-radius: 8px 0 8px 8px;
+            }
+
+            .meibot-message.meibot .meibot-message-text {
+                background: #f0f0f0;
+                color: #333;
+                border-radius: 0 8px 8px 8px;
+            }
+
+            .meibot-panel #meibot-form {
+                padding: 12px 16px;
+                border-top: 1px solid #e0e0e0;
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                flex-shrink: 0;
+            }
+
+            .meibot-panel #meibot-input {
+                flex: 1;
+                min-width: 150px;
+                padding: 10px 12px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+
+            .meibot-panel #meibot-input:focus {
+                outline: none;
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 0 4px rgba(0,137,241,0.3);
+            }
+
+            .meibot-panel .small-tmr-btn {
+                padding: 10px 16px;
+                background: var(--accent-color, #0089f1);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: background 0.15s ease;
+            }
+
+            .meibot-panel .small-tmr-btn:hover {
+                background: var(--accent-hover, #0073d1);
+            }
+
+            /* Calendar Section in CENTER */
+            .calendar-section {
+                flex: 0 0 820px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                background: transparent;
+                border-radius: 0;
+                box-shadow: none;
+                height: 60vh;
+                max-height: calc(100vh - 24px);
+            }
+
+            /* Hide panels-container (we're using new layout) */
+            .panels-container {
+                display: none !important;
+            }
+
+            /* Hide mobile buttons on desktop */
+            .calendar-buttons {
+                display: none;
+            }
+
+            /* Hide modals on desktop (panels always visible) */
+            #todo-modal-backdrop, #meibot-modal {
+                display: none !important;
+            }
+        }
+
+        /* ===== Mobile Landscape (≤1024px, landscape) ===== */
+        @media (max-width: 1024px) and (orientation: landscape) {
+            body {
+                display: flex;
+                flex-direction: row;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .calendar-page {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Hide desktop panels on mobile */
+            .todo-panel, .meibot-panel {
+                display: none !important;
+            }
+
+            /* Hide desktop calendar and show mobile calendar */
+            #calendar-app {
+                display: none !important;
+            }
+
+            #mobile-calendar-container {
+                display: flex !important;
+                flex-direction: column;
+            }
+
+            /* Calendar takes left side */
+            .calendar-section {
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            /* Buttons sidebar on right */
+            .calendar-buttons {
+                display: flex;
+                flex-direction: column;
+                width: 100px;
+                gap: 8px;
+                padding: 8px;
+                border-left: 2px solid #ddd;
+                background: white;
+                overflow-y: auto;
+            }
+
+            .calendar-buttons button {
+                flex: 1;
+                min-height: 60px;
+                font-size: 12px;
+                padding: 4px;
+            }
+
+            /* Hide persistent panels */
+            .panels-container {
+                display: none;
+            }
+
+            /* Hide modals by default - only show when clicked */
+            #todo-modal-backdrop, #meibot-modal {
+                display: none !important;
+            }
+
+            /* Show modals when .shown class is added */
+            #todo-modal-backdrop.shown, #meibot-modal.shown {
+                display: flex !important;
+            }
+        }
+
+        /* ===== Mobile Portrait (≤768px, portrait) ===== */
+        @media (max-width: 768px) and (orientation: portrait) {
+            body {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .calendar-page {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Hide desktop panels on mobile */
+            .todo-panel, .meibot-panel {
+                display: none !important;
+            }
+
+            /* Hide desktop calendar and show mobile calendar */
+            #calendar-app {
+                display: none !important;
+            }
+
+            #mobile-calendar-container {
+                display: flex !important;
+                flex-direction: column;
+            }
+
+            /* Calendar takes top */
+            .calendar-section {
+                flex: 0 1 auto;
+                max-height: calc(100vh - 140px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                margin-top: -250px;
+            }
+
+            /* Buttons bar on bottom */
+            .calendar-buttons {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 8px;
+                border-top: 2px solid #ddd;
+                background: white;
+                height: auto;
+                flex-shrink: 0;
+            }
+
+            .calendar-buttons button {
+                flex: 1;
+                min-height: 44px;
+                font-size: 14px;
+            }
+
+            /* Hide persistent panels */
+            .panels-container {
+                display: none;
+            }
+
+            /* Hide modals by default - only show when clicked */
+            #todo-modal-backdrop, #meibot-modal {
+                display: none !important;
+            }
+
+            /* Show modals when .shown class is added */
+            #todo-modal-backdrop.shown, #meibot-modal.shown {
+                display: flex !important;
+            }
+        }
+
+        /* ===== Base Styles for New Layout ===== */
+        .calendar-page {
+            width: 100%;
+        }
+
+        .todo-panel, .meibot-panel {
+            position: relative;
+        }
+
+        /* Ensure modals display as flex when shown */
+        #todo-modal-backdrop.shown,
+        #meibot-modal.shown {
+            display: flex !important;
+        }
+
+        .todo-modal-backdrop.shown {
+            display: flex !important;
+        }
+    </style>
+</head>
+
+<body class="page-background triangle-background currentschedules-page">
+
+    <!-- TMR dropdown menu -->
     <div id="TMR-tag" class="tmr-tag">
         <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
             <h1 style="margin:0;">TMR</h1>
@@ -113,6 +474,9 @@
                 </div>
             </div>
             <div class="tmr-menu-item" style="border-top:1px solid #ccc; padding-top:8px; margin-top:8px;">
+                <button id="tutorial-btn" class="small-tmr-btn" type="button">View Tutorial</button>
+            </div>
+            <div class="tmr-menu-item">
                 <button id="export-data-btn" class="small-tmr-btn" type="button">Export data</button>
                 <button id="import-data-btn" class="small-tmr-btn" type="button" style="margin-top:6px;">Import data</button>
                 <input id="import-file-input" type="file" accept=".json" hidden />
@@ -120,70 +484,268 @@
             <div class="tmr-menu-item">
                 <button id="fullscreen-btn-tmr" type="button" class="small-tmr-btn">Fullscreen</button>
             </div>
-            
         </div>
     </div>
 
-        <div class="side-buttons">
-        <button type="button" class="schedule-button tmr-btn">Meibot (AI Helper)</button>
-        <button type="button" class="new-sched tmr-btn" onclick="window.location.href='CurrentSchedules.html'">Calendar</button>
-        <button type="button" class="todo-button tmr-btn">
-            <span class="todo-label">To Do</span>
-            <span id="todo-badge" class="todo-badge" hidden>0</span>
-        </button>
-    </div>
+    <!-- Main Page Container -->
+    <div class="calendar-page">
 
-    <!-- Spacer to visually move the clock down -->
-    <div style="height:30px;"></div>
+        <!-- TODO PANEL (LEFT SIDE - Desktop only) -->
+        <div class="todo-panel">
+            <h3>To Do</h3>
+            <div class="todo-input-row">
+                <input id="todo-input" type="text" placeholder="Add a todo..." />
+                <input id="todo-modal-minutes" type="number" min="0" placeholder="min" style="width: 60px;" />
+                <button id="add-todo" class="small-tmr-btn">Add</button>
+            </div>
+            <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
+        </div>
 
-    <div class="clock-container">
-        <div class="clock-outer-box">
-            <div class="clock-inner-box">
-                <div id="clock"></div>
+        <!-- Calendar Section (CENTER - visible on all devices) -->
+        <div class="calendar-section">
+            <!-- Calendar app -->
+            <div id="calendar-app" class="calendar-app">
+                <div class="calendar-header">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button id="prev-month" class="nav-btn tmr-btn small-tmr-btn">&lt;</button>
+                        <div id="month-year" class="month-year"></div>
+                        <button id="next-month" class="nav-btn tmr-btn small-tmr-btn">&gt;</button>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button id="export-btn" class="nav-btn tmr-btn small-tmr-btn">Export</button>
+                        <button id="import-btn" class="nav-btn tmr-btn small-tmr-btn">Import</button>
+                        <input id="import-file" type="file" accept=".json" style="display:none">
+                    </div>
+                </div>
+                <div id="weekday-row" class="weekday-row" aria-hidden="false"></div>
+                <div id="calendar" class="calendar-grid" aria-label="Monthly calendar"></div>
+            </div>
+
+            <!-- Mobile Calendar Container (hidden on desktop) -->
+            <div id="mobile-calendar-container">
+                <div class="mobile-calendar-header">
+                    <button id="mobile-prev-month" class="mobile-nav-btn">&lt;</button>
+                    <div class="month-year"></div>
+                    <button id="mobile-next-month" class="mobile-nav-btn">&gt;</button>
+                    <button id="mobile-export-btn" class="mobile-nav-btn">Export</button>
+                    <button id="mobile-import-btn" class="mobile-nav-btn">Import</button>
+                    <input id="mobile-import-file" type="file" accept=".json" style="display:none">
+                </div>
+
+                <div class="mobile-calendar-grid-container">
+                    <div class="mobile-weekday-row" id="mobile-weekday-row"></div>
+                    <div class="mobile-calendar-grid" id="mobile-calendar-grid"></div>
+                </div>
+
+                <!-- Clock (below calendar on mobile portrait) -->
+                <div class="clock-container">
+                    <div class="clock-outer-box">
+                        <div class="clock-inner-box">
+                            <div id="clock"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mobile-modal-backdrop" class="mobile-modal-backdrop">
+                    <div class="mobile-modal-content">
+                        <div class="mobile-modal-header">
+                            <span id="mobile-modal-title">Events</span>
+                            <button id="mobile-modal-close" class="mobile-modal-close">&times;</button>
+                        </div>
+                        <div class="mobile-modal-body">
+                            <div id="mobile-event-list" class="mobile-event-list"></div>
+                            <form id="mobile-event-form" class="mobile-event-form">
+                                <div class="mobile-form-group">
+                                    <label>Title</label>
+                                    <input id="mobile-event-title" type="text" required />
+                                </div>
+                                <div class="mobile-form-group">
+                                    <label>Time</label>
+                                    <input id="mobile-event-time" type="time" />
+                                </div>
+                                <div class="mobile-form-group">
+                                    <label>Notes</label>
+                                    <textarea id="mobile-event-notes" rows="3"></textarea>
+                                </div>
+                                <div class="mobile-form-actions">
+                                    <button type="submit" class="mobile-save-btn">Save</button>
+                                    <button type="button" id="mobile-delete-btn" class="mobile-delete-btn danger" style="display:none;">Delete</button>
+                                    <button type="button" class="mobile-cancel-btn">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Day / event modal -->
+            <div id="event-modal" class="modal hidden" aria-hidden="true">
+                <div class="modal-content">
+                    <button id="close-modal" class="modal-close" aria-label="Close">&times;</button>
+                    <h3 id="modal-title">Add Event</h3>
+                    <form id="event-form">
+                        <input type="hidden" id="event-id">
+                        <label>Title
+                            <input id="event-title" required />
+                        </label>
+                        <label>Date
+                            <input id="event-date" type="date" required />
+                        </label>
+                        <label>Time
+                            <input id="event-time" type="time" />
+                        </label>
+                        <label>Notes
+                            <textarea id="event-notes"></textarea>
+                        </label>
+                        <div class="modal-actions">
+                            <button type="submit" id="save-event" class="tmr-btn">Save</button>
+                            <button type="button" id="delete-event" class="tmr-btn danger">Delete</button>
+                            <button type="button" id="cancel-event" class="tmr-btn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Landscape mode clock container (separate from calendar) -->
+            <div id="landscape-clock-container" class="landscape-clock-container">
+                <div class="landscape-clock-outer-box">
+                    <div class="landscape-clock-inner-box">
+                        <div id="landscape-clock"></div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- MEIBOT PANEL (RIGHT SIDE - Desktop only) -->
+        <div class="meibot-panel">
+            <h3>Meibot</h3>
+            <div id="meibot-chat" class="meibot-chat"></div>
+            <form id="meibot-form" class="meibot-form">
+                <input id="meibot-input" type="text" placeholder="Ask Meibot..." />
+                <button type="submit" class="small-tmr-btn">Send</button>
+            </form>
+        </div>
+
+        <!-- Mobile Buttons Bar (visible only on mobile <1025px) -->
+        <div class="calendar-buttons">
+            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">📋 Todo</button>
+            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">🤖 Meibot</button>
+        </div>
+
     </div>
 
-    <!-- .button-group removed (new-sched moved into .side-buttons) -->
-
-    <div class="bottom-buttons">
-        <button type="button" class="refresh-button tmr-btn">
-            <div class="button-content">
-                <span>Refresh</span>
-            </div>
-        </button>
-        <button type="button" class="leave-button tmr-btn">
-            <div class="button-content">
-                <span>Leave</span>
-            </div>
-        </button>
-    </div>
-    
-    <script src="TMR.js"></script>
-    <script src="calendar.js"></script>
-    <script src="meibot.js"></script>
-    <!-- To-Do modal (opened from dropdown To-Do button) -->
+    <!-- TODO MODAL (for mobile) -->
     <div id="todo-modal-backdrop" class="todo-modal-backdrop" hidden>
         <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
             <h3 id="todo-modal-title">To Do</h3>
             <div class="todo-input-row">
                 <input id="todo-modal-input" type="text" placeholder="Add a todo..." />
-                <input id="todo-modal-minutes" type="number" min="0" placeholder="remind in (min)" style="width:110px;" />
+                <input id="todo-modal-minutes-input" type="number" min="0" placeholder="remind in (min)" style="width:110px;" />
                 <button id="todo-modal-add" class="small-tmr-btn">Add</button>
                 <button id="todo-modal-close" class="small-tmr-btn">Close</button>
             </div>
             <ul id="todo-modal-list" class="todo-list"></ul>
         </div>
     </div>
-    <div id="sub-manager-backdrop" class="todo-modal-backdrop" hidden>
-        <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="sub-manager-title">
-            <h3 id="sub-manager-title">Subscriptions</h3>
-            <div style="margin-bottom:8px;">
-                <button id="sub-refresh-btn" class="small-tmr-btn">Refresh</button>
-                <button id="sub-close-btn" class="small-tmr-btn">Close</button>
+
+    <!-- MEIBOT MODAL (for mobile) -->
+    <div id="meibot-modal" class="meibot-modal hidden" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9998; align-items: center; justify-content: center;">
+        <div class="meibot-modal-content" style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="meibot-header" style="padding: 16px; border-bottom: 2px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0;">Meibot</h2>
+                <button id="meibot-modal-close" class="meibot-close" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
             </div>
-            <ul id="sub-list" class="todo-list"></ul>
+            <div id="meibot-modal-chat" class="meibot-chat" style="flex: 1; overflow-y: auto; padding: 16px; background: #f9f9f9;"></div>
+            <div id="meibot-modal-typing" class="meibot-typing hidden" style="display: none; padding: 10px; text-align: center;">
+                <span>Meibot is thinking...</span>
+            </div>
+            <form id="meibot-modal-form" class="meibot-form" style="padding: 16px; border-top: 2px solid #ddd; display: flex; gap: 8px;">
+                <input id="meibot-modal-input" type="text" placeholder="Ask me anything..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;" />
+                <button type="submit" class="tmr-btn small-tmr-btn">Send</button>
+            </form>
         </div>
     </div>
+
+    <!-- Scripts -->
+    <script src="TMR.js"></script>
+    <script src="calendar.js"></script>
+    <script src="calendar-mobile.js"></script>
+    <script src="meibot.js"></script>
+
+    <!-- New Layout Logic Script -->
+    <script>
+        (function() {
+            // Check first visit
+            const hasSeen = localStorage.getItem('tmr_tutorial_seen');
+            if (!hasSeen) {
+                window.location.href = 'intro.html';
+                return;
+            }
+
+            // Tutorial button in dropdown
+            const tutorialBtn = document.getElementById('tutorial-btn');
+            if (tutorialBtn) {
+                tutorialBtn.addEventListener('click', () => {
+                    window.location.href = 'intro.html';
+                });
+            }
+
+            // Mobile buttons
+            const todoMobileBtn = document.getElementById('todo-btn-mobile');
+            const meiMobileBtn = document.getElementById('meibot-btn-mobile');
+            const todoBackdrop = document.getElementById('todo-modal-backdrop');
+            const meiModal = document.getElementById('meibot-modal');
+
+            if (todoMobileBtn) {
+                todoMobileBtn.addEventListener('click', () => {
+                    todoBackdrop.hidden = false;
+                    todoBackdrop.classList.add('shown');
+                });
+            }
+
+            if (meiMobileBtn) {
+                meiMobileBtn.addEventListener('click', () => {
+                    meiModal.style.display = 'flex';
+                    meiModal.classList.add('shown');
+                });
+            }
+
+            // Close buttons for modals
+            const todoClose = document.getElementById('todo-modal-close');
+            if (todoClose) {
+                todoClose.addEventListener('click', () => {
+                    todoBackdrop.hidden = true;
+                    todoBackdrop.classList.remove('shown');
+                });
+            }
+
+            const meiClose = document.getElementById('meibot-modal-close');
+            if (meiClose) {
+                meiClose.addEventListener('click', () => {
+                    meiModal.style.display = 'none';
+                    meiModal.classList.remove('shown');
+                });
+            }
+
+            // Close modal when clicking outside
+            if (todoBackdrop) {
+                todoBackdrop.addEventListener('click', (e) => {
+                    if (e.target === todoBackdrop) {
+                        todoBackdrop.hidden = true;
+                        todoBackdrop.classList.remove('shown');
+                    }
+                });
+            }
+
+            if (meiModal) {
+                meiModal.addEventListener('click', (e) => {
+                    if (e.target === meiModal) {
+                        meiModal.style.display = 'none';
+                        meiModal.classList.remove('shown');
+                    }
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

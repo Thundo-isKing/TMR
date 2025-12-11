@@ -83,7 +83,9 @@ TMR push server listening on port 3002
 **Issue: "Port 3001 already in use"**
 - Kill the existing process:
   ```powershell
+  ```powershell
   Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+  ```
   Start-Sleep -Seconds 1
   node index.js
   ```
