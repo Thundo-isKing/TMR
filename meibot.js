@@ -1,216 +1,41 @@
 /**
- * Meibot Client - AI-powered scheduling assistant (OpenAI integration)
+ * Meibot Client - AI-powered scheduling assistant (Groq integration)
  */
 
 (function() {
-  // Create Meibot modal
-  const modal = document.createElement('div');
-  modal.id = 'meibot-modal';
-  modal.className = 'meibot-modal hidden';
-  modal.innerHTML = `
-    <div class="meibot-modal-content">
-      <div class="meibot-header">
-        <h2>Meibot - AI Assistant</h2>
-        <button id="meibot-close" class="meibot-close" aria-label="Close">&times;</button>
-      </div>
-      <div id="meibot-chat" class="meibot-chat"></div>
-      <div id="meibot-typing" class="meibot-typing hidden">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      </div>
-      <form id="meibot-form" class="meibot-form">
-        <input id="meibot-input" type="text" placeholder="Ask me anything..." />
-        <label class="meibot-consent">
-          <input id="meibot-consent" type="checkbox" /> Share context
-        </label>
-        <button type="submit" class="meibot-send">Send</button>
-      </form>
-    </div>
-  `;
-  document.body.appendChild(modal);
+  // Get existing elements from TMR.html (both desktop and mobile)
+  // Desktop panel (shown on desktop/landscape)
+  const desktopChat = document.getElementById('meibot-chat');
+  const desktopForm = document.getElementById('meibot-form');
+  const desktopInput = document.getElementById('meibot-input');
+  
+  // Mobile modal (shown on mobile)
+  const mobileModal = document.getElementById('meibot-modal');
+  const mobileChat = document.getElementById('meibot-modal-chat');
+  const mobileForm = document.getElementById('meibot-modal-form');
+  const mobileInput = document.getElementById('meibot-modal-input');
+  const mobileClose = document.getElementById('meibot-modal-close');
+  const mobileBackdrop = mobileModal ? mobileModal.parentElement : null;
 
-  // Style the modal
-  const style = document.createElement('style');
-  style.textContent = `
-    .meibot-modal {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 400px;
-      height: 600px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
-      z-index: 10000;
-      font-family: inherit;
-    }
-    .meibot-modal.hidden {
-      display: none;
-    }
-    .meibot-modal-content {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-    .meibot-header {
-      padding: 16px;
-      border-bottom: 1px solid #e0e0e0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
-      color: white;
-      border-radius: 12px 12px 0 0;
-    }
-    .meibot-header h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-    .meibot-close {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 24px;
-      cursor: pointer;
-      padding: 0;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .meibot-close:hover {
-      opacity: 0.8;
-    }
-    .meibot-chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .meibot-message {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .meibot-message.user {
-      justify-content: flex-end;
-    }
-    .meibot-message-text {
-      max-width: 80%;
-      padding: 10px 14px;
-      border-radius: 8px;
-      word-wrap: break-word;
-    }
-    .meibot-message.user .meibot-message-text {
-      background: var(--accent-color, #0089f1);
-      color: white;
-      border-radius: 8px 0 8px 8px;
-    }
-    .meibot-message.meibot .meibot-message-text {
-      background: #f0f0f0;
-      color: #333;
-      border-radius: 0 8px 8px 8px;
-    }
-    .meibot-typing {
-      display: flex;
-      gap: 4px;
-      padding: 12px 16px;
-      justify-content: flex-start;
-    }
-    .meibot-typing.hidden {
-      display: none;
-    }
-    .typing-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-color, #0089f1);
-      animation: typing 1.4s infinite;
-    }
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-    @keyframes typing {
-      0%, 60%, 100% { opacity: 0.3; }
-      30% { opacity: 1; }
-    }
-    .meibot-form {
-      padding: 12px;
-      border-top: 1px solid #e0e0e0;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .meibot-form input[type="text"] {
-      flex: 1;
-      min-width: 200px;
-      padding: 10px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    .meibot-form input[type="text"]:focus {
-      outline: none;
-      border-color: var(--accent-color, #0089f1);
-      box-shadow: 0 0 4px rgba(0,137,241,0.3);
-    }
-    .meibot-consent {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: #666;
-      white-space: nowrap;
-    }
-    .meibot-send {
-      padding: 10px 16px;
-      background: var(--accent-color, #0089f1);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .meibot-send:hover {
-      background: var(--accent-hover, #0073d1);
-    }
-    @media (max-width: 600px) {
-      .meibot-modal {
-        width: 90%;
-        height: 70vh;
-        bottom: 10px;
-        right: 10px;
-        left: 10px;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-
-  // Get DOM elements
-  const chatEl = document.getElementById('meibot-chat');
-  const typingEl = document.getElementById('meibot-typing');
-  const formEl = document.getElementById('meibot-form');
-  const inputEl = document.getElementById('meibot-input');
-  const consentEl = document.getElementById('meibot-consent');
-  const closeBtn = document.getElementById('meibot-close');
+  // Check if we have necessary elements
+  const hasDesktop = desktopChat && desktopForm && desktopInput;
+  const hasMobile = mobileChat && mobileForm && mobileInput && mobileModal;
+  
+  if (!hasDesktop && !hasMobile) {
+    console.error('[Meibot] No chat elements found in DOM');
+    return;
+  }
 
   // State
   let conversation = [];
   let lastSuggestedAction = null;
   let lastActionData = null;
 
-  // Append message to chat
-  function appendMessage(role, text) {
+  // Append message to chat (handle both desktop and mobile)
+  function appendMessage(role, text, targetChat) {
+    const chatEl = targetChat || desktopChat || mobileChat;
+    if (!chatEl) return;
+    
     const msgDiv = document.createElement('div');
     msgDiv.className = `meibot-message ${role}`;
     const textDiv = document.createElement('div');
@@ -242,25 +67,44 @@
     return confirmPatterns.test(message) && lastSuggestedAction && lastActionData;
   }
 
-  // Handle form submission
-  formEl.addEventListener('submit', async (e) => {
+  // Create action button with styling
+  function createActionButton(label, color, onClick) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.marginTop = '8px';
+    btn.style.padding = '8px 12px';
+    btn.style.background = color;
+    btn.style.color = 'white';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '6px';
+    btn.style.cursor = 'pointer';
+    btn.style.fontSize = '12px';
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  // Handle form submission for both desktop and mobile
+  async function handleFormSubmit(e, formEl, inputEl, chatEl) {
     e.preventDefault();
     const userMsg = inputEl.value.trim();
     if (!userMsg) return;
 
-    appendMessage('user', userMsg);
+    appendMessage('user', userMsg, chatEl);
     inputEl.value = '';
-    typingEl.classList.remove('hidden');
+    
+    // Show typing indicator if available
+    const typingEl = chatEl.parentElement?.querySelector('.meibot-typing');
+    if (typingEl) typingEl.classList.remove('hidden');
 
     // Check if this is confirming a previous action
     if (isConfirmation(userMsg)) {
-      typingEl.classList.add('hidden');
+      if (typingEl) typingEl.classList.add('hidden');
       if (lastSuggestedAction === 'createTodo' && lastActionData && window.meibotCreateTodo) {
         window.meibotCreateTodo(lastActionData.text, lastActionData.reminder);
-        appendMessage('meibot', 'Task created! 📝');
+        appendMessage('meibot', 'Task created! 📝', chatEl);
       } else if (lastSuggestedAction === 'createEvent' && lastActionData && window.meibotCreateEvent) {
         window.meibotCreateEvent(lastActionData);
-        appendMessage('meibot', 'Event scheduled! 📅');
+        appendMessage('meibot', 'Event scheduled! 📅', chatEl);
       }
       lastSuggestedAction = null;
       lastActionData = null;
@@ -269,8 +113,7 @@
 
     // Send to server
     try {
-      const consent = consentEl.checked;
-      const contextStr = consent ? JSON.stringify(gatherContext()) : '';
+      let contextStr = '';
       
       // Get or create device ID for chat history persistence
       let deviceId = localStorage.getItem('tmr_device_id');
@@ -286,82 +129,68 @@
       const res = await fetch('/api/meibot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, context: contextStr, consent, timezone, deviceId })
+        body: JSON.stringify({ message: userMsg, context: contextStr, consent: false, timezone, deviceId })
       });
 
       const data = await res.json();
-      typingEl.classList.add('hidden');
+      if (typingEl) typingEl.classList.add('hidden');
 
       if (data.error) {
-        appendMessage('meibot', `Error: ${data.error}`);
+        appendMessage('meibot', `Error: ${data.error}`, chatEl);
         return;
       }
 
-      appendMessage('meibot', data.reply);
+      appendMessage('meibot', data.reply, chatEl);
       
       // Store suggested action for confirmation
       lastSuggestedAction = data.suggestedAction;
       lastActionData = data.actionData;
 
-      // Handle multiple actions if provided
+      // Handle actions
       if (data.allActions && data.allActions.length > 0) {
         if (data.allActions.length === 1) {
-          // Single action - show button as before
           const action = data.allActions[0];
           if (action.type === 'createTodo' && action.data) {
-            const btn = document.createElement('button');
-            btn.textContent = `✓ Create: "${action.data.text}"`;
-            btn.style.marginTop = '8px';
-            btn.style.padding = '8px 12px';
-            btn.style.background = '#4caf50';
-            btn.style.color = 'white';
-            btn.style.border = 'none';
-            btn.style.borderRadius = '6px';
-            btn.style.cursor = 'pointer';
-            btn.style.fontSize = '12px';
-            btn.addEventListener('click', () => {
-              if (window.calendarAddTodo) {
-                window.calendarAddTodo(action.data.text, action.data.reminder);
-                appendMessage('meibot', 'Task created! 📝');
-                btn.disabled = true;
-                lastSuggestedAction = null;
-                lastActionData = null;
+            const btn = createActionButton(
+              `✓ Create: "${action.data.text}"`,
+              '#4caf50',
+              () => {
+                if (window.calendarAddTodo) {
+                  window.calendarAddTodo(action.data.text, action.data.reminder);
+                  appendMessage('meibot', 'Task created! 📝', chatEl);
+                  btn.disabled = true;
+                  lastSuggestedAction = null;
+                  lastActionData = null;
+                }
               }
-            });
+            );
             chatEl.appendChild(btn);
           } else if (action.type === 'createEvent' && action.data) {
-            const btn = document.createElement('button');
-            btn.textContent = `✓ Schedule: "${action.data.title || 'Event'}"`;
-            btn.style.marginTop = '8px';
-            btn.style.padding = '8px 12px';
-            btn.style.background = '#2196f3';
-            btn.style.color = 'white';
-            btn.style.border = 'none';
-            btn.style.borderRadius = '6px';
-            btn.style.cursor = 'pointer';
-            btn.style.fontSize = '12px';
-            btn.addEventListener('click', () => {
-              if (window.calendarAddOrUpdateEvent) {
-                const event = {
-                  id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-                  title: action.data.title,
-                  date: action.data.date,
-                  time: action.data.time || '09:00',
-                  duration: action.data.duration || 60,
-                  notes: ''
-                };
-                window.calendarAddOrUpdateEvent(event);
-                appendMessage('meibot', 'Event scheduled! 📅');
-                btn.disabled = true;
-                lastSuggestedAction = null;
-                lastActionData = null;
+            const btn = createActionButton(
+              `✓ Schedule: "${action.data.title || 'Event'}"`,
+              '#2196f3',
+              () => {
+                if (window.calendarAddOrUpdateEvent) {
+                  const event = {
+                    id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                    title: action.data.title,
+                    date: action.data.date,
+                    time: action.data.time || '09:00',
+                    duration: action.data.duration || 60,
+                    notes: ''
+                  };
+                  window.calendarAddOrUpdateEvent(event);
+                  appendMessage('meibot', 'Event scheduled! 📅', chatEl);
+                  btn.disabled = true;
+                  lastSuggestedAction = null;
+                  lastActionData = null;
+                }
               }
-            });
+            );
             chatEl.appendChild(btn);
           }
         } else {
           // Multiple actions - show "Create All" button
-          const btn = document.createElement('button');
           const todosCount = data.allActions.filter(a => a.type === 'createTodo').length;
           const eventsCount = data.allActions.filter(a => a.type === 'createEvent').length;
           let label = '✓ Create All';
@@ -373,16 +202,7 @@
             label += ` (${eventsCount} events)`;
           }
           
-          btn.textContent = label;
-          btn.style.marginTop = '8px';
-          btn.style.padding = '8px 12px';
-          btn.style.background = '#ff9800';
-          btn.style.color = 'white';
-          btn.style.border = 'none';
-          btn.style.borderRadius = '6px';
-          btn.style.cursor = 'pointer';
-          btn.style.fontSize = '12px';
-          btn.addEventListener('click', () => {
+          const btn = createActionButton(label, '#ff9800', () => {
             let created = 0;
             for (const action of data.allActions) {
               if (action.type === 'createTodo' && action.data && window.calendarAddTodo) {
@@ -401,7 +221,7 @@
                 created++;
               }
             }
-            appendMessage('meibot', `All done! Created ${created} items. ✅`);
+            appendMessage('meibot', `All done! Created ${created} items. ✅`, chatEl);
             btn.disabled = true;
             lastSuggestedAction = null;
             lastActionData = null;
@@ -409,84 +229,40 @@
           chatEl.appendChild(btn);
         }
         chatEl.scrollTop = chatEl.scrollHeight;
-      } else if (data.suggestedAction === 'createTodo' && data.actionData) {
-        // Fallback for old format
-        const btn = document.createElement('button');
-        btn.textContent = `✓ Create: "${data.actionData.text}"`;
-        btn.style.marginTop = '8px';
-        btn.style.padding = '8px 12px';
-        btn.style.background = '#4caf50';
-        btn.style.color = 'white';
-        btn.style.border = 'none';
-        btn.style.borderRadius = '6px';
-        btn.style.cursor = 'pointer';
-        btn.style.fontSize = '12px';
-        btn.addEventListener('click', () => {
-          if (window.calendarAddTodo) {
-            window.calendarAddTodo(data.actionData.text, data.actionData.reminder);
-            appendMessage('meibot', 'Task created! 📝');
-            btn.disabled = true;
-            lastSuggestedAction = null;
-            lastActionData = null;
-          }
-        });
-        chatEl.appendChild(btn);
-        chatEl.scrollTop = chatEl.scrollHeight;
-      } else if (data.suggestedAction === 'createEvent' && data.actionData) {
-        // Fallback for old format
-        const btn = document.createElement('button');
-        btn.textContent = `✓ Schedule: "${data.actionData.title || 'Event'}"`;
-        btn.style.marginTop = '8px';
-        btn.style.padding = '8px 12px';
-        btn.style.background = '#2196f3';
-        btn.style.color = 'white';
-        btn.style.border = 'none';
-        btn.style.borderRadius = '6px';
-        btn.style.cursor = 'pointer';
-        btn.style.fontSize = '12px';
-        btn.addEventListener('click', () => {
-          if (window.calendarAddOrUpdateEvent) {
-            const event = {
-              id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-              title: data.actionData.title,
-              date: data.actionData.date,
-              time: data.actionData.time || '09:00',
-              duration: data.actionData.duration || 60,
-              notes: ''
-            };
-            window.calendarAddOrUpdateEvent(event);
-            appendMessage('meibot', 'Event scheduled! 📅');
-            btn.disabled = true;
-            lastSuggestedAction = null;
-            lastActionData = null;
-          }
-        });
-        chatEl.appendChild(btn);
-        chatEl.scrollTop = chatEl.scrollHeight;
       }
     } catch (err) {
-      typingEl.classList.add('hidden');
+      if (typingEl) typingEl.classList.add('hidden');
       console.error('[Meibot] Error:', err);
-      appendMessage('meibot', 'Connection error. Please try again.');
+      appendMessage('meibot', 'Connection error. Please try again.', chatEl);
     }
-  });
+  }
 
-  // Close button
-  closeBtn.addEventListener('click', () => {
-    modal.classList.add('hidden');
-  });
+  // Attach form handlers
+  if (desktopForm && desktopInput && desktopChat) {
+    desktopForm.addEventListener('submit', (e) => handleFormSubmit(e, desktopForm, desktopInput, desktopChat));
+  }
+  
+  if (mobileForm && mobileInput && mobileChat) {
+    mobileForm.addEventListener('submit', (e) => handleFormSubmit(e, mobileForm, mobileInput, mobileChat));
+  }
+
+  // Close mobile modal
+  if (mobileClose && mobileModal) {
+    mobileClose.addEventListener('click', () => {
+      mobileModal.style.display = 'none';
+      mobileModal.classList.remove('shown');
+    });
+  }
+
 
   // ========== MEIBOT EVENT/TODO CREATORS ==========
-  // These functions are called when Meibot suggests creating an event or todo
   
   window.meibotCreateEvent = function(actionData) {
-    // actionData: { title, date (YYYY-MM-DD), time (HH:MM), text? }
     if (!actionData || !actionData.title || !actionData.date) {
       console.error('[Meibot] Invalid event data:', actionData);
       return;
     }
     
-    // Call calendar.js's addOrUpdateEvent through the exposed window function
     if (window.calendarAddOrUpdateEvent) {
       const event = {
         id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -503,14 +279,11 @@
   };
 
   window.meibotCreateTodo = function(todoText, reminderDescription) {
-    // todoText: string description of the todo
-    // reminderDescription: optional string like "in 1 hour" or "tomorrow at 9am"
     if (!todoText || typeof todoText !== 'string') {
       console.error('[Meibot] Invalid todo text:', todoText);
       return;
     }
 
-    // Call calendar.js's todo creation through the exposed window function
     if (window.calendarAddTodo) {
       window.calendarAddTodo(todoText, reminderDescription);
       console.log('[Meibot] Todo created:', todoText, 'with reminder:', reminderDescription);
@@ -519,14 +292,26 @@
     }
   };
 
-  // Toggle modal from button
-  const toggleBtn = document.querySelector('.schedule-button');
-  if (toggleBtn) {
+  // Toggle mobile modal from button
+  const toggleBtn = document.getElementById('meibot-btn-mobile');
+  if (toggleBtn && mobileModal) {
     toggleBtn.addEventListener('click', () => {
-      modal.classList.toggle('hidden');
-      if (!modal.classList.contains('hidden') && conversation.length === 0) {
-        appendMessage('meibot', 'Hi! 👋 I\'m Meibot, your AI scheduling assistant. How can I help you organize your day?');
+      const isHidden = mobileModal.style.display === 'none' || !mobileModal.style.display;
+      mobileModal.style.display = isHidden ? 'flex' : 'none';
+      if (isHidden) {
+        mobileModal.classList.add('shown');
+      } else {
+        mobileModal.classList.remove('shown');
+      }
+      if (isHidden && mobileInput) {
+        setTimeout(() => mobileInput.focus(), 100);
+        // Optionally show greeting on first open
+        if (mobileChat && mobileChat.children.length === 0) {
+          appendMessage('meibot', 'Hi! 👋 I\'m Meibot, your AI scheduling assistant. How can I help you organize your day?', mobileChat);
+        }
       }
     });
   }
+
+  console.log('[Meibot] Initialized - Desktop:', hasDesktop ? '✓' : '✗', 'Mobile:', hasMobile ? '✓' : '✗');
 })();

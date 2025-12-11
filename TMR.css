@@ -1024,6 +1024,7 @@ select option {
 
 /* Bottom buttons hover styles */
 .bottom-buttons .tmr-btn:hover {
+    background-color: var(--accent-hover, #006fab);
 }
 
 .bottom-buttons2 button:hover {

@@ -270,50 +270,71 @@ if (leaveBtn) {
 
 
     function initTodoModal(){
-        // Use the existing side-panel To Do button on TMR.html
-        const menuBtn = document.querySelector('.todo-button');
+        // Get all todo-related elements
+        const mobileBtn = document.getElementById('todo-btn-mobile');
         const backdrop = document.getElementById('todo-modal-backdrop');
         const modalInput = document.getElementById('todo-modal-input');
         const modalAdd = document.getElementById('todo-modal-add');
         const modalClose = document.getElementById('todo-modal-close');
         const modalList = document.getElementById('todo-modal-list');
+        
+        // Desktop panel elements
+        const desktopInput = document.getElementById('todo-input');
+        const desktopAdd = document.getElementById('add-todo');
+        const desktopList = document.getElementById('todo-list');
 
-        if(!menuBtn || !backdrop || !modalInput || !modalAdd || !modalClose || !modalList) return;
+        if(!backdrop || !modalInput || !modalAdd || !modalClose || !modalList) return;
 
-        function renderModal(){
+        // Unified render function that updates BOTH desktop and mobile lists
+        function renderTodos(){
             const todos = loadTodos();
+            
+            // Render to mobile modal list
             modalList.innerHTML = '';
+            
+            // Render to desktop list (if it exists)
+            if(desktopList) desktopList.innerHTML = '';
+            
             todos.forEach(t => {
-                const li = document.createElement('li'); li.className = 'todo-item'; li.dataset.id = t.id;
-                const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
-                cb.addEventListener('change', ()=>{ if(cb.checked){ const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderModal(); } });
-                const textWrap = document.createElement('div'); textWrap.className = 'todo-text';
-                const span = document.createElement('span'); span.textContent = t.text; span.tabIndex = 0;
-                span.addEventListener('dblclick', ()=> startEdit());
-                span.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') startEdit(); });
+                // Create todo item for mobile modal
+                const createTodoLi = () => {
+                    const li = document.createElement('li'); li.className = 'todo-item'; li.dataset.id = t.id;
+                    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
+                    cb.addEventListener('change', ()=>{ if(cb.checked){ const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderTodos(); } });
+                    const textWrap = document.createElement('div'); textWrap.className = 'todo-text';
+                    const span = document.createElement('span'); span.textContent = t.text; span.tabIndex = 0;
+                    span.addEventListener('dblclick', ()=> startEdit());
+                    span.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') startEdit(); });
 
-                function startEdit(){
-                    const inputEl = document.createElement('input'); inputEl.type = 'text'; inputEl.value = t.text;
-                    const minutesInput = document.createElement('input'); minutesInput.type = 'number'; minutesInput.min = 0;
-                    // prefill minutes if reminder exists
-                    if(t.reminderAt){ const mins = Math.max(0, Math.ceil((Number(t.reminderAt) - Date.now())/60000)); minutesInput.value = String(mins); }
-                    inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') finishEdit(); if(e.key==='Escape') renderModal(); });
-                    function finishEdit(){ const v = inputEl.value.trim(); const mins = parseInt(minutesInput.value,10); if(v){ const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all[idx].text = v; if(!isNaN(mins) && mins > 0){ all[idx].reminderAt = Date.now() + mins*60000; } else { delete all[idx].reminderAt; } saveTodos(all); } renderModal(); } else { renderModal(); } }
-                    const saveBtn = document.createElement('button'); saveBtn.className='small-tmr-btn'; saveBtn.textContent='Save'; saveBtn.addEventListener('click', finishEdit);
-                    const cancelBtn = document.createElement('button'); cancelBtn.className='small-tmr-btn'; cancelBtn.textContent='Cancel'; cancelBtn.addEventListener('click', renderModal);
-                    const minutesLabel = document.createElement('label'); minutesLabel.style.marginLeft = '8px'; minutesLabel.textContent = 'Remind (min): ';
-                    minutesLabel.appendChild(minutesInput);
-                    textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(minutesLabel); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
-                }
+                    function startEdit(){
+                        const inputEl = document.createElement('input'); inputEl.type = 'text'; inputEl.value = t.text;
+                        const minutesInput = document.createElement('input'); minutesInput.type = 'number'; minutesInput.min = 0;
+                        // prefill minutes if reminder exists
+                        if(t.reminderAt){ const mins = Math.max(0, Math.ceil((Number(t.reminderAt) - Date.now())/60000)); minutesInput.value = String(mins); }
+                        inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') finishEdit(); if(e.key==='Escape') renderTodos(); });
+                        function finishEdit(){ const v = inputEl.value.trim(); const mins = parseInt(minutesInput.value,10); if(v){ const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all[idx].text = v; if(!isNaN(mins) && mins > 0){ all[idx].reminderAt = Date.now() + mins*60000; } else { delete all[idx].reminderAt; } saveTodos(all); } renderTodos(); } else { renderTodos(); } }
+                        const saveBtn = document.createElement('button'); saveBtn.className='small-tmr-btn'; saveBtn.textContent='Save'; saveBtn.addEventListener('click', finishEdit);
+                        const cancelBtn = document.createElement('button'); cancelBtn.className='small-tmr-btn'; cancelBtn.textContent='Cancel'; cancelBtn.addEventListener('click', renderTodos);
+                        const minutesLabel = document.createElement('label'); minutesLabel.style.marginLeft = '8px'; minutesLabel.textContent = 'Remind (min): ';
+                        minutesLabel.appendChild(minutesInput);
+                        textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(minutesLabel); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
+                    }
 
-                const actions = document.createElement('div'); actions.className = 'todo-actions';
-                const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent='Edit'; editBtn.addEventListener('click', startEdit);
-                const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderModal(); });
-                actions.appendChild(editBtn); actions.appendChild(delBtn);
+                    const actions = document.createElement('div'); actions.className = 'todo-actions';
+                    const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent='Edit'; editBtn.addEventListener('click', startEdit);
+                    const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderTodos(); });
+                    actions.appendChild(editBtn); actions.appendChild(delBtn);
 
-                textWrap.appendChild(span);
-                li.appendChild(cb); li.appendChild(textWrap); li.appendChild(actions);
-                modalList.appendChild(li);
+                    textWrap.appendChild(span);
+                    li.appendChild(cb); li.appendChild(textWrap); li.appendChild(actions);
+                    return li;
+                };
+                
+                // Add to mobile modal
+                modalList.appendChild(createTodoLi());
+                
+                // Add to desktop list if it exists
+                if(desktopList) desktopList.appendChild(createTodoLi());
             });
         }
 
@@ -322,12 +343,46 @@ if (leaveBtn) {
 
         // Listen for Meibot todo creation and re-render
         window.addEventListener('meibotTodoCreated', () => {
-            renderModal(); // Re-render the todo list to show new todo
+            renderTodos(); // Re-render the todo list to show new todo
         });
 
-        menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); // close dropdown if open
-            const menu = document.getElementById('tmr-menu'); if(menu) menu.hidden = true; renderModal(); openModal();
-        });
+        // Mobile button click handler
+        if(mobileBtn) {
+            mobileBtn.addEventListener('click', (e)=>{ 
+                e.stopPropagation(); 
+                const menu = document.getElementById('tmr-menu'); if(menu) menu.hidden = true; 
+                renderTodos(); 
+                openModal();
+            });
+        }
+        
+        // Desktop add button handler
+        if(desktopAdd && desktopInput) {
+            desktopAdd.addEventListener('click', ()=>{
+                const text = desktopInput.value.trim();
+                if(!text) return;
+                const todos = loadTodos();
+                todos.push({ id: Date.now(), text, reminderAt: null });
+                saveTodos(todos);
+                desktopInput.value = '';
+                renderTodos();
+            });
+            desktopInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') desktopAdd.click(); });
+        }
+        
+        // Modal add button handler
+        if(modalAdd && modalInput) {
+            modalAdd.addEventListener('click', ()=>{
+                const text = modalInput.value.trim();
+                if(!text) return;
+                const todos = loadTodos();
+                todos.push({ id: Date.now(), text, reminderAt: null });
+                saveTodos(todos);
+                modalInput.value = '';
+                renderTodos();
+            });
+            modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); });
+        }
 
         // notification toggle wiring in the TMR menu
         const notifyToggle = document.getElementById('notify-toggle');
@@ -627,7 +682,7 @@ if (leaveBtn) {
         backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
 
         // initial render (keeps sync with other pages)
-        renderModal();
+        renderTodos();
         // initialize badge state immediately when modal is initialized
         try{ updateBadge(); }catch(e){}
     }
