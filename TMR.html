@@ -273,6 +273,7 @@
                 flex-direction: column;
                 width: 100%;
                 height: 100%;
+                position: relative;
             }
 
             /* Hide desktop panels on mobile */
@@ -356,15 +357,20 @@
                 pointer-events: none;
             }
 
-            /* Modal sections for tabs */
+            /* Modal sections for tabs - overlay on calendar space */
             #todo-modal-backdrop {
-                position: static;
+                position: absolute;
+                top: 45px;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 background: none;
-                flex: 1;
                 overflow-y: auto;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
+                display: flex;
+                flex-direction: column;
             }
 
             #todo-modal-backdrop.active {
@@ -373,14 +379,18 @@
             }
 
             #meibot-modal {
-                position: static;
+                position: absolute;
+                top: 45px;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 background: none;
-                flex: 1;
                 overflow: hidden;
                 flex-direction: column;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
+                display: flex;
             }
 
             #meibot-modal.active {
@@ -496,6 +506,7 @@
                 flex-direction: column;
                 width: 100%;
                 height: 100%;
+                position: relative;
             }
 
             /* Hide desktop panels on mobile */
@@ -565,6 +576,7 @@
                 opacity: 1;
                 pointer-events: auto;
                 transition: opacity 0.3s ease;
+                position: relative;
             }
 
             .calendar-section:not(.active) {
@@ -572,16 +584,26 @@
                 pointer-events: none;
             }
 
-            /* Modal sections for tabs */
+            .calendar-section.active {
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Modal sections for tabs - overlay on calendar space */
             #todo-modal-backdrop {
-                position: static;
+                position: absolute;
+                top: 45px;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 background: none;
-                flex: 1;
                 overflow-y: auto;
                 border: none;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
+                display: flex;
+                flex-direction: column;
             }
 
             #todo-modal-backdrop.active {
@@ -590,14 +612,18 @@
             }
 
             #meibot-modal {
-                position: static;
+                position: absolute;
+                top: 45px;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 background: none;
-                flex: 1;
                 overflow: hidden;
                 flex-direction: column;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
+                display: flex;
             }
 
             #meibot-modal.active {
