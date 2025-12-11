@@ -1050,6 +1050,13 @@
     <!-- Main Page Container -->
     <div class="calendar-page">
 
+        <!-- Mobile Buttons Bar (visible only on mobile <1025px) -->
+        <div class="calendar-buttons">
+            <button id="calendar-btn-mobile" class="tmr-btn small-tmr-btn active">📅 Calendar</button>
+            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">✓ Todo</button>
+            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">🤖 Meibot</button>
+        </div>
+
         <!-- TODO PANEL (LEFT SIDE - Desktop only) -->
         <div class="todo-panel">
             <h3>To Do</h3>
@@ -1184,13 +1191,6 @@
                 <input id="meibot-input" type="text" placeholder="Ask Meibot..." />
                 <button type="submit" class="small-tmr-btn">Send</button>
             </form>
-        </div>
-
-        <!-- Mobile Buttons Bar (visible only on mobile <1025px) -->
-        <div class="calendar-buttons">
-            <button id="calendar-btn-mobile" class="tmr-btn small-tmr-btn active">📅 Calendar</button>
-            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">✓ Todo</button>
-            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">🤖 Meibot</button>
         </div>
 
         <!-- TODO MODAL (for mobile) -->
