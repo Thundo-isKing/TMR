@@ -686,10 +686,62 @@ if (leaveBtn) {
         try{ updateBadge(); }catch(e){}
     }
 
+    function initMobileTabs() {
+        // Get all tab buttons
+        const calendarBtn = document.getElementById('calendar-btn-mobile');
+        const todoBtn = document.getElementById('todo-btn-mobile');
+        const meibotBtn = document.getElementById('meibot-btn-mobile');
+        
+        // Get all modal/section elements
+        const calendarSection = document.querySelector('.calendar-section');
+        const todoBackdrop = document.getElementById('todo-modal-backdrop');
+        const meibotModal = document.getElementById('meibot-modal');
+
+        if (!calendarBtn || !todoBtn || !meibotBtn) return;
+
+        function switchTab(tabName) {
+            // Remove active class from all buttons
+            [calendarBtn, todoBtn, meibotBtn].forEach(btn => btn.classList.remove('active'));
+            
+            // Hide all modals/sections
+            if (calendarSection) calendarSection.classList.remove('active');
+            if (todoBackdrop) todoBackdrop.classList.remove('active');
+            if (meibotModal) meibotModal.classList.remove('active');
+            
+            // Show selected tab
+            switch (tabName) {
+                case 'calendar':
+                    if (calendarBtn) calendarBtn.classList.add('active');
+                    if (calendarSection) calendarSection.classList.add('active');
+                    break;
+                case 'todo':
+                    if (todoBtn) todoBtn.classList.add('active');
+                    if (todoBackdrop) {
+                        todoBackdrop.classList.add('active');
+                        todoBackdrop.hidden = false;
+                    }
+                    break;
+                case 'meibot':
+                    if (meibotBtn) meibotBtn.classList.add('active');
+                    if (meibotModal) meibotModal.classList.add('active');
+                    break;
+            }
+        }
+
+        // Attach click handlers
+        calendarBtn.addEventListener('click', () => switchTab('calendar'));
+        todoBtn.addEventListener('click', () => switchTab('todo'));
+        meibotBtn.addEventListener('click', () => switchTab('meibot'));
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTodoModal);
+        document.addEventListener('DOMContentLoaded', () => {
+            initTodoModal();
+            initMobileTabs();
+        });
     } else {
         initTodoModal();
+        initMobileTabs();
     }
 
 })();

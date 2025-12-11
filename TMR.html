@@ -259,8 +259,8 @@
             }
         }
 
-        /* ===== Mobile Landscape (Γëñ1024px, landscape) ===== */
-        @media (max-width: 1024px) and (orientation: landscape) {
+        /* ===== Mobile Landscape (ANY landscape orientation) ===== */
+        @media (orientation: landscape) {
             body {
                 display: flex;
                 flex-direction: column;
@@ -361,45 +361,47 @@
 
             /* Modal sections for tabs - overlay on calendar space */
             #todo-modal-backdrop {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: none;
-                overflow-y: auto;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.3s ease;
-                display: flex;
-                flex-direction: column;
-                padding-top: 45px;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: none !important;
+                overflow-y: auto !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transition: opacity 0.3s ease !important;
+                display: flex !important;
+                flex-direction: column !important;
+                padding-top: 45px !important;
+                z-index: 100 !important;
             }
 
             #todo-modal-backdrop.active {
-                opacity: 1;
-                pointer-events: auto;
+                opacity: 1 !important;
+                pointer-events: auto !important;
             }
 
             #meibot-modal {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: none;
-                overflow: hidden;
-                flex-direction: column;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.3s ease;
-                display: flex;
-                padding-top: 45px;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: none !important;
+                overflow: hidden !important;
+                flex-direction: column !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transition: opacity 0.3s ease !important;
+                display: flex !important;
+                padding-top: 45px !important;
+                z-index: 100 !important;
             }
 
             #meibot-modal.active {
-                opacity: 1;
-                pointer-events: auto;
+                opacity: 1 !important;
+                pointer-events: auto !important;
             }
 
             .calendar-section {
@@ -621,8 +623,8 @@
             }
         }
 
-        /* ===== Mobile Portrait (Γëñ768px, portrait) ===== */
-        @media (max-width: 768px) and (orientation: portrait) {
+        /* ===== Mobile Portrait (ANY portrait orientation) ===== */
+        @media (orientation: portrait) {
             body {
                 display: flex;
                 flex-direction: column;
@@ -670,6 +672,7 @@
                 align-items: flex-end;
                 order: -1;
                 width: 100%;
+                z-index: 200;
             }
 
             .calendar-buttons button {
@@ -725,45 +728,49 @@
 
             /* Modal sections for tabs - overlay on calendar space */
             #todo-modal-backdrop {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: none;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: none !important;
                 overflow: hidden;
                 border: none;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
-                display: flex;
+                display: flex !important;
                 flex-direction: column;
-                padding-top: 45px;
+                padding-top: 45px !important;
+                z-index: 100 !important;
+                inset: auto !important;
             }
 
             #todo-modal-backdrop.active {
-                opacity: 1;
-                pointer-events: auto;
+                opacity: 1 !important;
+                pointer-events: auto !important;
             }
 
             #meibot-modal {
-                position: absolute;
-                top: 45px;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: none;
-                overflow: hidden;
-                flex-direction: column;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.3s ease;
-                display: flex;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background: none !important;
+                overflow: hidden !important;
+                flex-direction: column !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                transition: opacity 0.3s ease !important;
+                display: flex !important;
+                padding-top: 45px !important;
+                z-index: 100 !important;
             }
 
             #meibot-modal.active {
-                opacity: 1;
-                pointer-events: auto;
+                opacity: 1 !important;
+                pointer-events: auto !important;
             }
 
             .calendar-section {
@@ -1322,6 +1329,29 @@
             // Initialize with calendar tab active
             switchTab('calendar');
         })();
+    </script>
+
+    <script>
+        // Debug: Check modal positioning
+        window.addEventListener('load', () => {
+            const meibot = document.getElementById('meibot-modal');
+            const todoBackdrop = document.getElementById('todo-modal-backdrop');
+            if (meibot) {
+                const meiStyle = window.getComputedStyle(meibot);
+                console.log('[DEBUG] Meibot Modal Computed Styles:');
+                console.log('  position:', meiStyle.position);
+                console.log('  top:', meiStyle.top);
+                console.log('  left:', meiStyle.left);
+                console.log('  right:', meiStyle.right);
+                console.log('  bottom:', meiStyle.bottom);
+                console.log('  display:', meiStyle.display);
+                console.log('  opacity:', meiStyle.opacity);
+                console.log('  padding-top:', meiStyle.paddingTop);
+                console.log('  height:', meiStyle.height);
+                console.log('  width:', meiStyle.width);
+                console.log('  overflow:', meiStyle.overflow);
+            }
+        });
     </script>
 </body>
 </html>
