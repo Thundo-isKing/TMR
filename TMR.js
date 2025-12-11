@@ -275,7 +275,6 @@ if (leaveBtn) {
         const backdrop = document.getElementById('todo-modal-backdrop');
         const modalInput = document.getElementById('todo-modal-input');
         const modalAdd = document.getElementById('todo-modal-add');
-        const modalClose = document.getElementById('todo-modal-close');
         const modalList = document.getElementById('todo-modal-list');
         
         // Desktop panel elements
@@ -283,7 +282,8 @@ if (leaveBtn) {
         const desktopAdd = document.getElementById('add-todo');
         const desktopList = document.getElementById('todo-list');
 
-        if(!backdrop || !modalInput || !modalAdd || !modalClose || !modalList) return;
+        // Check only required elements (no close button needed - handled by switchTab)
+        if(!backdrop || !modalInput || !modalAdd || !modalList) return;
 
         // Unified render function that updates BOTH desktop and mobile lists
         function renderTodos(){

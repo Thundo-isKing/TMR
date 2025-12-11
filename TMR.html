@@ -346,41 +346,57 @@
                 overflow-y: auto;
                 overflow-x: hidden;
                 order: 0;
+                opacity: 1;
+                pointer-events: auto;
+                transition: opacity 0.3s ease;
             }
 
             .calendar-section:not(.active) {
-                display: none;
-            }
-
-            .calendar-section.active {
-                display: flex;
-                flex-direction: column;
+                opacity: 0;
+                pointer-events: none;
             }
 
             /* Modal sections for tabs */
             #todo-modal-backdrop {
-                display: none !important;
                 position: static;
                 background: none;
                 flex: 1;
                 overflow-y: auto;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
             }
 
             #todo-modal-backdrop.active {
-                display: flex !important;
+                opacity: 1;
+                pointer-events: auto;
             }
 
             #meibot-modal {
-                display: none !important;
                 position: static;
                 background: none;
                 flex: 1;
                 overflow: hidden;
                 flex-direction: column;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
             }
 
             #meibot-modal.active {
-                display: flex !important;
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .calendar-section {
+                opacity: 1;
+                pointer-events: auto;
+                transition: opacity 0.3s ease;
+            }
+
+            .calendar-section:not(.active) {
+                opacity: 0;
+                pointer-events: none;
             }
 
             .todo-modal {
@@ -546,42 +562,58 @@
                 overflow-y: auto;
                 overflow-x: hidden;
                 order: 0;
+                opacity: 1;
+                pointer-events: auto;
+                transition: opacity 0.3s ease;
             }
 
             .calendar-section:not(.active) {
-                display: none;
-            }
-
-            .calendar-section.active {
-                display: flex;
-                flex-direction: column;
+                opacity: 0;
+                pointer-events: none;
             }
 
             /* Modal sections for tabs */
             #todo-modal-backdrop {
-                display: none !important;
                 position: static;
                 background: none;
                 flex: 1;
                 overflow-y: auto;
                 border: none;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
             }
 
             #todo-modal-backdrop.active {
-                display: flex !important;
+                opacity: 1;
+                pointer-events: auto;
             }
 
             #meibot-modal {
-                display: none !important;
                 position: static;
                 background: none;
                 flex: 1;
                 overflow: hidden;
                 flex-direction: column;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
             }
 
             #meibot-modal.active {
-                display: flex !important;
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .calendar-section {
+                opacity: 1;
+                pointer-events: auto;
+                transition: opacity 0.3s ease;
+            }
+
+            .calendar-section:not(.active) {
+                opacity: 0;
+                pointer-events: none;
             }
 
             .todo-modal {
@@ -694,7 +726,7 @@
     <div id="TMR-tag" class="tmr-tag">
         <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
             <h1 style="margin:0;">TMR</h1>
-            <span class="caret">Γû╛</span>
+            <span class="caret">▾</span>
         </button>
         <div id="tmr-menu" class="tmr-menu" hidden>
             <div class="tmr-menu-item">
@@ -889,42 +921,42 @@
 
         <!-- Mobile Buttons Bar (visible only on mobile <1025px) -->
         <div class="calendar-buttons">
-            <button id="calendar-btn-mobile" class="tmr-btn small-tmr-btn active">≡ƒõî Calendar</button>
-            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">≡ƒôï Todo</button>
-            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">≡ƒñû Meibot</button>
+            <button id="calendar-btn-mobile" class="tmr-btn small-tmr-btn active">📅 Calendar</button>
+            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">✓ Todo</button>
+            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">🤖 Meibot</button>
         </div>
 
-    </div>
-
-    <!-- TODO MODAL (for mobile) -->
-    <div id="todo-modal-backdrop" class="todo-modal-backdrop">
-        <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
-            <h3 id="todo-modal-title">To Do</h3>
-            <div class="todo-input-row">
-                <input id="todo-modal-input" type="text" placeholder="Add a todo..." />
-                <input id="todo-modal-minutes-input" type="number" min="0" placeholder="remind in (min)" style="width:110px;" />
-                <button id="todo-modal-add" class="small-tmr-btn">Add</button>
+        <!-- TODO MODAL (for mobile) -->
+        <div id="todo-modal-backdrop" class="todo-modal-backdrop">
+            <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
+                <h3 id="todo-modal-title">To Do</h3>
+                <div class="todo-input-row">
+                    <input id="todo-modal-input" type="text" placeholder="Add a todo..." />
+                    <input id="todo-modal-minutes-input" type="number" min="0" placeholder="remind in (min)" style="width:110px;" />
+                    <button id="todo-modal-add" class="small-tmr-btn">Add</button>
+                </div>
+                <ul id="todo-modal-list" class="todo-list"></ul>
             </div>
-            <ul id="todo-modal-list" class="todo-list"></ul>
         </div>
-    </div>
 
-    <!-- MEIBOT MODAL (for mobile) -->
-    <div id="meibot-modal" class="meibot-modal">
-        <div class="meibot-modal-content">
-            <div class="meibot-header">
-                <h2>Meibot</h2>
-                <button id="meibot-modal-close" class="meibot-close">&times;</button>
+        <!-- MEIBOT MODAL (for mobile) -->
+        <div id="meibot-modal" class="meibot-modal">
+            <div class="meibot-modal-content">
+                <div class="meibot-header">
+                    <h2>Meibot</h2>
+                    <button id="meibot-modal-close" class="meibot-close">&times;</button>
+                </div>
+                <div id="meibot-modal-chat" class="meibot-chat"></div>
+                <div id="meibot-modal-typing" class="meibot-typing hidden">
+                    <span>Meibot is thinking...</span>
+                </div>
+                <form id="meibot-modal-form" class="meibot-form">
+                    <input id="meibot-modal-input" type="text" placeholder="Ask me anything..." />
+                    <button type="submit" class="tmr-btn small-tmr-btn">Send</button>
+                </form>
             </div>
-            <div id="meibot-modal-chat" class="meibot-chat"></div>
-            <div id="meibot-modal-typing" class="meibot-typing hidden">
-                <span>Meibot is thinking...</span>
-            </div>
-            <form id="meibot-modal-form" class="meibot-form">
-                <input id="meibot-modal-input" type="text" placeholder="Ask me anything..." />
-                <button type="submit" class="tmr-btn small-tmr-btn">Send</button>
-            </form>
         </div>
+
     </div>
 
     <!-- Scripts -->

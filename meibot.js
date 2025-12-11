@@ -246,13 +246,8 @@
     mobileForm.addEventListener('submit', (e) => handleFormSubmit(e, mobileForm, mobileInput, mobileChat));
   }
 
-  // Close mobile modal
-  if (mobileClose && mobileModal) {
-    mobileClose.addEventListener('click', () => {
-      mobileModal.style.display = 'none';
-      mobileModal.classList.remove('shown');
-    });
-  }
+  // Note: Close button is handled by switchTab() in TMR.html
+  // Do not add click handlers here as it will conflict with the tab system
 
 
   // ========== MEIBOT EVENT/TODO CREATORS ==========
@@ -292,26 +287,8 @@
     }
   };
 
-  // Toggle mobile modal from button
-  const toggleBtn = document.getElementById('meibot-btn-mobile');
-  if (toggleBtn && mobileModal) {
-    toggleBtn.addEventListener('click', () => {
-      const isHidden = mobileModal.style.display === 'none' || !mobileModal.style.display;
-      mobileModal.style.display = isHidden ? 'flex' : 'none';
-      if (isHidden) {
-        mobileModal.classList.add('shown');
-      } else {
-        mobileModal.classList.remove('shown');
-      }
-      if (isHidden && mobileInput) {
-        setTimeout(() => mobileInput.focus(), 100);
-        // Optionally show greeting on first open
-        if (mobileChat && mobileChat.children.length === 0) {
-          appendMessage('meibot', 'Hi! ≡ƒæï I\'m Meibot, your AI scheduling assistant. How can I help you organize your day?', mobileChat);
-        }
-      }
-    });
-  }
+  // Note: Meibot button click is now handled by switchTab() in TMR.html
+  // Removing duplicate handler to prevent conflicts with the tab system
 
   console.log('[Meibot] Initialized - Desktop:', hasDesktop ? 'Γ£ô' : 'Γ£ù', 'Mobile:', hasMobile ? 'Γ£ô' : 'Γ£ù');
 })();
