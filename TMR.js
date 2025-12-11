@@ -1,4 +1,4 @@
-
+﻿
 const displayClock = () => {
     const now = new Date();
     let hrs = now.getHours();
@@ -506,7 +506,7 @@ if (leaveBtn) {
                             console.debug('[serverFetch] trying same-origin', path);
                             const res = await fetch(path, opts);
                             if(res){ console.debug('[serverFetch] same-origin response', path, res.status); }
-                            // only accept successful responses here — allow fallback to the push server
+                            // only accept successful responses here ΓÇö allow fallback to the push server
                             if(res && res.ok) return res;
                         }catch(e){ console.debug('[serverFetch] same-origin fetch failed', e); /* ignore and try fallback */ }
 
@@ -559,7 +559,7 @@ if (leaveBtn) {
                 try{
                     const existing = await reg.pushManager.getSubscription();
                     if(existing){
-                        // Already subscribed — send to server (if not already there) and exit
+                        // Already subscribed ΓÇö send to server (if not already there) and exit
                         console.log('[TMR] Already subscribed to push');
                         try{ 
                             // Get or create device ID

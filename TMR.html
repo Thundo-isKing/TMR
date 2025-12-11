@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -259,7 +259,7 @@
             }
         }
 
-        /* ===== Mobile Landscape (≤1024px, landscape) ===== */
+        /* ===== Mobile Landscape (Γëñ1024px, landscape) ===== */
         @media (max-width: 1024px) and (orientation: landscape) {
             body {
                 display: flex;
@@ -297,42 +297,109 @@
                 overflow-x: hidden;
             }
 
-            /* Buttons sidebar on right */
+            /* Tab bar for mobile */
             .calendar-buttons {
                 display: flex;
-                flex-direction: column;
-                width: 100px;
-                gap: 8px;
-                padding: 8px;
-                border-left: 2px solid #ddd;
-                background: white;
-                overflow-y: auto;
+                flex-direction: row;
+                height: 45px;
+                gap: 2px;
+                padding: 0;
+                border-bottom: 2px solid #999;
+                background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+                flex-shrink: 0;
+                align-items: flex-end;
             }
 
             .calendar-buttons button {
                 flex: 1;
-                min-height: 60px;
+                height: 40px;
+                padding: 8px 12px;
+                border: 1px solid #999;
+                border-bottom: none;
+                border-radius: 8px 8px 0 0;
+                background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+                color: #333;
                 font-size: 12px;
-                padding: 4px;
+                font-weight: 500;
+                cursor: pointer;
+                position: relative;
+                bottom: -2px;
+                transition: all 0.2s ease;
+            }
+
+            .calendar-buttons button:hover:not(.active) {
+                background: linear-gradient(to bottom, #f0f0f0, #d8d8d8);
+            }
+
+            .calendar-buttons button.active {
+                background: white;
+                border-bottom: 2px solid white;
+                color: var(--accent-color, #0089f1);
+                font-weight: 600;
+                bottom: 0;
+            }
+
+            /* Tab content visibility */
+            .calendar-section {
+                display: none;
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .calendar-section.active {
+                display: flex;
+            }
+
+            /* Modal sections for tabs */
+            #todo-modal-backdrop {
+                display: none !important;
+                position: static;
+                background: none;
+                flex: 1;
+                overflow-y: auto;
+            }
+
+            #todo-modal-backdrop.active {
+                display: flex !important;
+            }
+
+            #meibot-modal {
+                display: none !important;
+                position: static;
+                background: none;
+                flex: 1;
+                overflow: hidden;
+                flex-direction: column;
+            }
+
+            #meibot-modal.active {
+                display: flex !important;
+            }
+
+            .todo-modal {
+                background: none;
+                border: none;
+                box-shadow: none;
+                height: 100%;
+                overflow: hidden;
+                flex: 1;
+            }
+
+            .meibot-modal-content {
+                height: 100%;
+                max-height: none;
+                border-radius: 0;
+                width: 100%;
             }
 
             /* Hide persistent panels */
             .panels-container {
                 display: none;
             }
-
-            /* Hide modals by default - only show when clicked */
-            #todo-modal-backdrop, #meibot-modal {
-                display: none !important;
-            }
-
-            /* Show modals when .shown class is added */
-            #todo-modal-backdrop.shown, #meibot-modal.shown {
-                display: flex !important;
-            }
         }
 
-        /* ===== Mobile Portrait (≤768px, portrait) ===== */
+        /* ===== Mobile Portrait (Γëñ768px, portrait) ===== */
         @media (max-width: 768px) and (orientation: portrait) {
             body {
                 display: flex;
@@ -363,46 +430,106 @@
                 flex-direction: column;
             }
 
-            /* Calendar takes top */
-            .calendar-section {
-                flex: 0 1 auto;
-                max-height: calc(100vh - 140px);
-                overflow-y: auto;
-                overflow-x: hidden;
-                margin-top: -250px;
-            }
-
-            /* Buttons bar on bottom */
+            /* Tab bar for mobile */
             .calendar-buttons {
                 display: flex;
-                flex-direction: column;
-                gap: 8px;
-                padding: 8px;
-                border-top: 2px solid #ddd;
-                background: white;
-                height: auto;
+                flex-direction: row;
+                height: 45px;
+                gap: 2px;
+                padding: 0;
+                border-bottom: 2px solid #999;
+                background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
                 flex-shrink: 0;
+                align-items: flex-end;
             }
 
             .calendar-buttons button {
                 flex: 1;
-                min-height: 44px;
-                font-size: 14px;
+                height: 40px;
+                padding: 8px 12px;
+                border: 1px solid #999;
+                border-bottom: none;
+                border-radius: 8px 8px 0 0;
+                background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+                color: #333;
+                font-size: 12px;
+                font-weight: 500;
+                cursor: pointer;
+                position: relative;
+                bottom: -2px;
+                transition: all 0.2s ease;
+            }
+
+            .calendar-buttons button:hover:not(.active) {
+                background: linear-gradient(to bottom, #f0f0f0, #d8d8d8);
+            }
+
+            .calendar-buttons button.active {
+                background: white;
+                border-bottom: 2px solid white;
+                color: var(--accent-color, #0089f1);
+                font-weight: 600;
+                bottom: 0;
+            }
+
+            /* Tab content visibility */
+            .calendar-section {
+                display: none;
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .calendar-section.active {
+                display: flex;
+            }
+
+            /* Modal sections for tabs */
+            #todo-modal-backdrop {
+                display: none !important;
+                position: static;
+                background: none;
+                flex: 1;
+                overflow-y: auto;
+                border: none;
+            }
+
+            #todo-modal-backdrop.active {
+                display: flex !important;
+            }
+
+            #meibot-modal {
+                display: none !important;
+                position: static;
+                background: none;
+                flex: 1;
+                overflow: hidden;
+                flex-direction: column;
+            }
+
+            #meibot-modal.active {
+                display: flex !important;
+            }
+
+            .todo-modal {
+                background: none;
+                border: none;
+                box-shadow: none;
+                height: 100%;
+                overflow: hidden;
+                flex: 1;
+            }
+
+            .meibot-modal-content {
+                height: 100%;
+                max-height: none;
+                border-radius: 0;
+                width: 100%;
             }
 
             /* Hide persistent panels */
             .panels-container {
                 display: none;
-            }
-
-            /* Hide modals by default - only show when clicked */
-            #todo-modal-backdrop, #meibot-modal {
-                display: none !important;
-            }
-
-            /* Show modals when .shown class is added */
-            #todo-modal-backdrop.shown, #meibot-modal.shown {
-                display: flex !important;
             }
         }
 
@@ -433,7 +560,7 @@
     <div id="TMR-tag" class="tmr-tag">
         <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
             <h1 style="margin:0;">TMR</h1>
-            <span class="caret">▾</span>
+            <span class="caret">Γû╛</span>
         </button>
         <div id="tmr-menu" class="tmr-menu" hidden>
             <div class="tmr-menu-item">
@@ -628,8 +755,9 @@
 
         <!-- Mobile Buttons Bar (visible only on mobile <1025px) -->
         <div class="calendar-buttons">
-            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">📋 Todo</button>
-            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">🤖 Meibot</button>
+            <button id="calendar-btn-mobile" class="tmr-btn small-tmr-btn active">≡ƒõî Calendar</button>
+            <button id="todo-btn-mobile" class="tmr-btn small-tmr-btn">≡ƒôï Todo</button>
+            <button id="meibot-btn-mobile" class="tmr-btn small-tmr-btn">≡ƒñû Meibot</button>
         </div>
 
     </div>
@@ -690,61 +818,52 @@
                 });
             }
 
-            // Mobile buttons
-            const todoMobileBtn = document.getElementById('todo-btn-mobile');
-            const meiMobileBtn = document.getElementById('meibot-btn-mobile');
+            // Mobile tab switching
+            const calendarBtn = document.getElementById('calendar-btn-mobile');
+            const todoBtn = document.getElementById('todo-btn-mobile');
+            const meiBtn = document.getElementById('meibot-btn-mobile');
+            const calendarSection = document.querySelector('.calendar-section');
             const todoBackdrop = document.getElementById('todo-modal-backdrop');
             const meiModal = document.getElementById('meibot-modal');
 
-            if (todoMobileBtn) {
-                todoMobileBtn.addEventListener('click', () => {
-                    todoBackdrop.hidden = false;
-                    todoBackdrop.classList.add('shown');
-                });
+            function switchTab(tabName) {
+                // Remove active class from all buttons
+                if (calendarBtn) calendarBtn.classList.remove('active');
+                if (todoBtn) todoBtn.classList.remove('active');
+                if (meiBtn) meiBtn.classList.remove('active');
+
+                // Remove active class from all content
+                if (calendarSection) calendarSection.classList.remove('active');
+                if (todoBackdrop) todoBackdrop.classList.remove('active');
+                if (meiModal) meiModal.classList.remove('active');
+
+                // Add active class to selected tab
+                if (tabName === 'calendar') {
+                    if (calendarBtn) calendarBtn.classList.add('active');
+                    if (calendarSection) calendarSection.classList.add('active');
+                } else if (tabName === 'todo') {
+                    if (todoBtn) todoBtn.classList.add('active');
+                    if (todoBackdrop) todoBackdrop.classList.add('active');
+                } else if (tabName === 'meibot') {
+                    if (meiBtn) meiBtn.classList.add('active');
+                    if (meiModal) meiModal.classList.add('active');
+                }
             }
 
-            if (meiMobileBtn) {
-                meiMobileBtn.addEventListener('click', () => {
-                    meiModal.style.display = 'flex';
-                    meiModal.classList.add('shown');
-                });
+            if (calendarBtn) {
+                calendarBtn.addEventListener('click', () => switchTab('calendar'));
             }
 
-            // Close buttons for modals
-            const todoClose = document.getElementById('todo-modal-close');
-            if (todoClose) {
-                todoClose.addEventListener('click', () => {
-                    todoBackdrop.hidden = true;
-                    todoBackdrop.classList.remove('shown');
-                });
+            if (todoBtn) {
+                todoBtn.addEventListener('click', () => switchTab('todo'));
             }
 
-            const meiClose = document.getElementById('meibot-modal-close');
-            if (meiClose) {
-                meiClose.addEventListener('click', () => {
-                    meiModal.style.display = 'none';
-                    meiModal.classList.remove('shown');
-                });
+            if (meiBtn) {
+                meiBtn.addEventListener('click', () => switchTab('meibot'));
             }
 
-            // Close modal when clicking outside
-            if (todoBackdrop) {
-                todoBackdrop.addEventListener('click', (e) => {
-                    if (e.target === todoBackdrop) {
-                        todoBackdrop.hidden = true;
-                        todoBackdrop.classList.remove('shown');
-                    }
-                });
-            }
-
-            if (meiModal) {
-                meiModal.addEventListener('click', (e) => {
-                    if (e.target === meiModal) {
-                        meiModal.style.display = 'none';
-                        meiModal.classList.remove('shown');
-                    }
-                });
-            }
+            // Initialize with calendar tab active
+            switchTab('calendar');
         })();
     </script>
 </body>

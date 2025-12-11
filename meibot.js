@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Meibot Client - AI-powered scheduling assistant (Groq integration)
  */
 
@@ -101,10 +101,10 @@
       if (typingEl) typingEl.classList.add('hidden');
       if (lastSuggestedAction === 'createTodo' && lastActionData && window.meibotCreateTodo) {
         window.meibotCreateTodo(lastActionData.text, lastActionData.reminder);
-        appendMessage('meibot', 'Task created! 📝', chatEl);
+        appendMessage('meibot', 'Task created! ≡ƒô¥', chatEl);
       } else if (lastSuggestedAction === 'createEvent' && lastActionData && window.meibotCreateEvent) {
         window.meibotCreateEvent(lastActionData);
-        appendMessage('meibot', 'Event scheduled! 📅', chatEl);
+        appendMessage('meibot', 'Event scheduled! ≡ƒôà', chatEl);
       }
       lastSuggestedAction = null;
       lastActionData = null;
@@ -152,12 +152,12 @@
           const action = data.allActions[0];
           if (action.type === 'createTodo' && action.data) {
             const btn = createActionButton(
-              `✓ Create: "${action.data.text}"`,
+              `Γ£ô Create: "${action.data.text}"`,
               '#4caf50',
               () => {
                 if (window.calendarAddTodo) {
                   window.calendarAddTodo(action.data.text, action.data.reminder);
-                  appendMessage('meibot', 'Task created! 📝', chatEl);
+                  appendMessage('meibot', 'Task created! ≡ƒô¥', chatEl);
                   btn.disabled = true;
                   lastSuggestedAction = null;
                   lastActionData = null;
@@ -167,7 +167,7 @@
             chatEl.appendChild(btn);
           } else if (action.type === 'createEvent' && action.data) {
             const btn = createActionButton(
-              `✓ Schedule: "${action.data.title || 'Event'}"`,
+              `Γ£ô Schedule: "${action.data.title || 'Event'}"`,
               '#2196f3',
               () => {
                 if (window.calendarAddOrUpdateEvent) {
@@ -180,7 +180,7 @@
                     notes: ''
                   };
                   window.calendarAddOrUpdateEvent(event);
-                  appendMessage('meibot', 'Event scheduled! 📅', chatEl);
+                  appendMessage('meibot', 'Event scheduled! ≡ƒôà', chatEl);
                   btn.disabled = true;
                   lastSuggestedAction = null;
                   lastActionData = null;
@@ -193,7 +193,7 @@
           // Multiple actions - show "Create All" button
           const todosCount = data.allActions.filter(a => a.type === 'createTodo').length;
           const eventsCount = data.allActions.filter(a => a.type === 'createEvent').length;
-          let label = '✓ Create All';
+          let label = 'Γ£ô Create All';
           if (todosCount > 0 && eventsCount > 0) {
             label += ` (${todosCount} todos, ${eventsCount} events)`;
           } else if (todosCount > 0) {
@@ -221,7 +221,7 @@
                 created++;
               }
             }
-            appendMessage('meibot', `All done! Created ${created} items. ✅`, chatEl);
+            appendMessage('meibot', `All done! Created ${created} items. Γ£à`, chatEl);
             btn.disabled = true;
             lastSuggestedAction = null;
             lastActionData = null;
@@ -307,11 +307,11 @@
         setTimeout(() => mobileInput.focus(), 100);
         // Optionally show greeting on first open
         if (mobileChat && mobileChat.children.length === 0) {
-          appendMessage('meibot', 'Hi! 👋 I\'m Meibot, your AI scheduling assistant. How can I help you organize your day?', mobileChat);
+          appendMessage('meibot', 'Hi! ≡ƒæï I\'m Meibot, your AI scheduling assistant. How can I help you organize your day?', mobileChat);
         }
       }
     });
   }
 
-  console.log('[Meibot] Initialized - Desktop:', hasDesktop ? '✓' : '✗', 'Mobile:', hasMobile ? '✓' : '✗');
+  console.log('[Meibot] Initialized - Desktop:', hasDesktop ? 'Γ£ô' : 'Γ£ù', 'Mobile:', hasMobile ? 'Γ£ô' : 'Γ£ù');
 })();
