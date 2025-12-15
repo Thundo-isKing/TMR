@@ -263,17 +263,18 @@
         @media (orientation: landscape) {
             body {
                 display: flex;
-                flex-direction: column;
+                flex-direction: row;
                 height: 100vh;
                 overflow: hidden;
             }
 
             .calendar-page {
                 display: flex;
-                flex-direction: column;
+                flex-direction: row;
                 width: 100%;
                 height: 100%;
                 position: relative;
+                gap: 0;
             }
 
             /* Hide desktop panels on mobile */
@@ -288,7 +289,55 @@
 
             #mobile-calendar-container {
                 display: flex !important;
+                flex: 1;
+                min-width: 0;
+            }
+
+            /* Buttons on RIGHT side in landscape */
+            .calendar-buttons {
+                display: flex;
                 flex-direction: column;
+                height: 100%;
+                width: 45px;
+                gap: 0;
+                padding: 0;
+                margin: 0;
+                border-left: 2px solid #999;
+                background: linear-gradient(to right, #f5f5f5, #e8e8e8);
+                flex-shrink: 0;
+                align-items: stretch;
+                order: 2;
+                z-index: 200;
+            }
+
+            .calendar-buttons button {
+                flex: 1;
+                width: 45px;
+                padding: 8px 0;
+                border: 1px solid #999;
+                border-left: none;
+                border-radius: 0;
+                background: linear-gradient(to right, #e8e8e8, #d0d0d0);
+                color: #333;
+                font-size: 10px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                writing-mode: vertical-rl;
+                text-orientation: mixed;
+            }
+
+            .calendar-buttons button:hover:not(.active) {
+                background: linear-gradient(to right, #f0f0f0, #d8d8d8);
+            }
+
+            .calendar-buttons button.active {
+                background: white;
+                border-left: 2px solid white;
+                color: var(--accent-color, #0089f1);
+                font-weight: 600;
+                border: 1px solid #999;
+                border-left: none;
             }
 
             /* Calendar takes left side */
@@ -296,84 +345,31 @@
                 flex: 1;
                 overflow-y: auto;
                 overflow-x: hidden;
-            }
-
-            /* Tab bar for mobile */
-            .calendar-buttons {
-                display: flex;
-                flex-direction: row;
-                height: 45px;
-                gap: 2px;
-                padding: 0;
-                margin: 0;
-                border-bottom: 2px solid #999;
-                background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
-                flex-shrink: 0;
-                align-items: flex-end;
-                order: -1;
-                width: 100%;
-            }
-
-            .calendar-buttons button {
-                flex: 1;
-                height: 40px;
-                padding: 8px 12px;
-                border: 1px solid #999;
-                border-bottom: none;
-                border-radius: 8px 8px 0 0;
-                background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
-                color: #333;
-                font-size: 12px;
-                font-weight: 500;
-                cursor: pointer;
-                position: relative;
-                bottom: -2px;
-                transition: all 0.2s ease;
-            }
-
-            .calendar-buttons button:hover:not(.active) {
-                background: linear-gradient(to bottom, #f0f0f0, #d8d8d8);
-            }
-
-            .calendar-buttons button.active {
-                background: white;
-                border-bottom: 2px solid white;
-                color: var(--accent-color, #0089f1);
-                font-weight: 600;
-                bottom: 0;
-            }
-
-            /* Tab content visibility */
-            .calendar-section {
-                flex: 1;
-                overflow-y: auto;
-                overflow-x: hidden;
-                order: 0;
-                opacity: 1;
-                pointer-events: auto;
+                order: 1;
+                opacity: 0 !important;
+                pointer-events: none !important;
                 transition: opacity 0.3s ease;
+                position: relative;
             }
 
-            .calendar-section:not(.active) {
-                opacity: 0;
-                pointer-events: none;
+            .calendar-section.active {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                display: flex;
+                flex-direction: column;
             }
 
-            /* Modal sections for tabs - overlay on calendar space */
+            /* Modals overlay on calendar space */
             #todo-modal-backdrop {
                 position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
+                inset: 0 !important;
                 background: none !important;
-                overflow-y: auto !important;
+                overflow: hidden;
                 opacity: 0 !important;
                 pointer-events: none !important;
                 transition: opacity 0.3s ease !important;
                 display: flex !important;
                 flex-direction: column !important;
-                padding-top: 45px !important;
                 z-index: 100 !important;
             }
 
@@ -384,10 +380,7 @@
 
             #meibot-modal {
                 position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
+                inset: 0 !important;
                 background: none !important;
                 overflow: hidden !important;
                 flex-direction: column !important;
@@ -395,7 +388,6 @@
                 pointer-events: none !important;
                 transition: opacity 0.3s ease !important;
                 display: flex !important;
-                padding-top: 45px !important;
                 z-index: 100 !important;
             }
 
@@ -404,23 +396,13 @@
                 pointer-events: auto !important;
             }
 
-            .calendar-section {
-                opacity: 1;
-                pointer-events: auto;
-                transition: opacity 0.3s ease;
-            }
-
-            .calendar-section:not(.active) {
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            /* TODO MODAL Styling (match desktop panel) */
+            /* TODO MODAL - full screen in landscape */
             .todo-modal {
                 background: white;
                 border: none;
                 box-shadow: none;
                 height: 100%;
+                width: 100%;
                 overflow: hidden;
                 flex: 1;
                 display: flex;
@@ -431,8 +413,8 @@
 
             .todo-modal h3 {
                 margin: 0;
-                padding: 16px;
-                font-size: 18px;
+                padding: 12px 16px;
+                font-size: 16px;
                 font-weight: 600;
                 background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
                 color: white;
@@ -440,7 +422,7 @@
             }
 
             .todo-modal .todo-input-row {
-                padding: 16px;
+                padding: 12px 16px;
                 display: flex;
                 gap: 8px;
                 flex-wrap: wrap;
@@ -453,80 +435,62 @@
             .todo-modal input[type="number"] {
                 flex: 1;
                 min-width: 80px;
-                padding: 10px 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s ease;
-            }
-
-            .todo-modal input:focus {
-                outline: none;
-                border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
+                padding: 8px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 13px;
             }
 
             .todo-modal .todo-list {
                 flex: 1;
                 overflow-y: auto;
                 list-style: none;
-                padding: 0 16px 16px 16px;
+                padding: 0 12px 12px 12px;
                 margin: 0;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
             }
 
             .todo-modal .todo-item {
                 background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
                 border: 1px solid #e0e8f0;
-                padding: 12px;
-                border-radius: 8px;
+                padding: 10px;
+                border-radius: 6px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 transition: all 0.2s ease;
             }
 
-            .todo-modal .todo-item:hover {
-                background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
-                border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 2px 8px rgba(0,137,241,0.1);
-            }
-
             .todo-modal .small-tmr-btn {
                 background: #d7dbdf !important;
                 border: none !important;
                 color: #333 !important;
-                padding: 8px 14px !important;
-                border-radius: 8px !important;
+                padding: 6px 10px !important;
+                border-radius: 6px !important;
                 box-shadow: none !important;
+                font-size: 12px !important;
                 transition: background 0.15s ease !important;
                 transform: none !important;
             }
 
-            .todo-modal .small-tmr-btn:hover {
-                background: var(--accent-color, #0089f1) !important;
-                transform: none !important;
-                box-shadow: none !important;
-            }
-
-            /* MEIBOT MODAL Styling (match desktop panel) */
+            /* MEIBOT MODAL - full screen in landscape */
             .meibot-modal-content {
                 height: 100%;
-                max-height: none;
-                border-radius: 0;
                 width: 100%;
                 display: flex;
                 flex-direction: column;
                 background: white;
                 overflow: hidden;
+                border-radius: 0;
+                margin: 0;
             }
 
             .meibot-header {
                 margin: 0;
-                padding: 16px;
-                font-size: 18px;
+                padding: 12px 16px;
+                font-size: 16px;
                 font-weight: 600;
                 background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
                 color: white;
@@ -534,92 +498,35 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: none;
-            }
-
-            .meibot-header h2 {
-                margin: 0;
-                font-size: 18px;
-            }
-
-            .meibot-close {
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-                padding: 0;
-                color: white;
             }
 
             .meibot-chat {
                 flex: 1;
                 overflow-y: auto;
-                overflow-x: hidden;
-                padding: 16px;
+                padding: 12px;
                 background: white;
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .meibot-typing {
-                padding: 10px;
-                text-align: center;
-                flex-shrink: 0;
-                background: #f9f9f9;
+                gap: 10px;
             }
 
             #meibot-modal-form {
-                padding: 12px 16px;
-                border-top: 1px solid #e0e0e0;
+                padding: 10px 12px;
+                border-top: 1px solid #eee;
                 display: flex;
-                gap: 8px;
+                gap: 6px;
                 flex-wrap: wrap;
                 flex-shrink: 0;
                 background: white;
-                position: sticky;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                z-index: 100;
             }
 
             #meibot-modal-input {
                 flex: 1;
                 min-width: 150px;
-                padding: 10px 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s ease;
-            }
-
-            #meibot-modal-input:focus {
-                outline: none;
-                border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
-            }
-
-            #meibot-modal-form .small-tmr-btn {
-                background: var(--accent-color, #0089f1) !important;
-                color: white !important;
-                border: none !important;
-                padding: 10px 16px !important;
-                border-radius: 6px !important;
-                cursor: pointer !important;
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                transition: background 0.15s ease !important;
-            }
-
-            #meibot-modal-form .small-tmr-btn:hover {
-                background: var(--accent-hover, #0073d1) !important;
-            }
-
-            /* Hide persistent panels */
-            .panels-container {
-                display: none;
+                padding: 8px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 13px;
             }
         }
 
@@ -630,8 +537,6 @@
                 flex-direction: column;
                 height: 100vh;
                 overflow: hidden;
-                margin: 0;
-                padding: 0;
             }
 
             .calendar-page {
@@ -655,15 +560,17 @@
 
             #mobile-calendar-container {
                 display: flex !important;
-                flex-direction: column;
+                flex: 1;
+                min-width: 0;
             }
 
-            /* Tab bar for mobile */
+            /* Buttons on TOP in portrait (like tabs) */
             .calendar-buttons {
                 display: flex;
                 flex-direction: row;
                 height: 45px;
-                gap: 2px;
+                width: 100%;
+                gap: 0;
                 padding: 0;
                 margin: 0;
                 border-bottom: 2px solid #999;
@@ -671,7 +578,6 @@
                 flex-shrink: 0;
                 align-items: flex-end;
                 order: -1;
-                width: 100%;
                 z-index: 200;
             }
 
@@ -704,7 +610,7 @@
                 bottom: 0;
             }
 
-            /* Tab content visibility */
+            /* Calendar section */
             .calendar-section {
                 flex: 1;
                 overflow-y: auto;
@@ -716,11 +622,6 @@
                 position: relative;
             }
 
-            .calendar-section:not(.active) {
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-
             .calendar-section.active {
                 opacity: 1 !important;
                 pointer-events: auto !important;
@@ -728,23 +629,18 @@
                 flex-direction: column;
             }
 
-            /* Modal sections for tabs - overlay on calendar space */
+            /* Modals overlay on calendar space */
             #todo-modal-backdrop {
                 position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
+                inset: 0 !important;
                 background: none !important;
                 overflow: hidden;
-                border: none;
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
                 display: flex !important;
-                flex-direction: column;
+                flex-direction: column !important;
                 z-index: 100 !important;
-                inset: auto !important;
             }
 
             #todo-modal-backdrop.active {
@@ -754,10 +650,7 @@
 
             #meibot-modal {
                 position: absolute !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
+                inset: 0 !important;
                 background: none !important;
                 overflow: hidden !important;
                 flex-direction: column !important;
@@ -773,23 +666,13 @@
                 pointer-events: auto !important;
             }
 
-            .calendar-section {
-                opacity: 1;
-                pointer-events: auto;
-                transition: opacity 0.3s ease;
-            }
-
-            .calendar-section:not(.active) {
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            /* TODO MODAL Styling (match desktop panel) */
+            /* TODO MODAL - full screen in portrait */
             .todo-modal {
                 background: white;
                 border: none;
                 box-shadow: none;
                 height: 100%;
+                width: 100%;
                 overflow: hidden;
                 flex: 1;
                 display: flex;
@@ -800,8 +683,8 @@
 
             .todo-modal h3 {
                 margin: 0;
-                padding: 16px;
-                font-size: 18px;
+                padding: 12px 16px;
+                font-size: 16px;
                 font-weight: 600;
                 background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
                 color: white;
@@ -809,7 +692,7 @@
             }
 
             .todo-modal .todo-input-row {
-                padding: 16px;
+                padding: 12px 16px;
                 display: flex;
                 gap: 8px;
                 flex-wrap: wrap;
@@ -822,80 +705,60 @@
             .todo-modal input[type="number"] {
                 flex: 1;
                 min-width: 80px;
-                padding: 10px 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s ease;
-            }
-
-            .todo-modal input:focus {
-                outline: none;
-                border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
+                padding: 8px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 13px;
             }
 
             .todo-modal .todo-list {
                 flex: 1;
                 overflow-y: auto;
                 list-style: none;
-                padding: 0 16px 16px 16px;
+                padding: 0 12px 12px 12px;
                 margin: 0;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
             }
 
             .todo-modal .todo-item {
                 background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
                 border: 1px solid #e0e8f0;
-                padding: 12px;
-                border-radius: 8px;
+                padding: 10px;
+                border-radius: 6px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                transition: all 0.2s ease;
-            }
-
-            .todo-modal .todo-item:hover {
-                background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
-                border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 2px 8px rgba(0,137,241,0.1);
             }
 
             .todo-modal .small-tmr-btn {
                 background: #d7dbdf !important;
                 border: none !important;
                 color: #333 !important;
-                padding: 8px 14px !important;
-                border-radius: 8px !important;
+                padding: 6px 10px !important;
+                border-radius: 6px !important;
                 box-shadow: none !important;
+                font-size: 12px !important;
                 transition: background 0.15s ease !important;
-                transform: none !important;
             }
 
-            .todo-modal .small-tmr-btn:hover {
-                background: var(--accent-color, #0089f1) !important;
-                transform: none !important;
-                box-shadow: none !important;
-            }
-
-            /* MEIBOT MODAL Styling (match desktop panel) */
+            /* MEIBOT MODAL - full screen in portrait */
             .meibot-modal-content {
                 height: 100%;
-                max-height: none;
-                border-radius: 0;
                 width: 100%;
                 display: flex;
                 flex-direction: column;
                 background: white;
                 overflow: hidden;
+                border-radius: 0;
+                margin: 0;
             }
 
             .meibot-header {
                 margin: 0;
-                padding: 16px;
-                font-size: 18px;
+                padding: 12px 16px;
+                font-size: 16px;
                 font-weight: 600;
                 background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
                 color: white;
@@ -903,107 +766,35 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: none;
-            }
-
-            .meibot-header h2 {
-                margin: 0;
-                font-size: 18px;
-            }
-
-            .meibot-close {
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-                padding: 0;
-                color: white;
             }
 
             .meibot-chat {
                 flex: 1;
                 overflow-y: auto;
-                overflow-x: hidden;
-                padding: 16px;
+                padding: 12px;
                 background: white;
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .meibot-typing {
-                padding: 10px;
-                text-align: center;
-                flex-shrink: 0;
-                background: #f9f9f9;
+                gap: 10px;
             }
 
             #meibot-modal-form {
-                padding: 12px 16px;
-                border-top: 1px solid #e0e0e0;
+                padding: 10px 12px;
+                border-top: 1px solid #eee;
                 display: flex;
-                gap: 8px;
+                gap: 6px;
                 flex-wrap: wrap;
                 flex-shrink: 0;
                 background: white;
-                position: sticky;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                z-index: 100;
             }
 
             #meibot-modal-input {
                 flex: 1;
                 min-width: 150px;
-                padding: 10px 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 6px;
-                font-size: 14px;
-                transition: border-color 0.2s ease;
-            }
-
-            #meibot-modal-input:focus {
-                outline: none;
-                border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
-            }
-
-            #meibot-modal-form .small-tmr-btn {
-                background: var(--accent-color, #0089f1) !important;
-                color: white !important;
-                border: none !important;
-                padding: 10px 16px !important;
-                border-radius: 6px !important;
-                cursor: pointer !important;
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                transition: background 0.15s ease !important;
-            }
-
-            #meibot-modal-form .small-tmr-btn:hover {
-                background: var(--accent-hover, #0073d1) !important;
-            }
-
-            /* Align meibot modal to top in portrait mode */
-            #meibot-modal {
-                align-items: flex-start !important;
-                justify-content: flex-start !important;
-            }
-            
-            .meibot-modal-content {
-                width: 100% !important;
-                max-width: 100% !important;
-                max-height: 100% !important;
-                height: 100% !important;
-                border-radius: 0 !important;
-                margin: 0 !important;
-            }
-
-            /* Hide persistent panels */
-            .panels-container {
-                display: none;
+                padding: 8px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 13px;
             }
         }
 
