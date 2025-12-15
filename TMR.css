@@ -420,6 +420,23 @@ body.triangle-background .tmr-menu {
 }
 .modal-backdrop.active, .todo-modal-backdrop.active { display: flex; }
 
+/* Portrait mode: align modals to top instead of center */
+@media (orientation: portrait) {
+    .todo-modal-backdrop {
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding-top: 0 !important;
+    }
+    
+    .todo-modal {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+}
+
 /* Unified modal styling (based on Meibot design) */
 .unified-modal, .todo-modal {
     background: white;

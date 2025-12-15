@@ -710,18 +710,20 @@
                 overflow-y: auto;
                 overflow-x: hidden;
                 order: 0;
-                opacity: 1;
-                pointer-events: auto;
+                opacity: 0 !important;
+                pointer-events: none !important;
                 transition: opacity 0.3s ease;
                 position: relative;
             }
 
             .calendar-section:not(.active) {
-                opacity: 0;
-                pointer-events: none;
+                opacity: 0 !important;
+                pointer-events: none !important;
             }
 
             .calendar-section.active {
+                opacity: 1 !important;
+                pointer-events: auto !important;
                 display: flex;
                 flex-direction: column;
             }
@@ -741,7 +743,6 @@
                 transition: opacity 0.3s ease;
                 display: flex !important;
                 flex-direction: column;
-                padding-top: 45px !important;
                 z-index: 100 !important;
                 inset: auto !important;
             }
@@ -764,7 +765,6 @@
                 pointer-events: none !important;
                 transition: opacity 0.3s ease !important;
                 display: flex !important;
-                padding-top: 45px !important;
                 z-index: 100 !important;
             }
 
@@ -984,6 +984,21 @@
 
             #meibot-modal-form .small-tmr-btn:hover {
                 background: var(--accent-hover, #0073d1) !important;
+            }
+
+            /* Align meibot modal to top in portrait mode */
+            #meibot-modal {
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+            }
+            
+            .meibot-modal-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                height: 100% !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
             }
 
             /* Hide persistent panels */
