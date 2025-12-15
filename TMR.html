@@ -297,64 +297,90 @@
             .calendar-buttons {
                 position: fixed !important;
                 top: 75px !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 45px;
-                height: 100%;
+                right: 8px !important;
+                bottom: 8px !important;
+                width: 50px;
+                height: calc(100% - 83px);
                 gap: 0;
                 padding: 0;
                 margin: 0;
-                border-left: 2px solid #999;
-                background: linear-gradient(to right, #f5f5f5, #e8e8e8);
+                border-left: none;
+                background: transparent;
                 flex-shrink: 0;
                 align-items: stretch;
                 display: flex;
                 flex-direction: column;
                 z-index: 200;
+                border-radius: 12px 0 0 12px;
             }
 
             .calendar-buttons button {
                 flex: 1;
-                width: 45px;
-                padding: 8px 0;
-                border: 1px solid #999;
-                border-left: none;
-                border-radius: 0;
-                background: linear-gradient(to right, #e8e8e8, #d0d0d0);
-                color: #333;
-                font-size: 10px;
+                width: 37px;
+                padding: 0;
+                border: none !important;
+                border-radius: 12px 0 0 12px;
+                background: var(--accent-color, #0089f1) !important;
+                color: white !important;
+                font-size: 9px;
                 font-weight: 500;
                 cursor: pointer;
-                transition: all 0.2s ease;
                 writing-mode: vertical-rl;
                 text-orientation: mixed;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: none !important;
+                transform: none !important;
+                transition: none !important;
             }
 
             .calendar-buttons button:hover:not(.active) {
-                background: linear-gradient(to right, #f0f0f0, #d8d8d8);
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, black) !important;
+                transform: none !important;
+                box-shadow: none !important;
             }
 
             .calendar-buttons button.active {
-                background: white;
-                border-left: 2px solid white;
-                color: var(--accent-color, #0089f1);
+                background: var(--accent-color, #0089f1) !important;
+                border: none !important;
+                color: white !important;
                 font-weight: 600;
-                border: 1px solid #999;
-                border-left: none;
+                transform: none !important;
+                box-shadow: none !important;
             }
 
-            /* Calendar and modals positioned left of button bar */
-            .calendar-section,
+            .calendar-buttons button.active:hover {
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, black) !important;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* Calendar section with rounded left corner */
+            .calendar-section {
+                position: fixed !important;
+                top: 75px !important;
+                left: 8px !important;
+                bottom: 8px !important;
+                right: 58px !important;
+                width: calc(100% - 66px);
+                height: calc(100% - 83px);
+                overflow: hidden;
+                border-radius: 12px 0 0 12px;
+            }
+
+            /* Todo and Meibot modals with square right edge to blend with button left edges */
             #todo-modal-backdrop,
             #meibot-modal {
                 position: fixed !important;
                 top: 75px !important;
-                left: 0 !important;
-                bottom: 0 !important;
-                right: 45px !important;
-                width: calc(100% - 45px);
-                height: 100%;
+                left: 8px !important;
+                bottom: 8px !important;
+                right: 58px !important;
+                width: calc(100% - 66px);
+                height: calc(100% - 83px);
                 overflow: hidden;
+                border-radius: 0 !important;
             }
 
             /* Calendar section visibility */
@@ -406,7 +432,7 @@
 
             /* TODO MODAL - full screen in landscape */
             .todo-modal {
-                background: white;
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
                 border: none;
                 box-shadow: none;
                 height: 100%;
@@ -415,7 +441,7 @@
                 flex: 1;
                 display: flex;
                 flex-direction: column;
-                border-radius: 0;
+                border-radius: 0 !important;
                 margin: 0;
             }
 
@@ -575,62 +601,89 @@
             .calendar-buttons {
                 position: fixed !important;
                 top: 75px !important;
-                left: 0 !important;
-                right: 0 !important;
-                height: 45px;
-                width: 100%;
+                left: 8px !important;
+                right: 8px !important;
+                height: 50px;
+                width: calc(100% - 16px);
                 gap: 0;
                 padding: 0;
                 margin: 0;
-                border-bottom: 2px solid #999;
-                background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+                border-bottom: none;
+                background: transparent;
                 flex-shrink: 0;
-                align-items: flex-end;
+                align-items: center;
                 display: flex;
                 flex-direction: row;
                 z-index: 200;
+                border-radius: 12px 12px 0 0;
             }
 
             .calendar-buttons button {
                 flex: 1;
-                height: 40px;
-                padding: 8px 12px;
-                border: 1px solid #999;
-                border-bottom: none;
-                border-radius: 8px 8px 0 0;
-                background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
-                color: #333;
-                font-size: 12px;
+                height: 50px;
+                padding: 0;
+                border: none !important;
+                border-radius: 12px 12px 0 0;
+                background: var(--accent-color, #0089f1) !important;
+                color: white !important;
+                font-size: 10px;
                 font-weight: 500;
                 cursor: pointer;
                 position: relative;
-                bottom: -2px;
-                transition: all 0.2s ease;
+                bottom: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: none !important;
+                transform: none !important;
+                transition: none !important;
             }
 
             .calendar-buttons button:hover:not(.active) {
-                background: linear-gradient(to bottom, #f0f0f0, #d8d8d8);
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, black) !important;
+                transform: none !important;
+                box-shadow: none !important;
             }
 
             .calendar-buttons button.active {
-                background: white;
-                border-bottom: 2px solid white;
-                color: var(--accent-color, #0089f1);
+                background: var(--accent-color, #0089f1) !important;
+                border: none !important;
+                color: white !important;
                 font-weight: 600;
                 bottom: 0;
+                transform: none !important;
+                box-shadow: none !important;
             }
 
-            /* Calendar and modals positioned below the button bar */
-            .calendar-section,
+            .calendar-buttons button.active:hover {
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, black) !important;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* Calendar section with rounded bottom */
+            .calendar-section {
+                position: fixed !important;
+                top: 125px !important;
+                left: 8px !important;
+                right: 8px !important;
+                bottom: 0 !important;
+                width: calc(100% - 16px);
+                overflow: hidden;
+                border-radius: 0 0 12px 12px;
+            }
+
+            /* Todo and Meibot modals with square edges to blend with button bottoms */
             #todo-modal-backdrop,
             #meibot-modal {
                 position: fixed !important;
-                top: 120px !important;
-                left: 0 !important;
-                right: 0 !important;
+                top: 125px !important;
+                left: 8px !important;
+                right: 8px !important;
                 bottom: 0 !important;
-                width: 100%;
+                width: calc(100% - 16px);
                 overflow: hidden;
+                border-radius: 0 !important;
             }
 
             /* Calendar section visibility */
@@ -682,7 +735,7 @@
 
             /* TODO MODAL - full screen in portrait */
             .todo-modal {
-                background: white;
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
                 border: none;
                 box-shadow: none;
                 height: 100%;
@@ -691,7 +744,7 @@
                 flex: 1;
                 display: flex;
                 flex-direction: column;
-                border-radius: 0;
+                border-radius: 0 !important;
                 margin: 0;
             }
 

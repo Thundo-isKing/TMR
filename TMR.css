@@ -440,7 +440,7 @@ body.triangle-background .tmr-menu {
 /* Unified modal styling (based on Meibot design) */
 .unified-modal, .todo-modal {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
