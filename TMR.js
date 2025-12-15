@@ -281,9 +281,58 @@ if (leaveBtn) {
         const desktopInput = document.getElementById('todo-input');
         const desktopAdd = document.getElementById('add-todo');
         const desktopList = document.getElementById('todo-list');
+        
+        // Reminder type and time selectors
+        const desktopReminderType = document.getElementById('todo-reminder-type');
+        const desktopReminderMinutes = document.getElementById('todo-modal-minutes');
+        const desktopReminderTime = document.getElementById('todo-reminder-time');
+        const modalReminderType = document.getElementById('todo-modal-reminder-type');
+        const modalReminderMinutes = document.getElementById('todo-modal-minutes-input');
+        const modalReminderTime = document.getElementById('todo-modal-reminder-time');
 
         // Check only required elements (no close button needed - handled by switchTab)
         if(!backdrop || !modalInput || !modalAdd || !modalList) return;
+        
+        // Helper function to calculate reminder timestamp from type and value
+        function getReminderTimestamp(reminderType, minutesValue, timeValue) {
+            if (reminderType === 'none' || !reminderType) return null;
+            
+            if (reminderType === 'minutes') {
+                const minutes = parseInt(minutesValue, 10);
+                if (!isNaN(minutes) && minutes > 0) {
+                    return Date.now() + minutes * 60000;
+                }
+                return null;
+            }
+            
+            if (reminderType === 'time' && timeValue) {
+                const [hours, mins] = timeValue.split(':').map(Number);
+                if (!isNaN(hours) && !isNaN(mins)) {
+                    const today = new Date();
+                    const reminderDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, mins, 0);
+                    // If time is in the past today, schedule for tomorrow
+                    if (reminderDate.getTime() < Date.now()) {
+                        reminderDate.setDate(reminderDate.getDate() + 1);
+                    }
+                    return reminderDate.getTime();
+                }
+            }
+            
+            return null;
+        }
+        
+        // Setup reminder type selector visibility toggles
+        function setupReminderTypeSelector(typeSelect, minutesInput, timeInput) {
+            if (!typeSelect) return;
+            typeSelect.addEventListener('change', (e) => {
+                const type = e.target.value;
+                minutesInput.style.display = type === 'minutes' ? 'block' : 'none';
+                timeInput.style.display = type === 'time' ? 'block' : 'none';
+            });
+        }
+        
+        if (desktopReminderType) setupReminderTypeSelector(desktopReminderType, desktopReminderMinutes, desktopReminderTime);
+        if (modalReminderType) setupReminderTypeSelector(modalReminderType, modalReminderMinutes, modalReminderTime);
 
         // Unified render function that updates BOTH desktop and mobile lists
         function renderTodos(){
@@ -308,16 +357,82 @@ if (leaveBtn) {
 
                     function startEdit(){
                         const inputEl = document.createElement('input'); inputEl.type = 'text'; inputEl.value = t.text;
+                        const reminderTypeSelect = document.createElement('select');
+                        reminderTypeSelect.style.padding = '8px';
+                        reminderTypeSelect.style.borderRadius = '4px';
+                        reminderTypeSelect.style.border = '1px solid #ccc';
+                        const optNone = document.createElement('option'); optNone.value = 'none'; optNone.textContent = 'No reminder';
+                        const optMin = document.createElement('option'); optMin.value = 'minutes'; optMin.textContent = 'In minutes';
+                        const optTime = document.createElement('option'); optTime.value = 'time'; optTime.textContent = 'At time';
+                        reminderTypeSelect.appendChild(optNone);
+                        reminderTypeSelect.appendChild(optMin);
+                        reminderTypeSelect.appendChild(optTime);
+                        
                         const minutesInput = document.createElement('input'); minutesInput.type = 'number'; minutesInput.min = 0;
-                        // prefill minutes if reminder exists
-                        if(t.reminderAt){ const mins = Math.max(0, Math.ceil((Number(t.reminderAt) - Date.now())/60000)); minutesInput.value = String(mins); }
+                        minutesInput.style.width = '60px';
+                        minutesInput.style.padding = '8px';
+                        minutesInput.style.borderRadius = '4px';
+                        minutesInput.style.border = '1px solid #ccc';
+                        minutesInput.style.display = 'none';
+                        
+                        const timeInput = document.createElement('input'); timeInput.type = 'time';
+                        timeInput.style.padding = '8px';
+                        timeInput.style.borderRadius = '4px';
+                        timeInput.style.border = '1px solid #ccc';
+                        timeInput.style.display = 'none';
+                        
+                        // prefill if reminder exists
+                        if(t.reminderAt){ 
+                            const now = Date.now();
+                            const reminderMs = Number(t.reminderAt);
+                            const minsLeft = Math.max(0, Math.ceil((reminderMs - now)/60000));
+                            if (minsLeft < 1440) { // if less than 24 hours, assume it's a relative minutes reminder
+                                reminderTypeSelect.value = 'minutes';
+                                minutesInput.value = String(minsLeft);
+                                minutesInput.style.display = 'block';
+                            } else {
+                                // assume it's a specific time reminder
+                                const reminderDate = new Date(reminderMs);
+                                const hours = String(reminderDate.getHours()).padStart(2, '0');
+                                const mins = String(reminderDate.getMinutes()).padStart(2, '0');
+                                reminderTypeSelect.value = 'time';
+                                timeInput.value = hours + ':' + mins;
+                                timeInput.style.display = 'block';
+                            }
+                        }
+                        
+                        reminderTypeSelect.addEventListener('change', (e) => {
+                            minutesInput.style.display = e.target.value === 'minutes' ? 'block' : 'none';
+                            timeInput.style.display = e.target.value === 'time' ? 'block' : 'none';
+                        });
+                        
                         inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') finishEdit(); if(e.key==='Escape') renderTodos(); });
-                        function finishEdit(){ const v = inputEl.value.trim(); const mins = parseInt(minutesInput.value,10); if(v){ const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all[idx].text = v; if(!isNaN(mins) && mins > 0){ all[idx].reminderAt = Date.now() + mins*60000; } else { delete all[idx].reminderAt; } saveTodos(all); } renderTodos(); } else { renderTodos(); } }
+                        function finishEdit(){ 
+                            const v = inputEl.value.trim(); 
+                            if(v){ 
+                                const all = loadTodos(); 
+                                const idx = all.findIndex(x=>x.id===t.id); 
+                                if(idx>=0){ 
+                                    all[idx].text = v;
+                                    const reminderType = reminderTypeSelect.value;
+                                    const newReminderAt = getReminderTimestamp(reminderType, minutesInput.value, timeInput.value);
+                                    if(newReminderAt) { 
+                                        all[idx].reminderAt = newReminderAt; 
+                                    } else { 
+                                        delete all[idx].reminderAt; 
+                                    }
+                                    saveTodos(all);
+                                } 
+                            } 
+                            renderTodos();
+                        }
                         const saveBtn = document.createElement('button'); saveBtn.className='small-tmr-btn'; saveBtn.textContent='Save'; saveBtn.addEventListener('click', finishEdit);
                         const cancelBtn = document.createElement('button'); cancelBtn.className='small-tmr-btn'; cancelBtn.textContent='Cancel'; cancelBtn.addEventListener('click', renderTodos);
-                        const minutesLabel = document.createElement('label'); minutesLabel.style.marginLeft = '8px'; minutesLabel.textContent = 'Remind (min): ';
-                        minutesLabel.appendChild(minutesInput);
-                        textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(minutesLabel); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
+                        const reminderWrap = document.createElement('div'); reminderWrap.style.display = 'flex'; reminderWrap.style.gap = '6px'; reminderWrap.style.alignItems = 'center'; reminderWrap.style.marginLeft = '8px';
+                        reminderWrap.appendChild(reminderTypeSelect);
+                        reminderWrap.appendChild(minutesInput);
+                        reminderWrap.appendChild(timeInput);
+                        textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(reminderWrap); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
                     }
 
                     const actions = document.createElement('div'); actions.className = 'todo-actions';
@@ -361,10 +476,18 @@ if (leaveBtn) {
             desktopAdd.addEventListener('click', ()=>{
                 const text = desktopInput.value.trim();
                 if(!text) return;
+                const reminderType = desktopReminderType ? desktopReminderType.value : 'none';
+                const reminderTimestamp = getReminderTimestamp(reminderType, desktopReminderMinutes.value, desktopReminderTime.value);
+                
                 const todos = loadTodos();
-                todos.push({ id: Date.now(), text, reminderAt: null });
+                const item = { id: Date.now(), text };
+                if(reminderTimestamp) item.reminderAt = reminderTimestamp;
+                todos.push(item);
                 saveTodos(todos);
                 desktopInput.value = '';
+                if(desktopReminderType) desktopReminderType.value = 'none';
+                if(desktopReminderMinutes) desktopReminderMinutes.value = '';
+                if(desktopReminderTime) desktopReminderTime.value = '';
                 renderTodos();
             });
             desktopInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') desktopAdd.click(); });
@@ -647,17 +770,18 @@ if (leaveBtn) {
 
             modalAdd.addEventListener('click', ()=>{
             const v = modalInput.value.trim(); if(!v) return;
-            // modal-specific minutes input (per-todo)
-            const modalMinutesStr = (document.getElementById('todo-modal-minutes') && document.getElementById('todo-modal-minutes').value) || '';
-            const defaultMinutesStr = (document.getElementById('todo-default-reminder') && document.getElementById('todo-default-reminder').value) || '0';
-            const minutes = modalMinutesStr !== '' ? (parseInt(modalMinutesStr,10) || 0) : (parseInt(defaultMinutesStr,10) || 0);
+            const reminderType = modalReminderType ? modalReminderType.value : 'none';
+            const reminderTimestamp = getReminderTimestamp(reminderType, modalReminderMinutes.value, modalReminderTime.value);
+            
             const all = loadTodos();
             const item = { id: generateId(), text: v };
-            if(minutes > 0){ item.reminderAt = Date.now() + minutes * 60000; }
+            if(reminderTimestamp) { item.reminderAt = reminderTimestamp; }
             all.unshift(item);
             saveTodos(all);
             modalInput.value = '';
-            const modalMinEl = document.getElementById('todo-modal-minutes'); if(modalMinEl) modalMinEl.value = '';
+            if(modalReminderType) modalReminderType.value = 'none';
+            if(modalReminderMinutes) modalReminderMinutes.value = '';
+            if(modalReminderTime) modalReminderTime.value = '';
             renderModal();
             // schedule immediately if enabled
             try{ rescheduleAll(); }catch(e){}

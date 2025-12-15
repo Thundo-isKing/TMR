@@ -960,7 +960,15 @@
             <h3>To Do</h3>
             <div class="todo-input-row">
                 <input id="todo-input" type="text" placeholder="Add a todo..." />
-                <input id="todo-modal-minutes" type="number" min="0" placeholder="min" style="width: 60px;" />
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <select id="todo-reminder-type" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                        <option value="none">No reminder</option>
+                        <option value="minutes">In minutes</option>
+                        <option value="time">At time</option>
+                    </select>
+                    <input id="todo-modal-minutes" type="number" min="0" placeholder="min" style="width: 60px; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
+                    <input id="todo-reminder-time" type="time" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
+                </div>
                 <button id="add-todo" class="small-tmr-btn">Add</button>
             </div>
             <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
@@ -1097,7 +1105,15 @@
                 <h3 id="todo-modal-title">To Do</h3>
                 <div class="todo-input-row">
                     <input id="todo-modal-input" type="text" placeholder="Add a todo..." />
-                    <input id="todo-modal-minutes-input" type="number" min="0" placeholder="remind in (min)" style="width:110px;" />
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <select id="todo-modal-reminder-type" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                            <option value="none">No reminder</option>
+                            <option value="minutes">In minutes</option>
+                            <option value="time">At time</option>
+                        </select>
+                        <input id="todo-modal-minutes-input" type="number" min="0" placeholder="remind in (min)" style="width:100px; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
+                        <input id="todo-modal-reminder-time" type="time" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
+                    </div>
                     <button id="todo-modal-add" class="small-tmr-btn">Add</button>
                 </div>
                 <ul id="todo-modal-list" class="todo-list"></ul>
