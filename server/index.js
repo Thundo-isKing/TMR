@@ -248,29 +248,42 @@ app.get('/auth/google/status', (req, res) => {
 
 // Logout: disconnect user from Google Calendar
 app.post('/auth/google/logout', (req, res) => {
+  console.log('[GoogleCalendar] Logout request received:', req.body);
   const userId = req.body.userId || 'default';
   
+  if (!userId) {
+    console.error('[GoogleCalendar] No userId provided');
+    return res.status(400).json({ error: 'No userId provided' });
+  }
+  
   try {
+    let tokenDeleted = false;
+    let mappingsDeleted = false;
+    
     // Delete the token from database
     db.deleteGoogleCalendarToken(userId, (err) => {
       if (err) {
-        console.warn('[GoogleCalendar] Failed to delete tokens:', err);
+        console.error('[GoogleCalendar] Failed to delete tokens:', err);
+        tokenDeleted = false;
       } else {
         console.log('[GoogleCalendar] Token deleted for user:', userId);
+        tokenDeleted = true;
       }
     });
     
     // Delete all event mappings for this user
     db.deleteAllEventMappingsForUser(userId, (err) => {
       if (err) {
-        console.warn('[GoogleCalendar] Failed to delete event mappings:', err);
+        console.error('[GoogleCalendar] Failed to delete event mappings:', err);
+        mappingsDeleted = false;
       } else {
         console.log('[GoogleCalendar] Event mappings deleted for user:', userId);
+        mappingsDeleted = true;
       }
     });
     
     console.log('[GoogleCalendar] User logged out:', userId);
-    res.json({ ok: true, message: 'Logged out successfully' });
+    res.json({ ok: true, message: 'Logged out successfully', userId });
     
   } catch (err) {
     console.error('[GoogleCalendar] Logout error:', err);

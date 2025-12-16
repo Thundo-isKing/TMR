@@ -335,6 +335,11 @@
     try {
       const userId = getGoogleCalendarUserId();
       
+      if (!userId) {
+        showNotification('No user connected', 'error');
+        return;
+      }
+      
       // Ask user to confirm before clearing calendar
       const shouldClear = confirm(
         'Disconnect from Google Calendar?\n\n' +
@@ -353,15 +358,25 @@
       if (mobileLogoutBtn) mobileLogoutBtn.disabled = true;
       
       // Call server to revoke tokens
-      const res = await serverFetch('/auth/google/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
+      let res;
+      try {
+        res = await serverFetch('/auth/google/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+      } catch (fetchErr) {
+        console.error('[GoogleCalendar] Fetch error:', fetchErr);
+        throw new Error('Failed to reach server: ' + fetchErr.message);
+      }
       
       if (!res.ok) {
-        throw new Error('Logout failed on server');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Server returned status ' + res.status);
       }
+      
+      const data = await res.json();
+      console.log('[GoogleCalendar] Logout response:', data);
       
       // Clear local state
       localStorage.removeItem(GCAL_USER_ID_KEY);
@@ -415,6 +430,9 @@
     const mobileAuthBtn = document.getElementById('mobile-gcal-auth-btn');
     const mobileSyncBtn = document.getElementById('mobile-gcal-sync-btn');
     const mobileLogoutBtn = document.getElementById('mobile-gcal-logout-btn');
+    const mobileMenuBtn = document.getElementById('mobile-gcal-menu-btn');
+    const gcalModalBackdrop = document.getElementById('gcal-mobile-modal-backdrop');
+    const gcalModalClose = document.getElementById('gcal-mobile-modal-close');
     
     if (authBtn) {
       authBtn.addEventListener('click', initiateGoogleAuth);
@@ -438,6 +456,33 @@
     
     if (mobileLogoutBtn) {
       mobileLogoutBtn.addEventListener('click', logoutGoogleCalendar);
+    }
+    
+    // Mobile menu button opens Google Calendar modal
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener('click', () => {
+        if (gcalModalBackdrop) {
+          gcalModalBackdrop.style.display = 'flex';
+        }
+      });
+    }
+    
+    // Close button for Google Calendar modal
+    if (gcalModalClose) {
+      gcalModalClose.addEventListener('click', () => {
+        if (gcalModalBackdrop) {
+          gcalModalBackdrop.style.display = 'none';
+        }
+      });
+    }
+    
+    // Close modal when clicking outside
+    if (gcalModalBackdrop) {
+      gcalModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === gcalModalBackdrop) {
+          gcalModalBackdrop.style.display = 'none';
+        }
+      });
     }
     
     // Check for OAuth callback

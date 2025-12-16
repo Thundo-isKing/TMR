@@ -553,6 +553,98 @@
    DESKTOP MODE
    ============================================= */
 
+/* Google Calendar Mobile Modal */
+.gcal-mobile-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3500;
+    backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.gcal-mobile-modal-backdrop[style*="display:none"] {
+    display: none !important;
+}
+
+.gcal-mobile-modal {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.gcal-mobile-modal-header {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-color, #0089f1));
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.gcal-mobile-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gcal-mobile-modal-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-gcal-modal-btn {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.mobile-gcal-modal-btn:hover {
+    background: linear-gradient(135deg, var(--accent-hover, #0073d1), var(--accent-color, #0089f1));
+    transform: translateY(-1px);
+}
+
+.mobile-gcal-modal-btn:active {
+    transform: translateY(0);
+}
+
+.mobile-gcal-modal-btn.danger {
+    background: linear-gradient(135deg, #ff6b6b, #ff5252);
+}
+
+.mobile-gcal-modal-btn.danger:hover {
+    background: linear-gradient(135deg, #ff5252, #ff3838);
+}
+
 /* Desktop: hide mobile calendar */
 @media (min-width: 601px) and (min-height: 601px) {
     #mobile-calendar-container {

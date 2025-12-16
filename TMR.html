@@ -1029,9 +1029,7 @@
                     <button id="mobile-prev-month" class="mobile-nav-btn">&lt;</button>
                     <div class="month-year"></div>
                     <button id="mobile-next-month" class="mobile-nav-btn">&gt;</button>
-                    <button id="mobile-gcal-auth-btn" class="mobile-nav-btn" title="Connect to Google Calendar">🔗</button>
-                    <button id="mobile-gcal-sync-btn" class="mobile-nav-btn" style="display:none;" title="Sync with Google Calendar">🔄</button>
-                    <button id="mobile-gcal-logout-btn" class="mobile-nav-btn" style="display:none;" title="Disconnect Google Calendar">⛔</button>
+                    <button id="mobile-gcal-menu-btn" class="mobile-nav-btn" title="Google Calendar">🔗</button>
                 </div>
 
                 <div class="mobile-calendar-grid-container">
@@ -1075,6 +1073,21 @@
                                     <button type="button" class="mobile-cancel-btn">Cancel</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Google Calendar Modal (Mobile) -->
+                <div id="gcal-mobile-modal-backdrop" class="gcal-mobile-modal-backdrop" style="display:none;">
+                    <div class="gcal-mobile-modal">
+                        <div class="gcal-mobile-modal-header">
+                            <span>Google Calendar</span>
+                            <button id="gcal-mobile-modal-close" class="gcal-mobile-modal-close">&times;</button>
+                        </div>
+                        <div class="gcal-mobile-modal-body">
+                            <button id="mobile-gcal-auth-btn" class="mobile-gcal-modal-btn" title="Connect to Google Calendar" style="display:none;">🔗 Connect to Google Calendar</button>
+                            <button id="mobile-gcal-sync-btn" class="mobile-gcal-modal-btn" title="Sync with Google Calendar" style="display:none;">🔄 Sync Calendar</button>
+                            <button id="mobile-gcal-logout-btn" class="mobile-gcal-modal-btn danger" title="Disconnect Google Calendar" style="display:none;">⛔ Disconnect</button>
                         </div>
                     </div>
                 </div>
