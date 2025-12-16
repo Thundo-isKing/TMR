@@ -204,27 +204,35 @@ if (leaveBtn) {
     const MAX_TIMEOUT = 2147483647; // max 32-bit signed int ms (~24.8 days)
     function scheduleNotification(key, whenMs, title, body){
         cancelScheduled(key);
-        if(!isNotifyEnabled()) return;
-        if(Notification.permission !== 'granted') return;
+        if(!isNotifyEnabled()) { console.log('[Schedule] Notifications disabled'); return; }
+        if(Notification.permission !== 'granted') { console.log('[Schedule] Notification permission not granted:', Notification.permission); return; }
         // Respect notification mode: if server-only mode, skip local scheduling
         function getNotifyMode(){ return (localStorage.getItem('tmr_notify_mode') || 'both'); }
-        if(getNotifyMode() === 'server') return;
+        if(getNotifyMode() === 'server') { console.log('[Schedule] Server-only mode, skipping local'); return; }
         const delay = whenMs - Date.now();
-        if(delay <= 0) return; // already past
-        if(delay > MAX_TIMEOUT) return; // too far for setTimeout; skip for now
-        const t = setTimeout(()=>{ showSystemNotification(title, { body }); scheduled.delete(key); }, delay);
+        console.log('[Schedule] Scheduling:', { key, title, body, whenMs: new Date(whenMs), delay, delayMin: Math.round(delay/60000) });
+        if(delay <= 0) { console.log('[Schedule] Time is in the past, skipping'); return; } // already past
+        if(delay > MAX_TIMEOUT) { console.log('[Schedule] Delay too long:', delay); return; } // too far for setTimeout; skip for now
+        const t = setTimeout(()=>{ console.log('[Schedule] Firing notification:', title); showSystemNotification(title, { body }); scheduled.delete(key); }, delay);
         scheduled.set(key, t);
+        console.log('[Schedule] Notification scheduled, will fire in', Math.round(delay/1000), 'seconds');
     }
     function cancelScheduled(key){ if(scheduled.has(key)){ clearTimeout(scheduled.get(key)); scheduled.delete(key); } }
 
     function rescheduleAll(){
+        console.log('[rescheduleAll] Starting... NotifyEnabled:', isNotifyEnabled(), 'Permission:', Notification.permission);
         // clear existing
+        const clearedCount = scheduled.size;
         for(const k of Array.from(scheduled.keys())) cancelScheduled(k);
-        if(!isNotifyEnabled() || Notification.permission !== 'granted') return;
+        console.log('[rescheduleAll] Cleared', clearedCount, 'scheduled notifications');
+        
+        if(!isNotifyEnabled()) { console.log('[rescheduleAll] Notifications disabled'); return; }
+        if(Notification.permission !== 'granted') { console.log('[rescheduleAll] Permission not granted'); return; }
 
         // schedule events
         try{
             const evs = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+            console.log('[rescheduleAll] Found', evs.length, 'events');
             (evs || []).forEach(ev => {
                 if(!ev || !ev.date || !ev.time) return;
                 const [y,mo,d] = (ev.date||'').split('-').map(Number);
@@ -234,17 +242,19 @@ if (leaveBtn) {
                     scheduleNotification('event_' + ev.id, ts, ev.title || 'Event reminder', ev.notes || ev.title || '');
                 }
             });
-        }catch(e){}
+        }catch(e){ console.error('[rescheduleAll] Event scheduling error:', e); }
 
         // schedule todos with reminderAt
         try{
             const todos = JSON.parse(localStorage.getItem(TODO_KEY) || '[]');
+            console.log('[rescheduleAll] Found', todos.length, 'todos');
             (todos || []).forEach(t => {
-                if(!t || !t.reminderAt) return;
+                if(!t || !t.reminderAt) { if(t) console.log('[rescheduleAll] Skipping todo (no reminder):', t.id); return; }
                 const ts = Number(t.reminderAt);
+                console.log('[rescheduleAll] Scheduling todo:', { id: t.id, text: t.text, reminderAt: ts, date: new Date(ts) });
                 if(!isNaN(ts)) scheduleNotification('todo_' + t.id, ts, 'To-do reminder', t.text || '');
             });
-        }catch(e){}
+        }catch(e){ console.error('[rescheduleAll] Todo scheduling error:', e); }
     }
 
     // Listen for changes to reschedule
@@ -295,13 +305,16 @@ if (leaveBtn) {
         
         // Helper function to calculate reminder timestamp from type and value
         function getReminderTimestamp(reminderType, minutesValue, timeValue) {
-            if (reminderType === 'none' || !reminderType) return null;
+            if (reminderType === 'none' || !reminderType) { console.log('[getReminderTimestamp] No reminder type'); return null; }
             
             if (reminderType === 'minutes') {
                 const minutes = parseInt(minutesValue, 10);
                 if (!isNaN(minutes) && minutes > 0) {
-                    return Date.now() + minutes * 60000;
+                    const ts = Date.now() + minutes * 60000;
+                    console.log('[getReminderTimestamp] Minutes mode:', { minutes, timestamp: ts, date: new Date(ts) });
+                    return ts;
                 }
+                console.log('[getReminderTimestamp] Invalid minutes:', minutesValue);
                 return null;
             }
             
@@ -310,12 +323,16 @@ if (leaveBtn) {
                 if (!isNaN(hours) && !isNaN(mins)) {
                     const today = new Date();
                     const reminderDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, mins, 0);
+                    const now = Date.now();
+                    console.log('[getReminderTimestamp] Time mode:', { timeValue, hours, mins, initialTime: reminderDate.getTime(), now, isPast: reminderDate.getTime() < now });
                     // If time is in the past today, schedule for tomorrow
-                    if (reminderDate.getTime() < Date.now()) {
+                    if (reminderDate.getTime() < now) {
                         reminderDate.setDate(reminderDate.getDate() + 1);
+                        console.log('[getReminderTimestamp] Time was in past, moved to tomorrow:', reminderDate.getTime(), new Date(reminderDate));
                     }
                     return reminderDate.getTime();
                 }
+                console.log('[getReminderTimestamp] Invalid time format:', timeValue);
             }
             
             return null;
@@ -772,19 +789,22 @@ if (leaveBtn) {
             const v = modalInput.value.trim(); if(!v) return;
             const reminderType = modalReminderType ? modalReminderType.value : 'none';
             const reminderTimestamp = getReminderTimestamp(reminderType, modalReminderMinutes.value, modalReminderTime.value);
+            console.log('[modalAdd] Creating todo:', { text: v, reminderType, reminderTimestamp, reminderDate: reminderTimestamp ? new Date(reminderTimestamp) : 'none' });
             
             const all = loadTodos();
             const item = { id: generateId(), text: v };
             if(reminderTimestamp) { item.reminderAt = reminderTimestamp; }
             all.unshift(item);
             saveTodos(all);
+            console.log('[modalAdd] Saved todo:', { id: item.id, text: item.text, reminderAt: item.reminderAt });
             modalInput.value = '';
             if(modalReminderType) modalReminderType.value = 'none';
             if(modalReminderMinutes) modalReminderMinutes.value = '';
             if(modalReminderTime) modalReminderTime.value = '';
             renderModal();
             // schedule immediately if enabled
-            try{ rescheduleAll(); }catch(e){}
+            console.log('[modalAdd] Calling rescheduleAll()...');
+            try{ rescheduleAll(); }catch(e){ console.error('[modalAdd] rescheduleAll error:', e); }
             // If this todo includes a reminder time, also persist it to the push server so
             // the server-side scheduler will send notifications even if the browser is closed.
             // Only POST to server when user hasn't chosen Local-only mode.
@@ -793,9 +813,10 @@ if (leaveBtn) {
                     try{
                         const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
                         const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
+                        console.log('[modalAdd] Posting reminder to server:', payload);
                         const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        if(res && res.ok){ /* optionally handle id from server */ }
-                    }catch(err){ console.warn('Failed to persist reminder to server', err); }
+                        if(res && res.ok){ console.log('[modalAdd] Server reminder posted successfully'); }
+                    }catch(err){ console.warn('[modalAdd] Failed to persist reminder to server', err); }
                 })();
             }
         });
