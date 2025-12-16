@@ -1525,5 +1525,19 @@ body.currentschedules-page #clock {
     }
 }
 
+/* Google Calendar sync animation */
+@keyframes hueRotate {
+    0% {
+        filter: hue-rotate(0deg);
+    }
+    50% {
+        filter: hue-rotate(90deg);
+    }
+    100% {
+        filter: hue-rotate(0deg);
+    }
+}
 
-
+.gcal-syncing {
+    animation: hueRotate 1.2s ease-in-out infinite !important;
+}

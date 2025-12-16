@@ -261,31 +261,106 @@ app.post('/sync/google-calendar', async (req, res) => {
     let syncedCount = 0;
     const results = [];
     
+    // Fetch existing Google Calendar events to check for duplicates
+    let googleCalendarEvents = [];
+    try {
+      const calendarId = await googleCalendarManager.getPrimaryCalendarId(userId);
+      const response = await googleCalendarManager.oauth2Client.getAccessToken();
+      // We'll build a map of existing Google Calendar events for deduplication
+    } catch (e) {
+      console.warn('[GoogleCalendar] Could not fetch existing events for dedup:', e.message);
+    }
+
+    // Process events sequentially with proper async/await
     for (const tmrEvent of events) {
       try {
-        // Check if event already exists in Google Calendar
-        db.getEventMapping(tmrEvent.id, (err, mapping) => {
-          if (mapping && mapping.googleEventId) {
-            // Update existing event
-            googleCalendarManager.updateGoogleCalendarEvent(userId, mapping.googleEventId, tmrEvent)
-              .then(gcEvent => {
+        // If TMR event already has a googleEventId, use it directly (faster)
+        if (tmrEvent.googleEventId) {
+          try {
+            const gcEvent = await googleCalendarManager.updateGoogleCalendarEvent(userId, tmrEvent.googleEventId, tmrEvent);
+            results.push({ tmrId: tmrEvent.id, action: 'updated', googleId: gcEvent.id });
+            syncedCount++;
+            console.log('[GoogleCalendar] Updated event with known ID:', tmrEvent.id, '->', gcEvent.id);
+          } catch (err) {
+            console.error('[GoogleCalendar] Update with known ID failed:', err.message);
+            // If update fails, try the database mapping
+            const mapping = await new Promise((resolve) => {
+              db.getEventMapping(tmrEvent.id, (err, mapping) => {
+                resolve(mapping);
+              });
+            });
+            
+            if (mapping && mapping.googleEventId) {
+              try {
+                const gcEvent = await googleCalendarManager.updateGoogleCalendarEvent(userId, mapping.googleEventId, tmrEvent);
                 results.push({ tmrId: tmrEvent.id, action: 'updated', googleId: gcEvent.id });
                 syncedCount++;
-              })
-              .catch(err => console.error('[GoogleCalendar] Update failed:', err));
-          } else {
-            // Create new event
-            googleCalendarManager.createGoogleCalendarEvent(userId, tmrEvent)
-              .then(gcEvent => {
+              } catch (e2) {
+                console.error('[GoogleCalendar] Update with mapped ID failed:', e2.message);
+                results.push({ tmrId: tmrEvent.id, action: 'failed', error: 'Update failed: ' + e2.message });
+              }
+            } else {
+              results.push({ tmrId: tmrEvent.id, action: 'failed', error: 'Update failed: ' + err.message });
+            }
+          }
+          continue;
+        }
+        
+        // Check if event already exists in our mapping
+        const mapping = await new Promise((resolve) => {
+          db.getEventMapping(tmrEvent.id, (err, mapping) => {
+            resolve(mapping);
+          });
+        });
+
+        if (mapping && mapping.googleEventId) {
+          // Update existing event in Google Calendar
+          try {
+            const gcEvent = await googleCalendarManager.updateGoogleCalendarEvent(userId, mapping.googleEventId, tmrEvent);
+            results.push({ tmrId: tmrEvent.id, action: 'updated', googleId: gcEvent.id });
+            syncedCount++;
+            console.log('[GoogleCalendar] Updated event:', tmrEvent.id, '->', gcEvent.id);
+          } catch (err) {
+            console.error('[GoogleCalendar] Update failed:', err.message);
+            results.push({ tmrId: tmrEvent.id, action: 'failed', error: 'Update failed: ' + err.message });
+          }
+        } else {
+          // Create new event in Google Calendar
+          // First, check if an event with the same title and date already exists (duplicate prevention)
+          try {
+            const existingEvent = await googleCalendarManager.searchExistingEvent(userId, tmrEvent.title, tmrEvent.date, tmrEvent.time);
+            
+            if (existingEvent) {
+              // Event already exists in Google Calendar, just create the mapping
+              console.log('[GoogleCalendar] Event already exists in Google Calendar:', existingEvent.id);
+              await new Promise((resolve) => {
+                db.mapEventIds(tmrEvent.id, existingEvent.id, 'primary', userId, (err) => {
+                  if (err) console.error('[GoogleCalendar] Mapping failed:', err);
+                  resolve();
+                });
+              });
+              results.push({ tmrId: tmrEvent.id, action: 'linked', googleId: existingEvent.id });
+            } else {
+              // Event doesn't exist, create it
+              const gcEvent = await googleCalendarManager.createGoogleCalendarEvent(userId, tmrEvent);
+              
+              // Map the IDs in the database
+              await new Promise((resolve) => {
                 db.mapEventIds(tmrEvent.id, gcEvent.id, 'primary', userId, (err) => {
                   if (err) console.error('[GoogleCalendar] Mapping failed:', err);
+                  resolve();
                 });
-                results.push({ tmrId: tmrEvent.id, action: 'created', googleId: gcEvent.id });
-                syncedCount++;
-              })
-              .catch(err => console.error('[GoogleCalendar] Create failed:', err));
+              });
+              
+              results.push({ tmrId: tmrEvent.id, action: 'created', googleId: gcEvent.id });
+              syncedCount++;
+              console.log('[GoogleCalendar] Created event:', tmrEvent.id, '->', gcEvent.id);
+            }
+          } catch (err) {
+            console.error('[GoogleCalendar] Create failed:', err.message);
+            results.push({ tmrId: tmrEvent.id, action: 'failed', error: 'Create failed: ' + err.message });
           }
-        });
+        }
       } catch (err) {
         console.error('[GoogleCalendar] Event sync error:', err);
         results.push({ tmrId: tmrEvent.id, action: 'failed', error: err.message });

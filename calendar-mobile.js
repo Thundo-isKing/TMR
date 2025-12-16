@@ -113,9 +113,8 @@
     const notesInput = document.getElementById('mobile-event-notes');
     const deleteBtn = document.getElementById('mobile-delete-btn');
     const modalCloseBtn = document.getElementById('mobile-modal-close');
-    const exportBtn = document.getElementById('mobile-export-btn');
-    const importBtn = document.getElementById('mobile-import-btn');
-    const importFileInput = document.getElementById('mobile-import-file');
+    const gcalAuthBtn = document.getElementById('mobile-gcal-auth-btn');
+    const gcalSyncBtn = document.getElementById('mobile-gcal-sync-btn');
     
     // State
     let viewDate = new Date();
@@ -261,7 +260,11 @@
     
     function exportEventsToFile() {
         const events = loadEvents();
-        const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
+        // include todos in the export so calendar and todos can be imported together
+        let todos = [];
+        try { todos = JSON.parse(localStorage.getItem('tmr_todos') || '[]'); } catch (e) { todos = []; }
+        const payload = { events: events, todos: todos };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const name = 'tmr-export-' + new Date().toISOString().slice(0, 10) + '.json';
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -273,40 +276,81 @@
         URL.revokeObjectURL(url);
     }
     
-    function importEventsFromFileObj(file) {
+    function importEventsFromArray(arrOrObj, mode = 'merge') {
+        // Accept older-format array (events only) or new object { events: [], todos: [] }
+        let eventsArr = [];
+        let todosArr = null;
+        if (Array.isArray(arrOrObj)) {
+            eventsArr = arrOrObj;
+        } else if (arrOrObj && typeof arrOrObj === 'object') {
+            eventsArr = Array.isArray(arrOrObj.events) ? arrOrObj.events : [];
+            todosArr = Array.isArray(arrOrObj.todos) ? arrOrObj.todos : null;
+        } else {
+            throw new Error('Imported JSON must be an array or an object with { events, todos }');
+        }
+
+        const cleaned = eventsArr.map(item => ({
+            id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+            title: String(item.title || '(no title)'),
+            date: String(item.date || ''),
+            time: item.time || '',
+            notes: item.notes || '',
+            color: item.color || '#ff922b'
+        })).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
+
+        if (mode === 'replace') {
+            saveEvents(cleaned);
+        } else {
+            const existing = loadEvents();
+            const existingIds = new Set(existing.map(e => e.id));
+            const merged = existing.slice();
+            cleaned.forEach(item => {
+                if (!existingIds.has(item.id)) merged.push(item);
+                else {
+                    const duplicate = existing.find(e => e.date === item.date && e.title === item.title && e.time === item.time);
+                    if (!duplicate) {
+                        item.id = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                        merged.push(item);
+                    }
+                }
+            });
+            saveEvents(merged);
+        }
+
+        // If todos were included, import them as well
+        if (todosArr !== null) {
+            try {
+                const cleanedTodos = todosArr.map(t => ({ 
+                    id: t.id || ('td_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)), 
+                    text: String(t.text || ''), 
+                    reminderAt: t.reminderAt || undefined 
+                })).filter(x => x.text && x.text.length > 0);
+                if (mode === 'replace') {
+                    localStorage.setItem('tmr_todos', JSON.stringify(cleanedTodos));
+                    try { window.dispatchEvent(new CustomEvent('tmr:todos:changed', { detail: { count: cleanedTodos.length } })); } catch (e) { }
+                } else {
+                    const existingTodos = (function () { try { return JSON.parse(localStorage.getItem('tmr_todos') || '[]'); } catch (e) { return []; } })();
+                    const existingIds = new Set(existingTodos.map(t => t.id));
+                    const mergedTodos = existingTodos.slice();
+                    cleanedTodos.forEach(t => { if (!existingIds.has(t.id)) mergedTodos.push(t); });
+                    localStorage.setItem('tmr_todos', JSON.stringify(mergedTodos));
+                    try { window.dispatchEvent(new CustomEvent('tmr:todos:changed', { detail: { count: mergedTodos.length } })); } catch (e) { }
+                }
+            } catch (e) { /* ignore todos import errors */ }
+        }
+    }
+
+    function importEventsFromFileObj(file, mode = 'merge') {
         const reader = new FileReader();
         reader.onload = () => {
             try {
                 const imported = JSON.parse(reader.result);
-                const mode = confirm('Replace existing events? OK = Replace, Cancel = Merge') ? 'replace' : 'merge';
-                
-                let eventsArr = Array.isArray(imported) ? imported : (imported.events || []);
-                const cleaned = eventsArr.map(item => ({
-                    id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
-                    title: String(item.title || '(no title)'),
-                    date: String(item.date || ''),
-                    time: item.time || '',
-                    notes: item.notes || '',
-                    color: item.color || '#f19100'
-                })).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
-                
-                if (mode === 'replace') {
-                    saveEvents(cleaned);
-                } else {
-                    const existing = loadEvents();
-                    const existingIds = new Set(existing.map(e => e.id));
-                    const merged = existing.slice();
-                    cleaned.forEach(item => {
-                        if (!existingIds.has(item.id)) merged.push(item);
-                    });
-                    saveEvents(merged);
-                }
-                
+                importEventsFromArray(imported, mode);
                 renderMobileCalendar();
+                // notify todo listeners in case todos were included
+                try { window.dispatchEvent(new CustomEvent('tmr:imports:done', { detail: {} })); } catch (e) { }
                 alert('Import successful');
-            } catch (err) {
-                alert('Import failed: invalid JSON');
-            }
+            } catch (err) { alert('Import failed: invalid JSON'); }
         };
         reader.readAsText(file);
     }
@@ -324,16 +368,26 @@
     
     modalCloseBtn.addEventListener('click', closeModal);
     
-    exportBtn.addEventListener('click', exportEventsToFile);
+    // Google Calendar buttons
+    if (gcalAuthBtn) {
+        gcalAuthBtn.addEventListener('click', () => {
+            if (window.GoogleCalendarClient && window.GoogleCalendarClient.initiateAuth) {
+                window.GoogleCalendarClient.initiateAuth();
+            } else {
+                console.warn('[mobile] Google Calendar API not available');
+            }
+        });
+    }
     
-    importBtn.addEventListener('click', () => importFileInput.click());
-    
-    importFileInput.addEventListener('change', (e) => {
-        const f = e.target.files[0];
-        if (!f) return;
-        importEventsFromFileObj(f);
-        importFileInput.value = '';
-    });
+    if (gcalSyncBtn) {
+        gcalSyncBtn.addEventListener('click', () => {
+            if (window.GoogleCalendarClient && window.GoogleCalendarClient.manualSync) {
+                window.GoogleCalendarClient.manualSync();
+            } else {
+                console.warn('[mobile] Google Calendar API not available');
+            }
+        });
+    }
     
     // Form submission
     eventForm.addEventListener('submit', (e) => {
@@ -378,6 +432,13 @@
         if (e.key === 'Escape' && modalBackdrop.classList.contains('active')) {
             closeModal();
         }
+    });
+    
+    // Listen for Google Calendar status updates
+    window.addEventListener('gcal:status-changed', (e) => {
+        const connected = e.detail && e.detail.connected;
+        if (gcalAuthBtn) gcalAuthBtn.style.display = connected ? 'none' : 'block';
+        if (gcalSyncBtn) gcalSyncBtn.style.display = connected ? 'block' : 'none';
     });
     
     // Initial render

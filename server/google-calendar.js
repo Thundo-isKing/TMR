@@ -374,6 +374,65 @@ class GoogleCalendarManager {
       googleEventId: googleEvent.id // Store for reference
     };
   }
+
+  /**
+   * Search for an existing Google Calendar event by title and date
+   * Used to prevent duplicates during sync
+   */
+  async searchExistingEvent(userId, title, date, time) {
+    try {
+      await this.getValidTokens(userId);
+      const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+      
+      // Get all calendars (primary + secondary + holidays)
+      const calendarList = await calendar.calendarList.list({ maxResults: 100 });
+      const calendars = calendarList.data.items || [];
+      
+      // Search for events on the specified date with the given title
+      const [year, month, day] = date.split('-').map(Number);
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0).toISOString();
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59).toISOString();
+      
+      // Search across all calendars
+      for (const cal of calendars) {
+        try {
+          const result = await calendar.events.list({
+            calendarId: cal.id,
+            timeMin: startOfDay,
+            timeMax: endOfDay,
+            q: title,
+            maxResults: 100,
+            singleEvents: true
+          });
+          
+          const events = result.data.items || [];
+          
+          // Find exact match by title and optionally time
+          const match = events.find(e => {
+            if (e.summary !== title) return false;
+            // If time is provided, also check time match (accounting for all-day events)
+            if (time && e.start.dateTime) {
+              const gcTime = new Date(e.start.dateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+              return gcTime === time;
+            }
+            return true;
+          });
+          
+          if (match) {
+            console.log('[GoogleCalendar] Found existing event in', cal.summary, ':', match.id);
+            return match;
+          }
+        } catch (err) {
+          console.warn('[GoogleCalendar] Error searching calendar', cal.summary, ':', err.message);
+        }
+      }
+      
+      return null;
+    } catch (err) {
+      console.error('[GoogleCalendar] Search error:', err);
+      return null;
+    }
+  }
 }
 
 module.exports = GoogleCalendarManager;

@@ -77,6 +77,8 @@
   function updateGoogleCalendarButtons(connected) {
     const authBtn = document.getElementById('gcal-auth-btn');
     const syncBtn = document.getElementById('gcal-sync-btn');
+    const mobileAuthBtn = document.getElementById('mobile-gcal-auth-btn');
+    const mobileSyncBtn = document.getElementById('mobile-gcal-sync-btn');
     
     if (authBtn) {
       authBtn.style.display = connected ? 'none' : 'block';
@@ -84,6 +86,17 @@
     if (syncBtn) {
       syncBtn.style.display = connected ? 'block' : 'none';
     }
+    if (mobileAuthBtn) {
+      mobileAuthBtn.style.display = connected ? 'none' : 'block';
+    }
+    if (mobileSyncBtn) {
+      mobileSyncBtn.style.display = connected ? 'block' : 'none';
+    }
+    
+    // Dispatch event for other listeners
+    try {
+      window.dispatchEvent(new CustomEvent('gcal:status-changed', { detail: { connected } }));
+    } catch (e) { }
   }
 
   // Get OAuth authorization URL
@@ -152,9 +165,15 @@
   async function syncWithGoogleCalendar() {
     try {
       const syncBtn = document.getElementById('gcal-sync-btn');
+      const mobileSyncBtn = document.getElementById('mobile-gcal-sync-btn');
+      
       if (syncBtn) {
         syncBtn.disabled = true;
-        syncBtn.textContent = '🔄 Syncing...';
+        syncBtn.classList.add('gcal-syncing');
+      }
+      if (mobileSyncBtn) {
+        mobileSyncBtn.disabled = true;
+        mobileSyncBtn.classList.add('gcal-syncing');
       }
       
       const userId = getGoogleCalendarUserId();
@@ -185,13 +204,27 @@
         const existingEvents = JSON.parse(localStorage.getItem('tmr_events') || '[]');
         
         for (const gcEvent of fetchData.events) {
-          // Check if event already exists (by checking if googleEventId exists)
+          // Check if event already exists (by checking if googleEventId exists OR matching title/date/time)
           const existingIdx = existingEvents.findIndex(e => 
             (e.googleEventId && e.googleEventId === gcEvent.googleEventId) ||
             (e.title === gcEvent.title && e.date === gcEvent.date && e.time === gcEvent.time)
           );
           
-          if (existingIdx < 0) {
+          if (existingIdx >= 0) {
+            // Event already exists, update it with Google Calendar data (preserve googleEventId)
+            const existingEvent = existingEvents[existingIdx];
+            existingEvent.googleEventId = gcEvent.googleEventId;
+            existingEvent.color = gcEvent.color; // Update color from Google Calendar
+            // Preserve notes if Google Calendar event has no description
+            if (gcEvent.notes) {
+              existingEvent.notes = gcEvent.notes;
+            }
+            // Add Google reminders if present
+            if (gcEvent.googleReminders && gcEvent.googleReminders.length > 0) {
+              existingEvent.googleReminders = gcEvent.googleReminders;
+            }
+            console.log('[GoogleCalendar] Updated existing event:', existingEvent.title, 'with googleEventId:', gcEvent.googleEventId);
+          } else {
             // New event from Google Calendar
             const newEvent = {
               id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -210,6 +243,7 @@
             }
             
             existingEvents.push(newEvent);
+            console.log('[GoogleCalendar] Added new event from Google Calendar:', newEvent.title);
           }
         }
         
@@ -227,9 +261,15 @@
       showNotification('Sync failed: ' + err.message, 'error');
     } finally {
       const syncBtn = document.getElementById('gcal-sync-btn');
+      const mobileSyncBtn = document.getElementById('mobile-gcal-sync-btn');
+      
       if (syncBtn) {
         syncBtn.disabled = false;
-        syncBtn.textContent = '🔄 Sync';
+        syncBtn.classList.remove('gcal-syncing');
+      }
+      if (mobileSyncBtn) {
+        mobileSyncBtn.disabled = false;
+        mobileSyncBtn.classList.remove('gcal-syncing');
       }
     }
   }
