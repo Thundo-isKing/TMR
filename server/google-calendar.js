@@ -388,6 +388,16 @@ class GoogleCalendarManager {
       const calendarList = await calendar.calendarList.list({ maxResults: 100 });
       const calendars = calendarList.data.items || [];
       
+      // Normalize time format for comparison
+      const parseTime = (timeStr) => {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(':').map(Number);
+        if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+        return { h, m };
+      };
+      
+      const normalizedSearchTime = parseTime(time);
+      
       // Search for events on the specified date with the given title
       const [year, month, day] = date.split('-').map(Number);
       const startOfDay = new Date(year, month - 1, day, 0, 0, 0).toISOString();
@@ -400,27 +410,38 @@ class GoogleCalendarManager {
             calendarId: cal.id,
             timeMin: startOfDay,
             timeMax: endOfDay,
-            q: title,
-            maxResults: 100,
+            maxResults: 250,
             singleEvents: true
           });
           
           const events = result.data.items || [];
           
           // Find exact match by title and optionally time
-          const match = events.find(e => {
-            if (e.summary !== title) return false;
-            // If time is provided, also check time match (accounting for all-day events)
-            if (time && e.start.dateTime) {
-              const gcTime = new Date(e.start.dateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-              return gcTime === time;
+          for (const e of events) {
+            // Must match title exactly (case-insensitive)
+            if (e.summary && e.summary.toLowerCase() === title.toLowerCase()) {
+              
+              // If time is provided, also check time match
+              if (normalizedSearchTime && e.start && e.start.dateTime) {
+                try {
+                  const gcEventTime = new Date(e.start.dateTime);
+                  const gcH = gcEventTime.getHours();
+                  const gcM = gcEventTime.getMinutes();
+                  
+                  // Must match time exactly
+                  if (gcH === normalizedSearchTime.h && gcM === normalizedSearchTime.m) {
+                    console.log('[GoogleCalendar] Found existing event in', cal.summary, ':', e.id, '(title + time match)');
+                    return e;
+                  }
+                } catch (timeErr) {
+                  console.debug('[GoogleCalendar] Error parsing event time:', timeErr.message);
+                }
+              } else if (!normalizedSearchTime) {
+                // No time provided, accept match with just title and date
+                console.log('[GoogleCalendar] Found existing event in', cal.summary, ':', e.id, '(title + date match, no time specified)');
+                return e;
+              }
             }
-            return true;
-          });
-          
-          if (match) {
-            console.log('[GoogleCalendar] Found existing event in', cal.summary, ':', match.id);
-            return match;
           }
         } catch (err) {
           console.warn('[GoogleCalendar] Error searching calendar', cal.summary, ':', err.message);
