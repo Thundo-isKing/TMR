@@ -196,9 +196,14 @@ if (leaveBtn) {
     const scheduled = new Map(); // key -> timeout id
     function isNotifyEnabled(){ return localStorage.getItem(NOTIFY_KEY) === 'true'; }
     function showSystemNotification(title, opts){
-        if(!('Notification' in window)) return;
-        if(Notification.permission === 'granted'){
-            try{ new Notification(title, opts); }catch(e){}
+        console.log('[showSystemNotification] Attempting to show:', { title, opts, hasNotification: 'Notification' in window, permission: Notification.permission });
+        if(!('Notification' in window)) { console.log('[showSystemNotification] Notifications not supported'); return; }
+        if(Notification.permission !== 'granted'){ console.log('[showSystemNotification] Permission not granted'); return; }
+        try{ 
+            const n = new Notification(title, opts); 
+            console.log('[showSystemNotification] Successfully created notification');
+        }catch(e){ 
+            console.error('[showSystemNotification] Failed to create notification:', e.message, e);
         }
     }
     const MAX_TIMEOUT = 2147483647; // max 32-bit signed int ms (~24.8 days)
@@ -596,18 +601,25 @@ if (leaveBtn) {
             const notifyTestBtn = document.getElementById('notify-test-btn');
             if(notifyTestBtn){
                 notifyTestBtn.addEventListener('click', async ()=>{
+                    console.log('[Test Notification] Clicked');
                     if(!('Notification' in window)){
+                        console.log('[Test Notification] Notifications not supported');
                         alert('Notifications are not supported by this browser.');
                         return;
                     }
+                    console.log('[Test Notification] Current permission:', Notification.permission);
                     if(Notification.permission === 'default'){
+                        console.log('[Test Notification] Requesting permission...');
                         const perm = await Notification.requestPermission();
+                        console.log('[Test Notification] Permission result:', perm);
                         if(perm !== 'granted'){ alert('Notification permission not granted.'); return; }
                     }
                     if(Notification.permission === 'granted'){
+                        console.log('[Test Notification] Showing test notification...');
                         try{ showSystemNotification('TMR test', { body: 'This is a test notification.' }); }
-                        catch(err){ console.error('Test notification failed', err); alert('Failed to show notification'); }
+                        catch(err){ console.error('[Test Notification] Failed:', err); alert('Failed to show notification'); }
                     } else {
+                        console.log('[Test Notification] Permission denied');
                         alert('Notification permission not granted.');
                     }
                 });
