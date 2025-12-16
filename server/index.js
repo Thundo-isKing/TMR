@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
@@ -32,6 +32,26 @@ if(!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY){
 }
 
 webpush.setVapidDetails('mailto:you@example.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+// Initialize Google Calendar Manager
+const GoogleCalendarManager = require('./google-calendar');
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3002/auth/google/callback';
+
+let googleCalendarManager = null;
+
+if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+  googleCalendarManager = new GoogleCalendarManager(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI,
+    db
+  );
+  console.log('[GoogleCalendar] Manager initialized with OAuth credentials');
+} else {
+  console.warn('[GoogleCalendar] OAuth credentials not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env');
+}
 
 // start scheduler
 require('./scheduler')({ db, webpush });
@@ -153,6 +173,178 @@ app.post('/reminder', (req, res) => {
     console.log('[Reminder] Added reminder:', id, 'delivering at:', new Date(deliverAtNum), '(in', delaySecs, 'seconds)');
     res.json({ ok: true, id });
   });
+});
+
+// ========== GOOGLE CALENDAR ENDPOINTS ==========
+
+// Get OAuth authorization URL
+app.get('/auth/google', (req, res) => {
+  if (!googleCalendarManager) {
+    console.error('[GoogleCalendar] Manager not initialized - missing OAuth credentials in .env');
+    return res.status(503).json({ error: 'Google Calendar not configured - missing credentials' });
+  }
+  
+  try {
+    const state = 'state_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const userId = req.query.userId || 'default';
+    
+    // Store state temporarily (in production, use a proper session store)
+    process.env.OAUTH_STATE = state;
+    process.env.OAUTH_USER_ID = userId;
+    
+    const authUrl = googleCalendarManager.getAuthUrl(state);
+    console.log('[GoogleCalendar] Generated auth URL for user:', userId);
+    res.json({ authUrl });
+  } catch (err) {
+    console.error('[GoogleCalendar] Failed to generate auth URL:', err);
+    res.status(500).json({ error: 'Failed to generate authorization URL', details: err.message });
+  }
+});
+
+// Google OAuth callback
+app.get('/auth/google/callback', async (req, res) => {
+  if (!googleCalendarManager) {
+    return res.status(503).json({ error: 'Google Calendar not configured' });
+  }
+  
+  const { code, state } = req.query;
+  const userId = process.env.OAUTH_USER_ID || 'default';
+  
+  if (!code) {
+    return res.status(400).json({ error: 'Missing authorization code' });
+  }
+  
+  try {
+    const tokens = await googleCalendarManager.exchangeCodeForTokens(code);
+    googleCalendarManager.saveTokens(userId, tokens, (err) => {
+      if (err) {
+        console.error('[GoogleCalendar] Failed to save tokens:', err);
+        return res.status(500).json({ error: 'Failed to save tokens' });
+      }
+      
+      // Redirect back to client with success message
+      res.redirect(`/TMR.html?gcal_auth=success&userId=${encodeURIComponent(userId)}`);
+    });
+  } catch (err) {
+    console.error('[GoogleCalendar] OAuth callback error:', err);
+    res.status(500).json({ error: 'Authentication failed', details: err.message });
+  }
+});
+
+// Check if user has Google Calendar connected
+app.get('/auth/google/status', (req, res) => {
+  if (!googleCalendarManager) {
+    return res.json({ connected: false });
+  }
+  
+  const userId = req.query.userId || 'default';
+  db.getGoogleCalendarToken(userId, (err, token) => {
+    if (err || !token) {
+      return res.json({ connected: false });
+    }
+    res.json({ connected: true, userId });
+  });
+});
+
+// Manual sync endpoint: sync TMR events with Google Calendar
+app.post('/sync/google-calendar', async (req, res) => {
+  if (!googleCalendarManager) {
+    return res.status(503).json({ error: 'Google Calendar not configured' });
+  }
+  
+  const userId = req.body.userId || 'default';
+  const events = req.body.events || []; // TMR events to sync
+  
+  console.log('[GoogleCalendar] Sync requested for user:', userId, 'Events to sync:', events.length);
+  
+  try {
+    let syncedCount = 0;
+    const results = [];
+    
+    for (const tmrEvent of events) {
+      try {
+        // Check if event already exists in Google Calendar
+        db.getEventMapping(tmrEvent.id, (err, mapping) => {
+          if (mapping && mapping.googleEventId) {
+            // Update existing event
+            googleCalendarManager.updateGoogleCalendarEvent(userId, mapping.googleEventId, tmrEvent)
+              .then(gcEvent => {
+                results.push({ tmrId: tmrEvent.id, action: 'updated', googleId: gcEvent.id });
+                syncedCount++;
+              })
+              .catch(err => console.error('[GoogleCalendar] Update failed:', err));
+          } else {
+            // Create new event
+            googleCalendarManager.createGoogleCalendarEvent(userId, tmrEvent)
+              .then(gcEvent => {
+                db.mapEventIds(tmrEvent.id, gcEvent.id, 'primary', userId, (err) => {
+                  if (err) console.error('[GoogleCalendar] Mapping failed:', err);
+                });
+                results.push({ tmrId: tmrEvent.id, action: 'created', googleId: gcEvent.id });
+                syncedCount++;
+              })
+              .catch(err => console.error('[GoogleCalendar] Create failed:', err));
+          }
+        });
+      } catch (err) {
+        console.error('[GoogleCalendar] Event sync error:', err);
+        results.push({ tmrId: tmrEvent.id, action: 'failed', error: err.message });
+      }
+    }
+    
+    // Log sync attempt
+    db.logSync(userId, 'manual', 'completed', syncedCount, null, (err) => {
+      if (err) console.warn('[GoogleCalendar] Failed to log sync:', err);
+    });
+    
+    res.json({ ok: true, synced: syncedCount, results });
+  } catch (err) {
+    console.error('[GoogleCalendar] Sync error:', err);
+    db.logSync(userId, 'manual', 'failed', 0, err.message, (err) => {
+      if (err) console.warn('[GoogleCalendar] Failed to log sync error:', err);
+    });
+    res.status(500).json({ error: 'Sync failed', details: err.message });
+  }
+});
+
+// Fetch Google Calendar events
+app.get('/sync/google-calendar/fetch', async (req, res) => {
+  if (!googleCalendarManager) {
+    return res.status(503).json({ error: 'Google Calendar not configured' });
+  }
+  
+  const userId = req.query.userId || 'default';
+  const daysBack = parseInt(req.query.daysBack) || 365; // Get past events
+  const daysForward = parseInt(req.query.daysForward) || 365; // Get future events
+  
+  try {
+    const now = new Date();
+    const timeMin = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+    const timeMax = new Date(now.getTime() + daysForward * 24 * 60 * 60 * 1000).toISOString();
+    
+    console.log('[GoogleCalendar] Fetching events from', timeMin, 'to', timeMax);
+    
+    const gcalEvents = await googleCalendarManager.fetchGoogleCalendarEvents(userId, timeMin, timeMax);
+    
+    // Convert to TMR format
+    const tmrEvents = gcalEvents.map(gcEvent => {
+      const tmrEvent = googleCalendarManager.googleEventToTmrEvent(gcEvent);
+      
+      // Extract reminders for TMR (TMR-heavy approach)
+      const reminders = googleCalendarManager.extractRemindersFromGoogleEvent(gcEvent);
+      if (reminders.length > 0) {
+        tmrEvent.googleReminders = reminders;
+      }
+      
+      return tmrEvent;
+    });
+    
+    console.log('[GoogleCalendar] Fetched', gcalEvents.length, 'events from Google Calendar');
+    res.json({ ok: true, events: tmrEvents, count: tmrEvents.length });
+  } catch (err) {
+    console.error('[GoogleCalendar] Fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch events', details: err.message });
+  }
 });
 
 // Admin: send a targeted push to a subscription id (development helper)

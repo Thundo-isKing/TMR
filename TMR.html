@@ -1014,6 +1014,8 @@
                         <button id="export-btn" class="nav-btn tmr-btn small-tmr-btn">Export</button>
                         <button id="import-btn" class="nav-btn tmr-btn small-tmr-btn">Import</button>
                         <input id="import-file" type="file" accept=".json" style="display:none">
+                        <button id="gcal-auth-btn" class="nav-btn tmr-btn small-tmr-btn" title="Connect to Google Calendar">🔗 Google Calendar</button>
+                        <button id="gcal-sync-btn" class="nav-btn tmr-btn small-tmr-btn" style="display:none;" title="Sync with Google Calendar">🔄 Sync</button>
                     </div>
                 </div>
                 <div id="weekday-row" class="weekday-row" aria-hidden="false"></div>
@@ -1096,6 +1098,19 @@
                         <label>Notes
                             <textarea id="event-notes"></textarea>
                         </label>
+                        <label>Color
+                            <div id="color-picker" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                                <button type="button" class="color-btn" data-color="#ff6b6b" title="Red" style="background: #ff6b6b; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#ff922b" title="Orange" style="background: #ff922b; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#ffd43b" title="Yellow" style="background: #ffd43b; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#51cf66" title="Green" style="background: #51cf66; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#0089f1" title="Blue" style="background: #0089f1; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#9775fa" title="Violet" style="background: #9775fa; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#1f1f1f" title="Black" style="background: #1f1f1f; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#999999" title="Grey" style="background: #999999; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                                <button type="button" class="color-btn" data-color="#8B4513" title="Brown" style="background: #8B4513; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                            </div>
+                        </label>
                         <div class="modal-actions">
                             <button type="submit" id="save-event" class="tmr-btn">Save</button>
                             <button type="button" id="delete-event" class="tmr-btn danger">Delete</button>
@@ -1167,6 +1182,7 @@
     <script src="TMR.js"></script>
     <script src="calendar.js"></script>
     <script src="calendar-mobile.js"></script>
+    <script src="google-calendar-client.js"></script>
     <script src="meibot.js"></script>
 
     <!-- New Layout Logic Script -->

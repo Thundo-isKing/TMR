@@ -1,0 +1,344 @@
+/**
+ * Google Calendar Client Integration
+ * Handles OAuth flow and bi-directional sync between TMR and Google Calendar
+ */
+
+(function() {
+  const GCAL_STATUS_KEY = 'tmr_gcal_status';
+  const DEVICE_ID_KEY = 'tmr_device_id';
+  const GCAL_USER_ID_KEY = 'tmr_gcal_user_id';
+
+  // Helper: serverFetch with fallbacks
+  async function serverFetch(path, opts = {}) {
+    try {
+      if (location.hostname.includes('ngrok')) {
+        const url = location.origin + path;
+        try {
+          const res = await fetch(url, opts);
+          if (res.ok) return res;
+        } catch (e) {
+          console.debug('[GoogleCalendar] ngrok fetch failed', e);
+        }
+      }
+      try {
+        const res = await fetch(path, opts);
+        if (res.ok) return res;
+      } catch (e) { /* try fallback */ }
+      const url = 'http://localhost:3002' + path;
+      const res = await fetch(url, opts);
+      return res;
+    } catch (e) {
+      console.warn('[GoogleCalendar] all fetch attempts failed', e);
+      throw e;
+    }
+  }
+
+  // Get or create device ID
+  function getDeviceId() {
+    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+  }
+
+  // Get Google Calendar user ID
+  function getGoogleCalendarUserId() {
+    return localStorage.getItem(GCAL_USER_ID_KEY) || getDeviceId();
+  }
+
+  // Set Google Calendar user ID
+  function setGoogleCalendarUserId(userId) {
+    localStorage.setItem(GCAL_USER_ID_KEY, userId);
+  }
+
+  // Check if connected to Google Calendar
+  async function checkGoogleCalendarStatus() {
+    try {
+      const userId = getGoogleCalendarUserId();
+      const res = await serverFetch(`/auth/google/status?userId=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      
+      localStorage.setItem(GCAL_STATUS_KEY, data.connected ? 'connected' : 'disconnected');
+      
+      // Update button visibility
+      updateGoogleCalendarButtons(data.connected);
+      
+      return data.connected;
+    } catch (err) {
+      console.error('[GoogleCalendar] Status check failed:', err);
+      updateGoogleCalendarButtons(false);
+      return false;
+    }
+  }
+
+  // Update button visibility based on connection status
+  function updateGoogleCalendarButtons(connected) {
+    const authBtn = document.getElementById('gcal-auth-btn');
+    const syncBtn = document.getElementById('gcal-sync-btn');
+    
+    if (authBtn) {
+      authBtn.style.display = connected ? 'none' : 'block';
+    }
+    if (syncBtn) {
+      syncBtn.style.display = connected ? 'block' : 'none';
+    }
+  }
+
+  // Get OAuth authorization URL
+  async function initiateGoogleAuth() {
+    try {
+      const userId = getGoogleCalendarUserId();
+      const res = await serverFetch(`/auth/google?userId=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        console.error('[GoogleCalendar] Server error:', data);
+        showNotification(`Failed to connect: ${data.error || 'Unknown error'}`, 'error');
+        return;
+      }
+      
+      if (data.authUrl) {
+        // Open OAuth window
+        const width = 500;
+        const height = 600;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+        
+        const authWindow = window.open(
+          data.authUrl,
+          'GoogleCalendarAuth',
+          `width=${width},height=${height},left=${left},top=${top}`
+        );
+        
+        // Check for successful callback (poll every second for up to 60 seconds)
+        let checks = 0;
+        const checkInterval = setInterval(async () => {
+          checks++;
+          
+          if (authWindow.closed || checks > 60) {
+            clearInterval(checkInterval);
+            if (checks <= 60) {
+              // Check status if window closed (could be success)
+              setTimeout(() => {
+                checkGoogleCalendarStatus();
+              }, 1000);
+            }
+            return;
+          }
+          
+          try {
+            const connected = await checkGoogleCalendarStatus();
+            if (connected) {
+              clearInterval(checkInterval);
+              authWindow.close();
+              showNotification('✓ Google Calendar connected!', 'success');
+            }
+          } catch (err) {
+            console.debug('[GoogleCalendar] Status check during auth:', err);
+          }
+        }, 1000);
+      } else {
+        showNotification('Failed to get authorization URL', 'error');
+      }
+    } catch (err) {
+      console.error('[GoogleCalendar] Auth initiation failed:', err);
+      showNotification('Failed to connect to Google Calendar: ' + err.message, 'error');
+    }
+  }
+
+  // Manual sync: push TMR events to Google Calendar and fetch new ones
+  async function syncWithGoogleCalendar() {
+    try {
+      const syncBtn = document.getElementById('gcal-sync-btn');
+      if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.textContent = '🔄 Syncing...';
+      }
+      
+      const userId = getGoogleCalendarUserId();
+      
+      // Get all TMR events
+      const events = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+      
+      console.log('[GoogleCalendar] Starting manual sync for', events.length, 'events');
+      
+      // Push TMR events to Google Calendar
+      const pushRes = await serverFetch('/sync/google-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, events })
+      });
+      
+      const pushData = await pushRes.json();
+      console.log('[GoogleCalendar] Push sync result:', pushData);
+      
+      // Fetch Google Calendar events (last month + next year)
+      const fetchRes = await serverFetch(`/sync/google-calendar/fetch?userId=${encodeURIComponent(userId)}&daysBack=30&daysForward=365`);
+      const fetchData = await fetchRes.json();
+      
+      if (fetchData.ok && fetchData.events) {
+        console.log('[GoogleCalendar] Fetched', fetchData.events.length, 'events from Google Calendar');
+        
+        // Merge with existing TMR events (Google Calendar events take precedence for updates)
+        const existingEvents = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+        
+        for (const gcEvent of fetchData.events) {
+          // Check if event already exists (by checking if googleEventId exists)
+          const existingIdx = existingEvents.findIndex(e => 
+            (e.googleEventId && e.googleEventId === gcEvent.googleEventId) ||
+            (e.title === gcEvent.title && e.date === gcEvent.date && e.time === gcEvent.time)
+          );
+          
+          if (existingIdx < 0) {
+            // New event from Google Calendar
+            const newEvent = {
+              id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+              title: gcEvent.title,
+              date: gcEvent.date,
+              time: gcEvent.time,
+              notes: gcEvent.notes,
+              color: gcEvent.color,
+              googleEventId: gcEvent.googleEventId,
+              syncedFromGoogle: true
+            };
+            
+            // If Google Calendar event has reminders, add them as TMR reminders
+            if (gcEvent.googleReminders && gcEvent.googleReminders.length > 0) {
+              newEvent.googleReminders = gcEvent.googleReminders;
+            }
+            
+            existingEvents.push(newEvent);
+          }
+        }
+        
+        localStorage.setItem('tmr_events', JSON.stringify(existingEvents));
+        
+        // Trigger calendar re-render
+        try {
+          window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { synced: true } }));
+        } catch (e) { }
+        
+        showNotification(`✓ Synced ${pushData.synced} events to Google Calendar and fetched ${fetchData.events.length} events`, 'success');
+      }
+    } catch (err) {
+      console.error('[GoogleCalendar] Sync failed:', err);
+      showNotification('Sync failed: ' + err.message, 'error');
+    } finally {
+      const syncBtn = document.getElementById('gcal-sync-btn');
+      if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.textContent = '🔄 Sync';
+      }
+    }
+  }
+
+  // Show notification to user
+  function showNotification(message, type = 'info') {
+    console.log('[GoogleCalendar]', type.toUpperCase(), message);
+    
+    // Try to show browser notification if available
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Google Calendar', { body: message });
+    }
+    
+    // Also show in-page notification (you can enhance this)
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#0089f1'};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 10000;
+      font-size: 14px;
+      max-width: 400px;
+      animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  // Add animation styles
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Set up hourly auto-sync
+  function setupAutoSync() {
+    // First check connection status
+    checkGoogleCalendarStatus();
+    
+    // Auto-sync every hour if connected
+    setInterval(async () => {
+      try {
+        const connected = await checkGoogleCalendarStatus();
+        if (connected) {
+          console.log('[GoogleCalendar] Running hourly auto-sync');
+          await syncWithGoogleCalendar();
+        }
+      } catch (err) {
+        console.debug('[GoogleCalendar] Auto-sync error:', err);
+      }
+    }, 60 * 60 * 1000); // 1 hour
+  }
+
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    const authBtn = document.getElementById('gcal-auth-btn');
+    const syncBtn = document.getElementById('gcal-sync-btn');
+    
+    if (authBtn) {
+      authBtn.addEventListener('click', initiateGoogleAuth);
+    }
+    
+    if (syncBtn) {
+      syncBtn.addEventListener('click', syncWithGoogleCalendar);
+    }
+    
+    // Check for OAuth callback
+    const params = new URLSearchParams(location.search);
+    if (params.get('gcal_auth') === 'success') {
+      const userId = params.get('userId');
+      if (userId) {
+        setGoogleCalendarUserId(userId);
+      }
+      // Remove from URL
+      window.history.replaceState({}, document.title, location.pathname);
+      
+      showNotification('✓ Google Calendar authenticated!', 'success');
+      checkGoogleCalendarStatus();
+    }
+    
+    // Set up auto-sync and check status
+    setupAutoSync();
+  });
+
+  // Export for external use
+  window.GoogleCalendarClient = {
+    checkStatus: checkGoogleCalendarStatus,
+    initiateAuth: initiateGoogleAuth,
+    manualSync: syncWithGoogleCalendar,
+    getDeviceId: getDeviceId,
+    getGoogleCalendarUserId: getGoogleCalendarUserId,
+    setGoogleCalendarUserId: setGoogleCalendarUserId
+  };
+})();

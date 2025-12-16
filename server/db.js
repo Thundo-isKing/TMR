@@ -28,6 +28,36 @@ db.serialize(() => {
     deliveredAt INTEGER,
     createdAt INTEGER NOT NULL
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS google_calendar_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT UNIQUE NOT NULL,
+    accessToken TEXT NOT NULL,
+    refreshToken TEXT,
+    expiresAt INTEGER,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS event_sync_mapping (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tmrEventId TEXT UNIQUE,
+    googleEventId TEXT,
+    googleCalendarId TEXT,
+    userId TEXT,
+    lastSyncedAt INTEGER,
+    createdAt INTEGER NOT NULL
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS sync_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT,
+    syncType TEXT,
+    status TEXT,
+    eventCount INTEGER,
+    errorMessage TEXT,
+    timestamp INTEGER NOT NULL
+  )`);
 });
 
 module.exports = {
@@ -91,5 +121,66 @@ module.exports = {
   removeSubscriptionByEndpoint: function(endpoint, cb){
     // store subscriptions as JSON; match by JSON LIKE
     db.run(`DELETE FROM subscriptions WHERE subscription LIKE ?`, ['%"' + endpoint.replace(/%/g,'') + '%'], function(err){ if(cb) cb(err, this && this.changes); });
+  },
+
+  // Google Calendar token management
+  saveGoogleCalendarToken: function(userId, accessToken, refreshToken, expiresAt, cb){
+    const now = Date.now();
+    db.run(`INSERT OR REPLACE INTO google_calendar_tokens (userId, accessToken, refreshToken, expiresAt, createdAt, updatedAt) 
+            VALUES (?, ?, ?, ?, ?, ?)`, 
+           [userId, accessToken, refreshToken, expiresAt, now, now], 
+           function(err){ if(cb) cb(err, this && this.lastID); });
+  },
+
+  getGoogleCalendarToken: function(userId, cb){
+    db.get(`SELECT userId, accessToken, refreshToken, expiresAt, updatedAt FROM google_calendar_tokens WHERE userId = ?`, 
+           [userId], 
+           (err, row) => { if(cb) cb(err, row || null); });
+  },
+
+  // Event sync mapping
+  mapEventIds: function(tmrEventId, googleEventId, googleCalendarId, userId, cb){
+    db.run(`INSERT OR REPLACE INTO event_sync_mapping (tmrEventId, googleEventId, googleCalendarId, userId, lastSyncedAt, createdAt) 
+            VALUES (?, ?, ?, ?, ?, ?)`, 
+           [tmrEventId, googleEventId, googleCalendarId, userId, Date.now(), Date.now()], 
+           function(err){ if(cb) cb(err); });
+  },
+
+  getEventMapping: function(tmrEventId, cb){
+    db.get(`SELECT tmrEventId, googleEventId, googleCalendarId, userId FROM event_sync_mapping WHERE tmrEventId = ?`, 
+           [tmrEventId], 
+           (err, row) => { if(cb) cb(err, row || null); });
+  },
+
+  getEventMappingByGoogle: function(googleEventId, cb){
+    db.get(`SELECT tmrEventId, googleEventId, googleCalendarId, userId FROM event_sync_mapping WHERE googleEventId = ?`, 
+           [googleEventId], 
+           (err, row) => { if(cb) cb(err, row || null); });
+  },
+
+  getAllEventMappingsForUser: function(userId, cb){
+    db.all(`SELECT tmrEventId, googleEventId, googleCalendarId FROM event_sync_mapping WHERE userId = ?`, 
+           [userId], 
+           (err, rows) => { if(cb) cb(err, rows || []); });
+  },
+
+  deleteEventMapping: function(tmrEventId, cb){
+    db.run(`DELETE FROM event_sync_mapping WHERE tmrEventId = ?`, [tmrEventId], 
+           function(err){ if(cb) cb(err, this && this.changes); });
+  },
+
+  // Sync log
+  logSync: function(userId, syncType, status, eventCount, errorMessage, cb){
+    db.run(`INSERT INTO sync_log (userId, syncType, status, eventCount, errorMessage, timestamp) 
+            VALUES (?, ?, ?, ?, ?, ?)`, 
+           [userId, syncType, status, eventCount, errorMessage, Date.now()], 
+           function(err){ if(cb) cb(err); });
+  },
+
+  getRecentSyncLogs: function(userId, limit, cb){
+    db.all(`SELECT syncType, status, eventCount, errorMessage, timestamp FROM sync_log 
+            WHERE userId = ? ORDER BY timestamp DESC LIMIT ?`, 
+           [userId, limit || 10], 
+           (err, rows) => { if(cb) cb(err, rows || []); });
   }
 };

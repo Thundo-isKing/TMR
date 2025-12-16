@@ -231,7 +231,7 @@
       date: String(item.date || ''),
       time: item.time || '',
       notes: item.notes || '',
-      color: item.color || '#f19100'
+      color: item.color || '#ff922b'
     })).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
 
     if(mode === 'replace'){
@@ -304,6 +304,7 @@
   const idInput = document.getElementById('event-id');
   const deleteBtn = document.getElementById('delete-event');
   const cancelBtn = document.getElementById('cancel-event');
+  let selectedEventColor = '#ff922b'; // Default color (orange)
   const dayEventsList = document.createElement('div'); dayEventsList.className = 'modal-events';
 
   if(!calendarEl) return; // no calendar on page
@@ -415,7 +416,7 @@
       evs.slice(0,4).forEach(ev => {
         const dot = document.createElement('span'); dot.className = 'event-dot';
         dot.title = ev.title;
-        dot.style.background = ev.color || '#f19100';
+        dot.style.background = ev.color || '#ff922b';
         eventsWrap.appendChild(dot);
       });
       if(evs.length > 4){
@@ -465,6 +466,16 @@
     timeInput.value = '';
     notesInput.value = '';
     deleteBtn.style.display = 'none';
+    
+    // Reset color to default for new event
+    selectedEventColor = '#ff922b';
+    colorBtns.forEach(b => b.style.borderWidth = '2px');
+    const defaultBtn = document.querySelector(`.color-btn[data-color="#ff922b"]`);
+    if(defaultBtn) {
+      defaultBtn.style.borderWidth = '3px';
+      defaultBtn.style.borderColor = '#333';
+    }
+    
     document.getElementById('modal-title').textContent = 'Events for ' + dateStr;
   }
 
@@ -474,6 +485,23 @@
     dateInput.value = ev.date || activeDate;
     timeInput.value = ev.time || '';
     notesInput.value = ev.notes || '';
+    
+    // Restore color when editing event
+    if(ev.color) {
+      selectedEventColor = ev.color;
+      // Highlight the matching color button
+      const matchingBtn = document.querySelector(`.color-btn[data-color="${ev.color}"]`);
+      if(matchingBtn) {
+        colorBtns.forEach(b => b.style.borderWidth = '2px');
+        matchingBtn.style.borderWidth = '3px';
+        matchingBtn.style.borderColor = '#333';
+      }
+    } else {
+      // Reset to default if no color
+      selectedEventColor = '#ff922b';
+      colorBtns.forEach(b => b.style.borderWidth = '2px');
+    }
+    
     deleteBtn.style.display = '';
     document.getElementById('modal-title').textContent = 'Edit Event';
   }
@@ -502,10 +530,23 @@
       date: dateInput.value,
       time: timeInput.value || '',
       notes: notesInput.value || '',
-      color: '#f19100'
+      color: selectedEventColor
     };
     addOrUpdateEvent(item);
     closeModal(); renderCalendar();
+  });
+
+  // Color picker button handlers
+  const colorBtns = document.querySelectorAll('.color-btn');
+  colorBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      selectedEventColor = btn.dataset.color;
+      // Visual feedback: highlight selected color
+      colorBtns.forEach(b => b.style.borderWidth = '2px');
+      btn.style.borderWidth = '3px';
+      btn.style.borderColor = '#333';
+    });
   });
 
   deleteBtn.addEventListener('click', ()=>{
