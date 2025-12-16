@@ -821,15 +821,21 @@ if (leaveBtn) {
             // the server-side scheduler will send notifications even if the browser is closed.
             // Only POST to server when user hasn't chosen Local-only mode.
             if(item.reminderAt && getNotifyMode() !== 'local'){
+                console.log('[modalAdd] Reminder mode allows server, posting...');
                 (async ()=>{
                     try{
                         const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
                         const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
                         console.log('[modalAdd] Posting reminder to server:', payload);
                         const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        console.log('[modalAdd] Server response:', { ok: res.ok, status: res.status });
                         if(res && res.ok){ console.log('[modalAdd] Server reminder posted successfully'); }
+                        else { console.warn('[modalAdd] Server returned non-ok status:', res.status); }
                     }catch(err){ console.warn('[modalAdd] Failed to persist reminder to server', err); }
                 })();
+            } else {
+                if(!item.reminderAt) console.log('[modalAdd] No reminder set, skipping server post');
+                if(getNotifyMode() === 'local') console.log('[modalAdd] Local-only mode, skipping server post');
             }
         });
         modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); if(e.key==='Escape') { closeModal(); } });
