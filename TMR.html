@@ -129,25 +129,27 @@
             /* MEIBOT Panel on RIGHT - modal-sized (400px) */
             .meibot-panel {
                 flex: 0 0 400px;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                background: #fafafa;
+                border-radius: 16px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.12);
                 display: flex;
                 flex-direction: column;
                 height: 60vh;
                 max-height: calc(100vh - 24px);
                 overflow: hidden;
+                border: 1px solid #f0f0f0;
             }
 
             .meibot-panel h3 {
                 margin: 0;
-                padding: 16px;
-                font-size: 18px;
-                font-weight: 600;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                padding: 20px;
+                font-size: 20px;
+                font-weight: 700;
+                background: linear-gradient(135deg, var(--accent-color, #0089f1) 0%, var(--accent-hover, #0073d1) 100%);
                 color: white;
-                border-radius: 12px 12px 0 0;
+                border-radius: 16px 16px 0 0;
                 flex-shrink: 0;
+                letter-spacing: 0.3px;
             }
 
             .meibot-panel #meibot-chat {
@@ -157,13 +159,14 @@
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
-                background: white;
+                background: #fafafa;
             }
 
             .meibot-message {
                 display: flex;
                 gap: 8px;
-                margin-bottom: 8px;
+                margin-bottom: 4px;
+                align-items: flex-end;
             }
 
             .meibot-message.user {
@@ -172,62 +175,85 @@
 
             .meibot-message-text {
                 max-width: 80%;
-                padding: 10px 14px;
-                border-radius: 8px;
+                padding: 12px 16px;
+                border-radius: 12px;
                 word-wrap: break-word;
                 font-size: 14px;
+                line-height: 1.4;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             }
 
             .meibot-message.user .meibot-message-text {
-                background: var(--accent-color, #0089f1);
+                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
                 color: white;
-                border-radius: 8px 0 8px 8px;
+                border-radius: 12px 4px 12px 12px;
+                font-weight: 500;
             }
 
             .meibot-message.meibot .meibot-message-text {
-                background: #f0f0f0;
+                background: white;
                 color: #333;
-                border-radius: 0 8px 8px 8px;
+                border-radius: 4px 12px 12px 12px;
+                border: 1px solid #e8e8e8;
             }
 
             .meibot-panel #meibot-form {
-                padding: 12px 16px;
-                border-top: 1px solid #e0e0e0;
+                padding: 16px;
+                border-top: 1px solid #e8e8e8;
                 display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
+                gap: 10px;
+                flex-wrap: nowrap;
                 flex-shrink: 0;
+                background: #fafafa;
             }
 
             .meibot-panel #meibot-input {
                 flex: 1;
-                min-width: 150px;
-                padding: 10px 12px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
+                min-width: 120px;
+                padding: 12px 16px;
+                border: 1.5px solid #e0e0e0;
+                border-radius: 10px;
                 font-size: 14px;
+                background: white;
+                transition: all 0.2s ease;
+                font-family: inherit;
+            }
+
+            .meibot-panel #meibot-input::placeholder {
+                color: #999;
             }
 
             .meibot-panel #meibot-input:focus {
                 outline: none;
                 border-color: var(--accent-color, #0089f1);
-                box-shadow: 0 0 4px rgba(0,137,241,0.3);
+                background: white;
+                box-shadow: 0 0 0 3px rgba(0,137,241,0.1);
             }
 
             .meibot-panel .small-tmr-btn {
-                padding: 10px 16px;
+                padding: 12px 20px;
                 background: var(--accent-color, #0089f1);
                 color: white;
                 border: none;
-                border-radius: 6px;
+                border-radius: 10px;
                 cursor: pointer;
                 font-size: 14px;
-                font-weight: 500;
-                transition: background 0.15s ease;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                white-space: nowrap;
+                flex-shrink: 0;
+                box-shadow: 0 2px 8px rgba(0,137,241,0.2);
             }
 
             .meibot-panel .small-tmr-btn:hover {
                 background: var(--accent-hover, #0073d1);
+                box-shadow: 0 4px 12px rgba(0,137,241,0.3);
+                transform: translateY(-1px);
+            }
+
+            .meibot-panel .small-tmr-btn:active {
+                transform: translateY(0);
+                box-shadow: 0 1px 4px rgba(0,137,241,0.2);
             }
 
             /* Calendar Section in CENTER */
@@ -1092,10 +1118,10 @@
         <!-- MEIBOT PANEL (RIGHT SIDE - Desktop only) -->
         <div class="meibot-panel">
             <h3>Meibot</h3>
-            <div id="meibot-chat" class="meibot-chat"></div>
-            <form id="meibot-form" class="meibot-form">
-                <input id="meibot-input" type="text" placeholder="Ask Meibot..." />
-                <button type="submit" class="small-tmr-btn">Send</button>
+            <div id="meibot-chat" class="meibot-chat" role="log" aria-live="polite" aria-label="Chat messages"></div>
+            <form id="meibot-form" class="meibot-form" role="search">
+                <input id="meibot-input" type="text" placeholder="Ask Meibot..." aria-label="Message input" autocomplete="off" />
+                <button type="submit" class="small-tmr-btn" aria-label="Send message">Send</button>
             </form>
         </div>
 
@@ -1128,9 +1154,6 @@
                     <button id="meibot-modal-close" class="meibot-close">&times;</button>
                 </div>
                 <div id="meibot-modal-chat" class="meibot-chat"></div>
-                <div id="meibot-modal-typing" class="meibot-typing hidden">
-                    <span>Meibot is thinking...</span>
-                </div>
                 <form id="meibot-modal-form" class="meibot-form">
                     <input id="meibot-modal-input" type="text" placeholder="Ask me anything..." />
                     <button type="submit" class="tmr-btn small-tmr-btn">Send</button>

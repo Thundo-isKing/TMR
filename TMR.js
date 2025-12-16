@@ -515,19 +515,7 @@ if (leaveBtn) {
             desktopInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') desktopAdd.click(); });
         }
         
-        // Modal add button handler
-        if(modalAdd && modalInput) {
-            modalAdd.addEventListener('click', ()=>{
-                const text = modalInput.value.trim();
-                if(!text) return;
-                const todos = loadTodos();
-                todos.push({ id: Date.now(), text, reminderAt: null });
-                saveTodos(todos);
-                modalInput.value = '';
-                renderTodos();
-            });
-            modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); });
-        }
+
 
         // notification toggle wiring in the TMR menu
         const notifyToggle = document.getElementById('notify-toggle');
@@ -813,7 +801,7 @@ if (leaveBtn) {
             if(modalReminderType) modalReminderType.value = 'none';
             if(modalReminderMinutes) modalReminderMinutes.value = '';
             if(modalReminderTime) modalReminderTime.value = '';
-            renderModal();
+            renderTodos();
             // schedule immediately if enabled
             console.log('[modalAdd] Calling rescheduleAll()...');
             try{ rescheduleAll(); }catch(e){ console.error('[modalAdd] rescheduleAll error:', e); }

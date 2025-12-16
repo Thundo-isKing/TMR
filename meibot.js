@@ -91,14 +91,9 @@
 
     appendMessage('user', userMsg, chatEl);
     inputEl.value = '';
-    
-    // Show typing indicator if available
-    const typingEl = chatEl.parentElement?.querySelector('.meibot-typing');
-    if (typingEl) typingEl.classList.remove('hidden');
 
     // Check if this is confirming a previous action
     if (isConfirmation(userMsg)) {
-      if (typingEl) typingEl.classList.add('hidden');
       if (lastSuggestedAction === 'createTodo' && lastActionData && window.meibotCreateTodo) {
         window.meibotCreateTodo(lastActionData.text, lastActionData.reminder);
         appendMessage('meibot', 'Task created! ≡ƒô¥', chatEl);
@@ -133,7 +128,6 @@
       });
 
       const data = await res.json();
-      if (typingEl) typingEl.classList.add('hidden');
 
       if (data.error) {
         appendMessage('meibot', `Error: ${data.error}`, chatEl);
@@ -231,7 +225,6 @@
         chatEl.scrollTop = chatEl.scrollHeight;
       }
     } catch (err) {
-      if (typingEl) typingEl.classList.add('hidden');
       console.error('[Meibot] Error:', err);
       appendMessage('meibot', 'Connection error. Please try again.', chatEl);
     }
@@ -289,6 +282,14 @@
 
   // Note: Meibot button click is now handled by switchTab() in TMR.html
   // Removing duplicate handler to prevent conflicts with the tab system
+
+  // Show initial greeting message
+  if (hasDesktop && desktopChat && desktopChat.children.length === 0) {
+    appendMessage('meibot', "Hi! I'm Meibot, your scheduling assistant. I can help you create tasks, schedule events, and manage your calendar. What can I do for you?", desktopChat);
+  }
+  if (hasMobile && mobileChat && mobileChat.children.length === 0) {
+    appendMessage('meibot', "Hi! I'm Meibot, your scheduling assistant. I can help you create tasks, schedule events, and manage your calendar. What can I do for you?", mobileChat);
+  }
 
   console.log('[Meibot] Initialized - Desktop:', hasDesktop ? 'Γ£ô' : 'Γ£ù', 'Mobile:', hasMobile ? 'Γ£ô' : 'Γ£ù');
 })();
