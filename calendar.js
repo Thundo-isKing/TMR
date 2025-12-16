@@ -68,6 +68,10 @@
   function addOrUpdateEvent(event){
     const events = loadEvents();
     const idx = events.findIndex(e => e.id === event.id);
+    
+    // Add/update modification timestamp
+    event.lastModified = Date.now();
+    
     if(idx >= 0) events[idx] = event; else events.push(event);
     saveEvents(events);
     // POST reminder to server if event has date/time

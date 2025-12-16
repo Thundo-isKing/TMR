@@ -187,19 +187,40 @@
       const userId = getGoogleCalendarUserId();
       
       // Get all TMR events
-      const events = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+      const allEvents = JSON.parse(localStorage.getItem('tmr_events') || '[]');
       
-      console.log('[GoogleCalendar] Starting manual sync for', events.length, 'events');
+      // Get last sync timestamp
+      const lastSyncTime = parseInt(localStorage.getItem('last_gcal_sync') || '0');
       
-      // Push TMR events to Google Calendar
-      const pushRes = await serverFetch('/sync/google-calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, events })
+      // Filter events: only sync new events or recently modified ones
+      const eventsToSync = allEvents.filter(event => {
+        // If event has no googleEventId, it's new and should be synced
+        if (!event.googleEventId) return true;
+        
+        // If event was modified after last sync, it should be synced
+        const eventModified = parseInt(event.lastModified || event.modifiedAt || 0);
+        if (eventModified > lastSyncTime) return true;
+        
+        // Otherwise, skip (already synced and not modified)
+        return false;
       });
       
-      const pushData = await pushRes.json();
-      console.log('[GoogleCalendar] Push sync result:', pushData);
+      console.log('[GoogleCalendar] Starting manual sync - Total events:', allEvents.length, 'Events to sync:', eventsToSync.length);
+      
+      // Only push if there are events to sync
+      if (eventsToSync.length > 0) {
+        // Push TMR events to Google Calendar
+        const pushRes = await serverFetch('/sync/google-calendar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, events: eventsToSync })
+        });
+        
+        const pushData = await pushRes.json();
+        console.log('[GoogleCalendar] Push sync result:', pushData);
+      } else {
+        console.log('[GoogleCalendar] No new or modified events to sync');
+      }
       
       // Fetch Google Calendar events (last month + next year)
       const fetchRes = await serverFetch(`/sync/google-calendar/fetch?userId=${encodeURIComponent(userId)}&daysBack=30&daysForward=365`);
@@ -257,12 +278,17 @@
         
         localStorage.setItem('tmr_events', JSON.stringify(existingEvents));
         
+        // Save sync timestamp
+        localStorage.setItem('last_gcal_sync', Date.now().toString());
+        
         // Trigger calendar re-render
         try {
           window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { synced: true } }));
         } catch (e) { }
         
-        showNotification(`✓ Synced ${pushData.synced} events to Google Calendar and fetched ${fetchData.events.length} events`, 'success');
+        const syncedCount = pushData.syncedCount || 0;
+        const fetchedCount = fetchData.events.length || 0;
+        showNotification(`✓ Synced ${syncedCount} new/modified events, fetched ${fetchedCount} from Google Calendar`, 'success');
       }
     } catch (err) {
       console.error('[GoogleCalendar] Sync failed:', err);

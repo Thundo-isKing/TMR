@@ -188,12 +188,29 @@ app.get('/auth/google', (req, res) => {
     const state = 'state_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const userId = req.query.userId || 'default';
     
-    // Store state temporarily (in production, use a proper session store)
+    // Get the origin from the request (handles localhost, ngrok, render, etc.)
+    let origin = req.get('origin');
+    if (!origin) {
+      const host = req.get('host');
+      // Check for X-Forwarded-Proto header (set by reverse proxies like ngrok)
+      const protocol = req.get('X-Forwarded-Proto') || req.protocol;
+      origin = `${protocol}://${host}`;
+    }
+    const redirectUri = `${origin}/auth/google/callback`;
+    
+    // Store state and redirect URI temporarily (in production, use a proper session store)
     process.env.OAUTH_STATE = state;
     process.env.OAUTH_USER_ID = userId;
+    process.env.OAUTH_REDIRECT_URI = redirectUri;
+    
+    console.log('[GoogleCalendar] Request headers - origin:', req.get('origin'), 'host:', req.get('host'), 'protocol:', req.protocol);
+    console.log('[GoogleCalendar] Final redirect URI:', redirectUri);
+    
+    // Update the OAuth manager with the correct redirect URI (recreates oauth2Client)
+    googleCalendarManager.setRedirectUri(redirectUri);
     
     const authUrl = googleCalendarManager.getAuthUrl(state);
-    console.log('[GoogleCalendar] Generated auth URL for user:', userId);
+    console.log('[GoogleCalendar] Generated auth URL for user:', userId, 'authUrl:', authUrl);
     res.json({ authUrl });
   } catch (err) {
     console.error('[GoogleCalendar] Failed to generate auth URL:', err);
@@ -209,18 +226,24 @@ app.get('/auth/google/callback', async (req, res) => {
   
   const { code, state } = req.query;
   const userId = process.env.OAUTH_USER_ID || 'default';
+  const redirectUri = process.env.OAUTH_REDIRECT_URI || `http://${req.get('host')}/auth/google/callback`;
   
   if (!code) {
     return res.status(400).json({ error: 'Missing authorization code' });
   }
   
   try {
+    // Ensure redirect URI matches what we generated
+    googleCalendarManager.setRedirectUri(redirectUri);
+    
     const tokens = await googleCalendarManager.exchangeCodeForTokens(code);
     googleCalendarManager.saveTokens(userId, tokens, (err) => {
       if (err) {
         console.error('[GoogleCalendar] Failed to save tokens:', err);
         return res.status(500).json({ error: 'Failed to save tokens' });
       }
+      
+      console.log('[GoogleCalendar] Tokens saved for user:', userId);
       
       // Redirect back to client with success message
       res.redirect(`/TMR.html?gcal_auth=success&userId=${encodeURIComponent(userId)}`);

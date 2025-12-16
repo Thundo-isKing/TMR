@@ -19,6 +19,14 @@ class GoogleCalendarManager {
   }
 
   /**
+   * Set redirect URI (for dynamic origins)
+   */
+  setRedirectUri(redirectUri) {
+    this.redirectUri = redirectUri;
+    this.oauth2Client = new OAuth2(this.clientId, this.clientSecret, redirectUri);
+  }
+
+  /**
    * Get OAuth 2.0 authorization URL for user
    */
   getAuthUrl(state) {
