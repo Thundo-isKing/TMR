@@ -246,6 +246,38 @@ app.get('/auth/google/status', (req, res) => {
   });
 });
 
+// Logout: disconnect user from Google Calendar
+app.post('/auth/google/logout', (req, res) => {
+  const userId = req.body.userId || 'default';
+  
+  try {
+    // Delete the token from database
+    db.deleteGoogleCalendarToken(userId, (err) => {
+      if (err) {
+        console.warn('[GoogleCalendar] Failed to delete tokens:', err);
+      } else {
+        console.log('[GoogleCalendar] Token deleted for user:', userId);
+      }
+    });
+    
+    // Delete all event mappings for this user
+    db.deleteAllEventMappingsForUser(userId, (err) => {
+      if (err) {
+        console.warn('[GoogleCalendar] Failed to delete event mappings:', err);
+      } else {
+        console.log('[GoogleCalendar] Event mappings deleted for user:', userId);
+      }
+    });
+    
+    console.log('[GoogleCalendar] User logged out:', userId);
+    res.json({ ok: true, message: 'Logged out successfully' });
+    
+  } catch (err) {
+    console.error('[GoogleCalendar] Logout error:', err);
+    res.status(500).json({ error: 'Logout failed', details: err.message });
+  }
+});
+
 // Manual sync endpoint: sync TMR events with Google Calendar
 app.post('/sync/google-calendar', async (req, res) => {
   if (!googleCalendarManager) {

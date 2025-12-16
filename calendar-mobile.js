@@ -355,15 +355,23 @@
         reader.readAsText(file);
     }
     
+    function triggerMobileMonthTransition() {
+        gridEl.classList.add('month-transition');
+        renderMobileCalendar();
+        setTimeout(() => {
+            gridEl.classList.remove('month-transition');
+        }, 350);
+    }
+    
     // Event listeners
     prevBtn.addEventListener('click', () => {
         viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
-        renderMobileCalendar();
+        triggerMobileMonthTransition();
     });
     
     nextBtn.addEventListener('click', () => {
         viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
-        renderMobileCalendar();
+        triggerMobileMonthTransition();
     });
     
     modalCloseBtn.addEventListener('click', closeModal);

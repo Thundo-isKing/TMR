@@ -138,6 +138,12 @@ module.exports = {
            (err, row) => { if(cb) cb(err, row || null); });
   },
 
+  deleteGoogleCalendarToken: function(userId, cb){
+    db.run(`DELETE FROM google_calendar_tokens WHERE userId = ?`, 
+           [userId], 
+           function(err){ if(cb) cb(err, this && this.changes); });
+  },
+
   // Event sync mapping
   mapEventIds: function(tmrEventId, googleEventId, googleCalendarId, userId, cb){
     db.run(`INSERT OR REPLACE INTO event_sync_mapping (tmrEventId, googleEventId, googleCalendarId, userId, lastSyncedAt, createdAt) 
@@ -166,6 +172,11 @@ module.exports = {
 
   deleteEventMapping: function(tmrEventId, cb){
     db.run(`DELETE FROM event_sync_mapping WHERE tmrEventId = ?`, [tmrEventId], 
+           function(err){ if(cb) cb(err, this && this.changes); });
+  },
+
+  deleteAllEventMappingsForUser: function(userId, cb){
+    db.run(`DELETE FROM event_sync_mapping WHERE userId = ?`, [userId], 
            function(err){ if(cb) cb(err, this && this.changes); });
   },
 

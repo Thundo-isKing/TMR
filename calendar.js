@@ -508,9 +508,25 @@
 
   function closeModal(){ modal.classList.add('hidden'); modal.setAttribute('aria-hidden','true'); activeDate = null; }
 
+  function triggerMonthTransition() {
+    // Add animation class, render calendar, then remove class
+    calendarEl.classList.add('month-transition');
+    renderCalendar();
+    // Remove class after animation completes
+    setTimeout(() => {
+      calendarEl.classList.remove('month-transition');
+    }, 350);
+  }
+
   // wire events
-  prevBtn.addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1); renderCalendar(); });
-  nextBtn.addEventListener('click', ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1); renderCalendar(); });
+  prevBtn.addEventListener('click', ()=>{ 
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1); 
+    triggerMonthTransition();
+  });
+  nextBtn.addEventListener('click', ()=>{ 
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1); 
+    triggerMonthTransition();
+  });
   closeModalBtn.addEventListener('click', closeModal);
   cancelBtn.addEventListener('click', closeModal);
 

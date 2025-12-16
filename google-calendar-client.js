@@ -77,8 +77,10 @@
   function updateGoogleCalendarButtons(connected) {
     const authBtn = document.getElementById('gcal-auth-btn');
     const syncBtn = document.getElementById('gcal-sync-btn');
+    const logoutBtn = document.getElementById('gcal-logout-btn');
     const mobileAuthBtn = document.getElementById('mobile-gcal-auth-btn');
     const mobileSyncBtn = document.getElementById('mobile-gcal-sync-btn');
+    const mobileLogoutBtn = document.getElementById('mobile-gcal-logout-btn');
     
     if (authBtn) {
       authBtn.style.display = connected ? 'none' : 'block';
@@ -86,11 +88,17 @@
     if (syncBtn) {
       syncBtn.style.display = connected ? 'block' : 'none';
     }
+    if (logoutBtn) {
+      logoutBtn.style.display = connected ? 'block' : 'none';
+    }
     if (mobileAuthBtn) {
       mobileAuthBtn.style.display = connected ? 'none' : 'block';
     }
     if (mobileSyncBtn) {
       mobileSyncBtn.style.display = connected ? 'block' : 'none';
+    }
+    if (mobileLogoutBtn) {
+      mobileLogoutBtn.style.display = connected ? 'block' : 'none';
     }
     
     // Dispatch event for other listeners
@@ -322,6 +330,64 @@
   `;
   document.head.appendChild(style);
 
+  // Logout and disconnect from Google Calendar
+  async function logoutGoogleCalendar() {
+    try {
+      const userId = getGoogleCalendarUserId();
+      
+      // Ask user to confirm before clearing calendar
+      const shouldClear = confirm(
+        'Disconnect from Google Calendar?\n\n' +
+        '• Your Google Calendar will be disconnected\n' +
+        '• Local events will be cleared\n' +
+        '• You can export your calendar before disconnecting\n\n' +
+        'Click OK to continue, or Cancel to go back.'
+      );
+      
+      if (!shouldClear) return;
+      
+      // Show logout loading state
+      const logoutBtn = document.getElementById('gcal-logout-btn');
+      const mobileLogoutBtn = document.getElementById('mobile-gcal-logout-btn');
+      if (logoutBtn) logoutBtn.disabled = true;
+      if (mobileLogoutBtn) mobileLogoutBtn.disabled = true;
+      
+      // Call server to revoke tokens
+      const res = await serverFetch('/auth/google/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      
+      if (!res.ok) {
+        throw new Error('Logout failed on server');
+      }
+      
+      // Clear local state
+      localStorage.removeItem(GCAL_USER_ID_KEY);
+      localStorage.removeItem(GCAL_STATUS_KEY);
+      localStorage.removeItem('tmr_events'); // Clear local calendar
+      
+      // Reset UI
+      updateGoogleCalendarButtons(false);
+      
+      showNotification('✓ Disconnected from Google Calendar', 'success');
+      
+      // Reload page to reset state
+      setTimeout(() => {
+        location.reload();
+      }, 500);
+      
+    } catch (err) {
+      console.error('[GoogleCalendar] Logout failed:', err);
+      showNotification('Logout failed: ' + err.message, 'error');
+      const logoutBtn = document.getElementById('gcal-logout-btn');
+      const mobileLogoutBtn = document.getElementById('mobile-gcal-logout-btn');
+      if (logoutBtn) logoutBtn.disabled = false;
+      if (mobileLogoutBtn) mobileLogoutBtn.disabled = false;
+    }
+  }
+
   // Set up hourly auto-sync
   function setupAutoSync() {
     // First check connection status
@@ -345,6 +411,10 @@
   document.addEventListener('DOMContentLoaded', () => {
     const authBtn = document.getElementById('gcal-auth-btn');
     const syncBtn = document.getElementById('gcal-sync-btn');
+    const logoutBtn = document.getElementById('gcal-logout-btn');
+    const mobileAuthBtn = document.getElementById('mobile-gcal-auth-btn');
+    const mobileSyncBtn = document.getElementById('mobile-gcal-sync-btn');
+    const mobileLogoutBtn = document.getElementById('mobile-gcal-logout-btn');
     
     if (authBtn) {
       authBtn.addEventListener('click', initiateGoogleAuth);
@@ -352,6 +422,22 @@
     
     if (syncBtn) {
       syncBtn.addEventListener('click', syncWithGoogleCalendar);
+    }
+    
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', logoutGoogleCalendar);
+    }
+    
+    if (mobileAuthBtn) {
+      mobileAuthBtn.addEventListener('click', initiateGoogleAuth);
+    }
+    
+    if (mobileSyncBtn) {
+      mobileSyncBtn.addEventListener('click', syncWithGoogleCalendar);
+    }
+    
+    if (mobileLogoutBtn) {
+      mobileLogoutBtn.addEventListener('click', logoutGoogleCalendar);
     }
     
     // Check for OAuth callback
@@ -377,6 +463,7 @@
     checkStatus: checkGoogleCalendarStatus,
     initiateAuth: initiateGoogleAuth,
     manualSync: syncWithGoogleCalendar,
+    logout: logoutGoogleCalendar,
     getDeviceId: getDeviceId,
     getGoogleCalendarUserId: getGoogleCalendarUserId,
     setGoogleCalendarUserId: setGoogleCalendarUserId
