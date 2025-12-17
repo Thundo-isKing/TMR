@@ -1564,7 +1564,7 @@ body.currentschedules-page #clock {
 }
 
 #todo-modal.modal {
-    display: none;
+    display: none !important;
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
@@ -1573,7 +1573,7 @@ body.currentschedules-page #clock {
 }
 
 #todo-modal.modal:not(.hidden) {
-    display: flex;
+    display: flex !important;
 }
 
 #todo-modal .modal-content {
@@ -1711,9 +1711,34 @@ body.currentschedules-page #clock {
     overflow-y: auto;
 }
 
+#todo-display-group {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
 #todo-preview {
     font-size: 14px;
     line-height: 1.6;
+}
+
+#todo-display {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+#todo-display > div:first-child {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+#todo-display > div:not(:first-child) {
+    color: #555;
 }
 
 .todo-line {
@@ -1776,7 +1801,30 @@ body.currentschedules-page #clock {
 }
 
 .todo-item .todo-preview-text {
-    font-size: 0.9em;
-    color: #666;
-    opacity: 0.8;
+    display: none;
+}
+
+/* Create Todo Button */
+#create-todo-btn {
+    background: var(--accent-color, #0089f1) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    width: auto !important;
+    padding: 10px 20px !important;
+    margin: 12px auto 12px auto !important;
+    display: block !important;
+}
+
+#create-todo-btn:hover {
+    background: var(--accent-hover, #0073d1) !important;
+}
+
+/* Todo item completed state */
+.todo-item input[type="checkbox"]:checked + .todo-text {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.todo-item input[type="checkbox"]:checked + .todo-text .todo-title {
+    color: #999;
 }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMR - Calendar</title>
-    <link rel="stylesheet" href="TMR.css?v=20251208e">
+    <link rel="stylesheet" href="TMR.css?v=20251217a">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
     <link rel="stylesheet" href="calendar-mobile.css?v=20251208b">
     <style>
@@ -984,19 +984,7 @@
         <!-- TODO PANEL (LEFT SIDE - Desktop only) -->
         <div class="todo-panel">
             <h3>To Do</h3>
-            <div class="todo-input-row">
-                <input id="todo-input" type="text" placeholder="Add a todo..." />
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <select id="todo-reminder-type" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
-                        <option value="none">No reminder</option>
-                        <option value="minutes">In minutes</option>
-                        <option value="time">At time</option>
-                    </select>
-                    <input id="todo-modal-minutes" type="number" min="0" placeholder="min" style="width: 60px; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
-                    <input id="todo-reminder-time" type="time" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
-                </div>
-                <button id="add-todo" class="small-tmr-btn">Add</button>
-            </div>
+            <button id="create-todo-btn" class="small-tmr-btn" style="width: 100%; margin-bottom: 12px;">+ Create Todo</button>
             <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
         </div>
 

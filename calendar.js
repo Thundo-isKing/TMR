@@ -621,57 +621,69 @@
 */
 (function(){
   const TODO_KEY = 'tmr_todos';
-  const input = document.getElementById('todo-input');
-  const addBtn = document.getElementById('add-todo');
+  const createBtn = document.getElementById('create-todo-btn');
   const listEl = document.getElementById('todo-list');
-  if(!input || !addBtn || !listEl) return;
+  if(!createBtn || !listEl) return;
 
   // Create todo modal
   const modal = document.createElement('div');
   modal.id = 'todo-modal';
   modal.className = 'modal hidden';
-  modal.setAttribute('aria-hidden', 'true');
   modal.innerHTML = `
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Edit Todo</h3>
+        <h3>Todo</h3>
         <button id="close-todo-modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
+        <div class="form-group" id="todo-title-group">
           <label for="todo-title-input">Title:</label>
           <input type="text" id="todo-title-input" placeholder="Todo title">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="todo-details-group">
           <label for="todo-details-input">Details:</label>
-          <div class="formatting-toolbar">
+          <div class="formatting-toolbar" id="formatting-toolbar" style="display: none;">
             <button id="btn-checkbox" class="format-btn" title="Add checkbox">☐ Checkbox</button>
             <button id="btn-bullet" class="format-btn" title="Add bullet">• Bullet</button>
             <button id="btn-number" class="format-btn" title="Add number">1. Number</button>
           </div>
           <textarea id="todo-details-input" placeholder="Add details here. Use formatting buttons or type:&#10;☐ for checkbox&#10;• for bullet&#10;1. for numbered"></textarea>
         </div>
-        <div class="form-group preview">
+        <div class="form-group preview" id="preview-group" style="display: none;">
           <label>Preview:</label>
           <div id="todo-preview"></div>
         </div>
+        <div class="form-group" id="todo-display-group" style="display: none;">
+          <div id="todo-display"></div>
+        </div>
       </div>
       <div class="modal-footer">
-        <button id="save-todo-btn" class="small-tmr-btn">Save</button>
-        <button id="cancel-todo-btn" class="small-tmr-btn">Cancel</button>
+        <button id="edit-todo-btn" class="small-tmr-btn" style="display: none;">Edit</button>
+        <button id="save-todo-btn" class="small-tmr-btn" style="display: none;">Save</button>
+        <button id="cancel-todo-btn" class="small-tmr-btn" style="display: none;">Cancel</button>
+        <button id="close-todo-btn" class="small-tmr-btn">Close</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
 
   const closeBtn = document.getElementById('close-todo-modal');
+  const editBtn = document.getElementById('edit-todo-btn');
   const saveTodoBtn = document.getElementById('save-todo-btn');
-  const cancelTodoBtn = document.getElementById('cancel-todo-btn');
+  const cancelBtn = document.getElementById('cancel-todo-btn');
+  const closeViewBtn = document.getElementById('close-todo-btn');
   const titleInput = document.getElementById('todo-title-input');
   const detailsInput = document.getElementById('todo-details-input');
   const preview = document.getElementById('todo-preview');
+  const formattingToolbar = document.getElementById('formatting-toolbar');
+  const titleGroup = document.getElementById('todo-title-group');
+  const detailsGroup = document.getElementById('todo-details-group');
+  const previewGroup = document.getElementById('preview-group');
+  const displayGroup = document.getElementById('todo-display-group');
+  const todoDisplay = document.getElementById('todo-display');
   
   let currentTodoId = null;
+  let isEditMode = false;
 
   function loadTodos(){ try{ return JSON.parse(localStorage.getItem(TODO_KEY) || '[]'); }catch(e){ return []; } }
   function saveTodos(todos){ localStorage.setItem(TODO_KEY, JSON.stringify(todos));
@@ -704,19 +716,92 @@
     const todo = todos.find(t => t.id === todoId);
 
     if (todo) {
+      isEditMode = false;
+      // Show view mode
+      titleGroup.style.display = 'none';
+      detailsGroup.style.display = 'none';
+      previewGroup.style.display = 'none';
+      displayGroup.style.display = 'block';
+      
+      // Display todo content
+      const titleDiv = document.createElement('div');
+      titleDiv.style.cssText = 'font-weight: bold; font-size: 1.1em; margin-bottom: 12px; color: #333;';
+      titleDiv.textContent = todo.title || todo.text || '(Untitled)';
+      
+      const detailsDiv = document.createElement('div');
+      detailsDiv.innerHTML = formatDetailsToHtml(todo.details || '');
+      
+      todoDisplay.innerHTML = '';
+      todoDisplay.appendChild(titleDiv);
+      if (todo.details) {
+        todoDisplay.appendChild(detailsDiv);
+      }
+      
+      // Show edit button and close button, hide edit controls
+      editBtn.style.display = 'block';
+      saveTodoBtn.style.display = 'none';
+      cancelBtn.style.display = 'none';
+      closeViewBtn.style.display = 'block';
+      
+      modal.classList.remove('hidden');
+    }
+  }
+
+  function openTodoModalForCreation() {
+    currentTodoId = null;
+    isEditMode = true;
+    titleInput.value = '';
+    detailsInput.value = '';
+    updatePreview();
+    
+    // Show edit mode
+    titleGroup.style.display = 'block';
+    detailsGroup.style.display = 'block';
+    previewGroup.style.display = 'block';
+    displayGroup.style.display = 'none';
+    formattingToolbar.style.display = 'flex';
+    
+    // Hide view button, show save/cancel
+    editBtn.style.display = 'none';
+    saveTodoBtn.style.display = 'block';
+    cancelBtn.style.display = 'block';
+    closeViewBtn.style.display = 'none';
+    
+    modal.classList.remove('hidden');
+    titleInput.focus();
+  }
+
+  function enterEditMode() {
+    isEditMode = true;
+    const todos = loadTodos();
+    const todo = todos.find(t => t.id === currentTodoId);
+    
+    if (todo) {
       titleInput.value = todo.title || todo.text || '';
       detailsInput.value = todo.details || '';
       updatePreview();
-      modal.classList.remove('hidden');
-      modal.setAttribute('aria-hidden', 'false');
+      
+      // Show edit mode
+      titleGroup.style.display = 'block';
+      detailsGroup.style.display = 'block';
+      previewGroup.style.display = 'block';
+      displayGroup.style.display = 'none';
+      formattingToolbar.style.display = 'flex';
+      
+      // Switch buttons
+      editBtn.style.display = 'none';
+      saveTodoBtn.style.display = 'block';
+      cancelBtn.style.display = 'block';
+      closeViewBtn.style.display = 'none';
+      
       titleInput.focus();
     }
   }
 
   function closeModal() {
     modal.classList.add('hidden');
-    modal.setAttribute('aria-hidden', 'true');
     currentTodoId = null;
+    isEditMode = false;
   }
 
   function updatePreview() {
@@ -760,41 +845,29 @@
       const cb = document.createElement('input'); 
       cb.type = 'checkbox'; 
       cb.className = 'todo-check';
+      cb.checked = t.completed || false;
       cb.addEventListener('change', ()=>{ 
-        if(cb.checked){ 
-          const remaining = loadTodos().filter(x => x.id !== t.id); 
-          saveTodos(remaining); 
-          render(); 
+        const todos = loadTodos();
+        const idx = todos.findIndex(x => x.id === t.id);
+        if (idx >= 0) {
+          todos[idx].completed = cb.checked;
+          saveTodos(todos);
+          render();
         }
       });
 
       const textWrap = document.createElement('div'); 
       textWrap.className = 'todo-text';
+      textWrap.style.cursor = 'pointer';
       
       const titleSpan = document.createElement('span');
       titleSpan.className = 'todo-title';
       titleSpan.textContent = t.title || t.text || '(Untitled)';
       titleSpan.style.fontWeight = 'bold';
-      titleSpan.style.cursor = 'pointer';
       titleSpan.addEventListener('click', () => openTodoModal(t.id));
       
-      const detailsSpan = document.createElement('span');
-      detailsSpan.className = 'todo-preview-text';
-      if (t.details) {
-        const previewText = t.details.split('\n')[0].substring(0, 50);
-        detailsSpan.textContent = previewText + (t.details.length > 50 ? '...' : '');
-      } else {
-        detailsSpan.textContent = '(no details)';
-        detailsSpan.style.opacity = '0.6';
-      }
-
       const actions = document.createElement('div'); 
       actions.className = 'todo-actions';
-      
-      const viewBtn = document.createElement('button'); 
-      viewBtn.className='small-tmr-btn'; 
-      viewBtn.textContent = 'View/Edit'; 
-      viewBtn.addEventListener('click', () => openTodoModal(t.id));
       
       const delBtn = document.createElement('button'); 
       delBtn.className='small-tmr-btn'; 
@@ -806,14 +879,9 @@
         render(); 
       });
       
-      actions.appendChild(viewBtn); 
       actions.appendChild(delBtn);
 
       textWrap.appendChild(titleSpan);
-      if (t.details) {
-        textWrap.appendChild(document.createElement('br'));
-        textWrap.appendChild(detailsSpan);
-      }
       
       li.appendChild(cb); 
       li.appendChild(textWrap); 
@@ -859,25 +927,14 @@
   detailsInput.addEventListener('input', updatePreview);
 
   closeBtn.addEventListener('click', closeModal);
-  cancelTodoBtn.addEventListener('click', closeModal);
+  editBtn.addEventListener('click', enterEditMode);
+  cancelBtn.addEventListener('click', closeModal);
+  closeViewBtn.addEventListener('click', closeModal);
   saveTodoBtn.addEventListener('click', saveTodo);
 
-  // Add todo button opens modal
-  addBtn.addEventListener('click', () => {
-    const v = input.value.trim();
-    if (v) {
-      titleInput.value = v;
-      input.value = '';
-      detailsInput.value = '';
-      updatePreview();
-      modal.classList.remove('hidden');
-      modal.setAttribute('aria-hidden', 'false');
-      detailsInput.focus();
-    }
-  });
-
-  input.addEventListener('keydown', (e)=>{ 
-    if(e.key==='Enter'){ addBtn.click(); } 
+  // Create todo button
+  createBtn.addEventListener('click', () => {
+    openTodoModalForCreation();
   });
 
   // initial
@@ -903,13 +960,16 @@
     todos.forEach(t => {
       const li = document.createElement('div'); li.className = 'todo-item'; li.dataset.id = t.id;
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
+      cb.checked = t.completed || false;
       cb.addEventListener('change', ()=>{ 
-        if(cb.checked){ 
-          const remaining = loadTodos().filter(x=>x.id!==t.id); 
-          saveTodos(remaining); 
-          render(); 
-          renderMenu(); 
-        } 
+        const todos = loadTodos();
+        const idx = todos.findIndex(x=>x.id===t.id);
+        if (idx >= 0) {
+          todos[idx].completed = cb.checked;
+          saveTodos(todos);
+          render();
+          renderMenu();
+        }
       });
       const txt = document.createElement('div'); txt.className = 'todo-text'; 
       const titleSpan = document.createElement('span'); 
