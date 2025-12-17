@@ -129,7 +129,9 @@
       }
       const newTodo = {
         id: 'td_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        text: todoText,
+        title: todoText,
+        details: '',
+        text: todoText, // for backward compatibility
         reminderAt: reminderAtTime
       };
       todos.unshift(newTodo);
