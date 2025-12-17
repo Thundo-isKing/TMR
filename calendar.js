@@ -20,7 +20,7 @@
         const res = await fetch(path, opts);
         if(res.ok) return res;
       }catch(e){ /* try fallback */ }
-      const url = 'http://localhost:3003' + path;
+      const url = 'http://localhost:3002' + path;
       const res = await fetch(url, opts);
       return res;
     }catch(e){
@@ -79,8 +79,35 @@
     try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id: event.id } })); }catch(e){}
   }
   function deleteEvent(id){
-    const events = loadEvents().filter(e => e.id !== id);
-    saveEvents(events);
+    const events = loadEvents();
+    const eventToDelete = events.find(e => e.id === id);
+    
+    // If event has a googleEventId, sync deletion to Google Calendar
+    if (eventToDelete && eventToDelete.googleEventId) {
+      try {
+        // Get userId - try from window.GoogleCalendarClient first, then from localStorage
+        let userId = 'default';
+        if (window.GoogleCalendarClient && typeof window.GoogleCalendarClient.getGoogleCalendarUserId === 'function') {
+          userId = window.GoogleCalendarClient.getGoogleCalendarUserId();
+        } else {
+          userId = localStorage.getItem('tmr_gcal_user_id') || 'default';
+        }
+        
+        console.log('[calendar] Syncing deletion with userId:', userId);
+        
+        // Send delete request to server (don't wait for response)
+        serverFetch('/sync/google-calendar/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, googleEventId: eventToDelete.googleEventId, tmrEventId: id })
+        }).catch(err => console.warn('[calendar] Failed to sync deletion to Google Calendar:', err));
+      } catch (err) {
+        console.warn('[calendar] Error syncing deletion:', err);
+      }
+    }
+    
+    const filtered = events.filter(e => e.id !== id);
+    saveEvents(filtered);
     try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id } })); }catch(e){}
   }
 

@@ -208,6 +208,7 @@
       console.log('[GoogleCalendar] Starting manual sync - Total events:', allEvents.length, 'Events to sync:', eventsToSync.length);
       
       // Only push if there are events to sync
+      let pushData = null;
       if (eventsToSync.length > 0) {
         // Push TMR events to Google Calendar
         const pushRes = await serverFetch('/sync/google-calendar', {
@@ -216,8 +217,23 @@
           body: JSON.stringify({ userId, events: eventsToSync })
         });
         
-        const pushData = await pushRes.json();
+        pushData = await pushRes.json();
         console.log('[GoogleCalendar] Push sync result:', pushData);
+        
+        // Update TMR events with googleEventIds from the response
+        if (pushData.results) {
+          const updatedEvents = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+          for (const result of pushData.results) {
+            if ((result.action === 'created' || result.action === 'linked') && result.googleId) {
+              const tmrEventIdx = updatedEvents.findIndex(e => e.id === result.tmrId);
+              if (tmrEventIdx >= 0) {
+                updatedEvents[tmrEventIdx].googleEventId = result.googleId;
+                console.log('[GoogleCalendar] Updated TMR event with googleEventId:', result.tmrId, '->', result.googleId);
+              }
+            }
+          }
+          localStorage.setItem('tmr_events', JSON.stringify(updatedEvents));
+        }
       } else {
         console.log('[GoogleCalendar] No new or modified events to sync');
       }
@@ -231,17 +247,34 @@
         
         // Merge with existing TMR events (Google Calendar events take precedence for updates)
         const existingEvents = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+        const googleEventIds = new Set(fetchData.events.map(e => e.googleEventId));
         
+        // Remove events that were deleted from Google Calendar
+        const filteredEvents = existingEvents.filter(e => {
+          // Keep events without googleEventId (local-only events)
+          if (!e.googleEventId) return true;
+          // Keep events that still exist in Google Calendar
+          if (googleEventIds.has(e.googleEventId)) return true;
+          // Remove events that were deleted from Google Calendar
+          console.log('[GoogleCalendar] Removing event that was deleted from Google Calendar:', e.title, 'googleEventId:', e.googleEventId);
+          return false;
+        });
+        
+        // Now merge the fetched Google Calendar events
         for (const gcEvent of fetchData.events) {
-          // Check if event already exists (by checking if googleEventId exists OR matching title/date/time)
-          const existingIdx = existingEvents.findIndex(e => 
-            (e.googleEventId && e.googleEventId === gcEvent.googleEventId) ||
-            (e.title === gcEvent.title && e.date === gcEvent.date && e.time === gcEvent.time)
-          );
+          // Check if event already exists by googleEventId first (most reliable)
+          let existingIdx = filteredEvents.findIndex(e => e.googleEventId === gcEvent.googleEventId);
+          
+          // If not found by googleEventId, try matching title + date + time (for events synced before mapping)
+          if (existingIdx < 0) {
+            existingIdx = filteredEvents.findIndex(e => 
+              e.title === gcEvent.title && e.date === gcEvent.date && e.time === gcEvent.time
+            );
+          }
           
           if (existingIdx >= 0) {
             // Event already exists, update it with Google Calendar data (preserve googleEventId)
-            const existingEvent = existingEvents[existingIdx];
+            const existingEvent = filteredEvents[existingIdx];
             existingEvent.googleEventId = gcEvent.googleEventId;
             existingEvent.color = gcEvent.color; // Update color from Google Calendar
             // Preserve notes if Google Calendar event has no description
@@ -271,12 +304,12 @@
               newEvent.googleReminders = gcEvent.googleReminders;
             }
             
-            existingEvents.push(newEvent);
+            filteredEvents.push(newEvent);
             console.log('[GoogleCalendar] Added new event from Google Calendar:', newEvent.title);
           }
         }
         
-        localStorage.setItem('tmr_events', JSON.stringify(existingEvents));
+        localStorage.setItem('tmr_events', JSON.stringify(filteredEvents));
         
         // Save sync timestamp
         localStorage.setItem('last_gcal_sync', Date.now().toString());
@@ -286,7 +319,7 @@
           window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { synced: true } }));
         } catch (e) { }
         
-        const syncedCount = pushData.syncedCount || 0;
+        const syncedCount = pushData ? (pushData.syncedCount || 0) : 0;
         const fetchedCount = fetchData.events.length || 0;
         showNotification(`✓ Synced ${syncedCount} new/modified events, fetched ${fetchedCount} from Google Calendar`, 'success');
       }
@@ -434,18 +467,18 @@
     // First check connection status
     checkGoogleCalendarStatus();
     
-    // Auto-sync every hour if connected
+    // Auto-sync every 10 minutes if connected
     setInterval(async () => {
       try {
         const connected = await checkGoogleCalendarStatus();
         if (connected) {
-          console.log('[GoogleCalendar] Running hourly auto-sync');
+          console.log('[GoogleCalendar] Running auto-sync');
           await syncWithGoogleCalendar();
         }
       } catch (err) {
         console.debug('[GoogleCalendar] Auto-sync error:', err);
       }
-    }, 60 * 60 * 1000); // 1 hour
+    }, 10 * 60 * 1000); // 10 minutes
   }
 
   // Initialize when DOM is ready
