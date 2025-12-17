@@ -614,7 +614,8 @@
 })();
 
 /* To-do app: saves to localStorage (key: tmr_todos)
-   Features: add, edit, delete by checking checkbox (immediate deletion), persists in browser
+   Features: title + detailed notes with formatting (checkboxes, bullets, numbering)
+   Modal editor for viewing/editing todo details
 */
 (function(){
   const TODO_KEY = 'tmr_todos';
@@ -623,50 +624,259 @@
   const listEl = document.getElementById('todo-list');
   if(!input || !addBtn || !listEl) return;
 
+  // Create todo modal
+  const modal = document.createElement('div');
+  modal.id = 'todo-modal';
+  modal.className = 'modal hidden';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Todo</h3>
+        <button id="close-todo-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="todo-title-input">Title:</label>
+          <input type="text" id="todo-title-input" placeholder="Todo title">
+        </div>
+        <div class="form-group">
+          <label for="todo-details-input">Details:</label>
+          <div class="formatting-toolbar">
+            <button id="btn-checkbox" class="format-btn" title="Add checkbox">☐ Checkbox</button>
+            <button id="btn-bullet" class="format-btn" title="Add bullet">• Bullet</button>
+            <button id="btn-number" class="format-btn" title="Add number">1. Number</button>
+          </div>
+          <textarea id="todo-details-input" placeholder="Add details here. Use formatting buttons or type:&#10;☐ for checkbox&#10;• for bullet&#10;1. for numbered"></textarea>
+        </div>
+        <div class="form-group preview">
+          <label>Preview:</label>
+          <div id="todo-preview"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="save-todo-btn" class="small-tmr-btn">Save</button>
+        <button id="cancel-todo-btn" class="small-tmr-btn">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const closeBtn = document.getElementById('close-todo-modal');
+  const saveTodoBtn = document.getElementById('save-todo-btn');
+  const cancelTodoBtn = document.getElementById('cancel-todo-btn');
+  const titleInput = document.getElementById('todo-title-input');
+  const detailsInput = document.getElementById('todo-details-input');
+  const preview = document.getElementById('todo-preview');
+  
+  let currentTodoId = null;
+
   function loadTodos(){ try{ return JSON.parse(localStorage.getItem(TODO_KEY) || '[]'); }catch(e){ return []; } }
   function saveTodos(todos){ localStorage.setItem(TODO_KEY, JSON.stringify(todos));
     try{ window.dispatchEvent(new CustomEvent('tmr:todos:changed', { detail: { count: (Array.isArray(todos) ? todos.length : loadTodos().length) } })); }catch(e){}
   }
   function generateId(){ return 'td_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
+  function formatDetailsToHtml(text) {
+    if (!text) return '';
+    let html = '';
+    const lines = text.split('\n');
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('☐')) {
+        html += `<div class="todo-line"><input type="checkbox" disabled> ${trimmed.substring(1).trim()}</div>`;
+      } else if (trimmed.startsWith('•')) {
+        html += `<div class="todo-line">• ${trimmed.substring(1).trim()}</div>`;
+      } else if (trimmed.match(/^\d+\./)) {
+        html += `<div class="todo-line">${trimmed}</div>`;
+      } else if (trimmed) {
+        html += `<div class="todo-line">${trimmed}</div>`;
+      }
+    });
+    return html || '<p style="opacity: 0.6;">No details</p>';
+  }
+
+  function openTodoModal(todoId) {
+    currentTodoId = todoId;
+    const todos = loadTodos();
+    const todo = todos.find(t => t.id === todoId);
+
+    if (todo) {
+      titleInput.value = todo.title || todo.text || '';
+      detailsInput.value = todo.details || '';
+      updatePreview();
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+      titleInput.focus();
+    }
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    currentTodoId = null;
+  }
+
+  function updatePreview() {
+    preview.innerHTML = formatDetailsToHtml(detailsInput.value);
+  }
+
+  function saveTodo() {
+    const title = titleInput.value.trim() || '(Untitled)';
+    const details = detailsInput.value.trim();
+    
+    if (!title && !details) return;
+
+    const todos = loadTodos();
+    
+    if (currentTodoId) {
+      // Update existing
+      const idx = todos.findIndex(t => t.id === currentTodoId);
+      if (idx >= 0) {
+        todos[idx] = { id: currentTodoId, title, details, text: title }; // Keep text for backward compatibility
+      }
+    } else {
+      // Create new
+      const newTodo = { id: generateId(), title, details, text: title };
+      todos.unshift(newTodo);
+    }
+    
+    saveTodos(todos);
+    closeModal();
+    render();
+    renderMenu();
+  }
+
   function render(){
     const todos = loadTodos();
     listEl.innerHTML = '';
     todos.forEach(t => {
-      const li = document.createElement('li'); li.className = 'todo-item'; li.dataset.id = t.id;
+      const li = document.createElement('li'); 
+      li.className = 'todo-item'; 
+      li.dataset.id = t.id;
 
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
-      cb.addEventListener('change', ()=>{ if(cb.checked){ // delete when checked
-        const remaining = loadTodos().filter(x => x.id !== t.id); saveTodos(remaining); render(); }
+      const cb = document.createElement('input'); 
+      cb.type = 'checkbox'; 
+      cb.className = 'todo-check';
+      cb.addEventListener('change', ()=>{ 
+        if(cb.checked){ 
+          const remaining = loadTodos().filter(x => x.id !== t.id); 
+          saveTodos(remaining); 
+          render(); 
+        }
       });
 
-      const textWrap = document.createElement('div'); textWrap.className = 'todo-text';
-      const span = document.createElement('span'); span.textContent = t.text; span.tabIndex = 0;
-      span.addEventListener('dblclick', ()=> startEdit());
-      span.addEventListener('keydown', (e)=>{ if(e.key==='Enter') startEdit(); });
-
-      function startEdit(){
-        const inputEl = document.createElement('input'); inputEl.type = 'text'; inputEl.value = t.text;
-        inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') finishEdit(); if(e.key==='Escape') render(); });
-        function finishEdit(){ const v = inputEl.value.trim(); if(v){ t.text = v; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0) { all[idx]=t; saveTodos(all); } render(); } else { render(); } }
-        const saveBtn = document.createElement('button'); saveBtn.className='small-tmr-btn'; saveBtn.textContent='Save'; saveBtn.addEventListener('click', finishEdit);
-        const cancelBtn = document.createElement('button'); cancelBtn.className='small-tmr-btn'; cancelBtn.textContent='Cancel'; cancelBtn.addEventListener('click', render);
-        textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
+      const textWrap = document.createElement('div'); 
+      textWrap.className = 'todo-text';
+      
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'todo-title';
+      titleSpan.textContent = t.title || t.text || '(Untitled)';
+      titleSpan.style.fontWeight = 'bold';
+      titleSpan.style.cursor = 'pointer';
+      titleSpan.addEventListener('click', () => openTodoModal(t.id));
+      
+      const detailsSpan = document.createElement('span');
+      detailsSpan.className = 'todo-preview-text';
+      if (t.details) {
+        const previewText = t.details.split('\n')[0].substring(0, 50);
+        detailsSpan.textContent = previewText + (t.details.length > 50 ? '...' : '');
+      } else {
+        detailsSpan.textContent = '(no details)';
+        detailsSpan.style.opacity = '0.6';
       }
 
-      const actions = document.createElement('div'); actions.className = 'todo-actions';
-      const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent = 'Edit'; editBtn.addEventListener('click', startEdit);
-      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent = 'Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); render(); });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
+      const actions = document.createElement('div'); 
+      actions.className = 'todo-actions';
+      
+      const viewBtn = document.createElement('button'); 
+      viewBtn.className='small-tmr-btn'; 
+      viewBtn.textContent = 'View/Edit'; 
+      viewBtn.addEventListener('click', () => openTodoModal(t.id));
+      
+      const delBtn = document.createElement('button'); 
+      delBtn.className='small-tmr-btn'; 
+      delBtn.textContent = 'Delete'; 
+      delBtn.addEventListener('click', ()=>{ 
+        if(!confirm('Delete this todo?')) return; 
+        const remaining = loadTodos().filter(x=>x.id!==t.id); 
+        saveTodos(remaining); 
+        render(); 
+      });
+      
+      actions.appendChild(viewBtn); 
+      actions.appendChild(delBtn);
 
-      textWrap.appendChild(span);
-      li.appendChild(cb); li.appendChild(textWrap); li.appendChild(actions);
+      textWrap.appendChild(titleSpan);
+      if (t.details) {
+        textWrap.appendChild(document.createElement('br'));
+        textWrap.appendChild(detailsSpan);
+      }
+      
+      li.appendChild(cb); 
+      li.appendChild(textWrap); 
+      li.appendChild(actions);
       listEl.appendChild(li);
     });
   }
 
-  addBtn.addEventListener('click', ()=>{ const v = input.value.trim(); if(!v) return; const todos = loadTodos(); const item = { id: generateId(), text: v }; todos.unshift(item); saveTodos(todos); input.value = ''; render(); });
-  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ addBtn.click(); } });
+  // Format button handlers
+  document.getElementById('btn-checkbox').addEventListener('click', () => {
+    const start = detailsInput.selectionStart;
+    const end = detailsInput.selectionEnd;
+    const before = detailsInput.value.substring(0, start);
+    const after = detailsInput.value.substring(end);
+    detailsInput.value = before + '☐ ' + after;
+    detailsInput.selectionStart = start + 2;
+    detailsInput.focus();
+    updatePreview();
+  });
+
+  document.getElementById('btn-bullet').addEventListener('click', () => {
+    const start = detailsInput.selectionStart;
+    const end = detailsInput.selectionEnd;
+    const before = detailsInput.value.substring(0, start);
+    const after = detailsInput.value.substring(end);
+    detailsInput.value = before + '• ' + after;
+    detailsInput.selectionStart = start + 2;
+    detailsInput.focus();
+    updatePreview();
+  });
+
+  document.getElementById('btn-number').addEventListener('click', () => {
+    const start = detailsInput.selectionStart;
+    const end = detailsInput.selectionEnd;
+    const before = detailsInput.value.substring(0, start);
+    const after = detailsInput.value.substring(end);
+    detailsInput.value = before + '1. ' + after;
+    detailsInput.selectionStart = start + 3;
+    detailsInput.focus();
+    updatePreview();
+  });
+
+  detailsInput.addEventListener('input', updatePreview);
+
+  closeBtn.addEventListener('click', closeModal);
+  cancelTodoBtn.addEventListener('click', closeModal);
+  saveTodoBtn.addEventListener('click', saveTodo);
+
+  // Add todo button opens modal
+  addBtn.addEventListener('click', () => {
+    const v = input.value.trim();
+    if (v) {
+      titleInput.value = v;
+      input.value = '';
+      detailsInput.value = '';
+      updatePreview();
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+      detailsInput.focus();
+    }
+  });
+
+  input.addEventListener('keydown', (e)=>{ 
+    if(e.key==='Enter'){ addBtn.click(); } 
+  });
 
   // initial
   render();
@@ -683,7 +893,6 @@
 
   function renderMenu(){
     if(!menuList) return;
-    // toggle hidden attribute depending on if there are todos
     const todos = loadTodos();
     menuList.innerHTML = '';
     if(todos.length === 0){
@@ -692,15 +901,30 @@
     todos.forEach(t => {
       const li = document.createElement('div'); li.className = 'todo-item'; li.dataset.id = t.id;
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
-      cb.addEventListener('change', ()=>{ if(cb.checked){ const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); render(); renderMenu(); } });
-      const txt = document.createElement('div'); txt.className = 'todo-text'; const span = document.createElement('span'); span.textContent = t.text; txt.appendChild(span);
-      const actions = document.createElement('div'); actions.className = 'todo-actions';
-      const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent='Edit'; editBtn.addEventListener('click', ()=>{
-        const v = prompt('Edit todo', t.text); if(v === null) return; const nv = v.trim(); if(!nv) return; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all[idx].text = nv; saveTodos(all); render(); renderMenu(); }
+      cb.addEventListener('change', ()=>{ 
+        if(cb.checked){ 
+          const remaining = loadTodos().filter(x=>x.id!==t.id); 
+          saveTodos(remaining); 
+          render(); 
+          renderMenu(); 
+        } 
       });
-      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); render(); renderMenu(); });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
-      li.appendChild(cb); li.appendChild(txt); li.appendChild(actions); menuList.appendChild(li);
+      const txt = document.createElement('div'); txt.className = 'todo-text'; 
+      const titleSpan = document.createElement('span'); 
+      titleSpan.className = 'todo-title';
+      titleSpan.textContent = t.title || t.text || '(Untitled)'; 
+      titleSpan.style.fontWeight = 'bold';
+      titleSpan.style.cursor = 'pointer';
+      titleSpan.addEventListener('click', () => openTodoModal(t.id));
+      txt.appendChild(titleSpan);
+      const actions = document.createElement('div'); actions.className = 'todo-actions';
+      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all.splice(idx,1); saveTodos(all); render(); renderMenu(); }
+      });
+      actions.appendChild(delBtn);
+      li.appendChild(cb);
+      li.appendChild(txt);
+      li.appendChild(actions);
+      menuList.appendChild(li);
     });
   }
 
