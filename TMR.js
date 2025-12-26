@@ -292,24 +292,40 @@ if (leaveBtn) {
         const modalAdd = document.getElementById('todo-modal-add');
         const modalList = document.getElementById('todo-modal-list');
         
-        // Desktop panel elements
-        const desktopInput = document.getElementById('todo-input');
-        const desktopAdd = document.getElementById('add-todo');
+        // Desktop elements
         const desktopList = document.getElementById('todo-list');
+        const desktopCreateBtn = document.getElementById('desktop-create-todo-btn');
         
-        // Reminder type and time selectors
-        const desktopReminderType = document.getElementById('todo-reminder-type');
-        const desktopReminderMinutes = document.getElementById('todo-modal-minutes');
-        const desktopReminderTime = document.getElementById('todo-reminder-time');
+        // Desktop VIEW modal elements
+        const viewModalBackdrop = document.getElementById('todo-view-modal-backdrop');
+        const viewModalTitle = document.getElementById('todo-view-title');
+        const viewModalNotes = document.getElementById('todo-view-notes');
+        const viewModalEditBtn = document.getElementById('todo-view-edit-btn');
+        const viewModalCloseBtn = document.getElementById('todo-view-close-btn');
+        
+        // Desktop CREATE/EDIT modal elements
+        const createEditModalBackdrop = document.getElementById('todo-create-edit-modal-backdrop');
+        const createEditModalTitle = document.getElementById('todo-create-edit-modal-title');
+        const createEditTitle = document.getElementById('todo-edit-title');
+        const createEditNotes = document.getElementById('todo-edit-notes');
+        const createEditReminderType = document.getElementById('todo-edit-reminder-type');
+        const createEditReminderMinutes = document.getElementById('todo-edit-reminder-minutes');
+        const createEditReminderTime = document.getElementById('todo-edit-reminder-time');
+        const createEditSaveBtn = document.getElementById('todo-edit-save-btn');
+        const createEditCancelBtn = document.getElementById('todo-edit-cancel-btn');
+        
+        // Reminder type and time selectors for mobile modal
         const modalReminderType = document.getElementById('todo-modal-reminder-type');
         const modalReminderMinutes = document.getElementById('todo-modal-minutes-input');
         const modalReminderTime = document.getElementById('todo-modal-reminder-time');
 
-        // Check only required elements (no close button needed - handled by switchTab)
+        // Check required elements
         if(!backdrop || !modalInput || !modalAdd || !modalList) return;
+        if(!desktopList || !desktopCreateBtn || !viewModalBackdrop || !createEditModalBackdrop) return;
         
         // Helper function to calculate reminder timestamp from type and value
         function getReminderTimestamp(reminderType, minutesValue, timeValue) {
+            console.log('[getReminderTimestamp] Called with:', { reminderType, minutesValue, timeValue });
             if (reminderType === 'none' || !reminderType) { console.log('[getReminderTimestamp] No reminder type'); return null; }
             
             if (reminderType === 'minutes') {
@@ -325,6 +341,7 @@ if (leaveBtn) {
             
             if (reminderType === 'time' && timeValue) {
                 const [hours, mins] = timeValue.split(':').map(Number);
+                console.log('[getReminderTimestamp] Parsing time:', { timeValue, hours, mins, hoursIsNaN: isNaN(hours), minsIsNaN: isNaN(mins) });
                 if (!isNaN(hours) && !isNaN(mins)) {
                     const today = new Date();
                     const reminderDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, mins, 0);
@@ -353,22 +370,108 @@ if (leaveBtn) {
             });
         }
         
-        if (desktopReminderType) setupReminderTypeSelector(desktopReminderType, desktopReminderMinutes, desktopReminderTime);
+        // Setup for mobile modal reminder selector
         if (modalReminderType) setupReminderTypeSelector(modalReminderType, modalReminderMinutes, modalReminderTime);
-
+        
+        // Setup for desktop CREATE/EDIT modal reminder selector
+        if (createEditReminderType) setupReminderTypeSelector(createEditReminderType, createEditReminderMinutes, createEditReminderTime);
+        
+        // Modal open/close functions
+        function openModal(){ backdrop.hidden = false; backdrop.classList.add('active'); modalInput.focus(); document.body.style.overflow = 'hidden'; }
+        function closeModal(){ backdrop.hidden = true; backdrop.classList.remove('active'); document.body.style.overflow = ''; }
+        
+        function openViewModal(todoId){
+            const todos = loadTodos();
+            const todo = todos.find(t => t.id === todoId);
+            if(!todo) return;
+            
+            viewModalTitle.textContent = todo.text || '';
+            viewModalNotes.textContent = todo.notes || '(No notes)';
+            
+            // Store current todo id so Edit button knows which one to edit
+            viewModalBackdrop._currentTodoId = todoId;
+            
+            viewModalBackdrop.style.display = '';
+            viewModalBackdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeViewModal(){
+            viewModalBackdrop.style.display = 'none';
+            viewModalBackdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        function openCreateEditModal(todoId){
+            const todos = loadTodos();
+            const isEdit = todoId !== null && todoId !== undefined;
+            const todo = isEdit ? todos.find(t => t.id === todoId) : null;
+            
+            // Set title
+            createEditModalTitle.textContent = isEdit ? 'Edit Todo' : 'Create Todo';
+            
+            // Populate fields
+            createEditTitle.value = todo ? (todo.text || '') : '';
+            createEditNotes.value = todo ? (todo.notes || '') : '';
+            createEditReminderType.value = 'none';
+            createEditReminderMinutes.value = '';
+            createEditReminderTime.value = '';
+            createEditReminderMinutes.style.display = 'none';
+            createEditReminderTime.style.display = 'none';
+            
+            // If editing and has reminder, prefill it
+            if(isEdit && todo && todo.reminderAt){
+                const now = Date.now();
+                const reminderMs = Number(todo.reminderAt);
+                const minsLeft = Math.max(0, Math.ceil((reminderMs - now)/60000));
+                if(minsLeft < 1440){ // less than 24 hours - assume relative
+                    createEditReminderType.value = 'minutes';
+                    createEditReminderMinutes.value = String(minsLeft);
+                    createEditReminderMinutes.style.display = 'block';
+                } else {
+                    // assume specific time
+                    const reminderDate = new Date(reminderMs);
+                    const hours = String(reminderDate.getHours()).padStart(2, '0');
+                    const mins = String(reminderDate.getMinutes()).padStart(2, '0');
+                    createEditReminderType.value = 'time';
+                    createEditReminderTime.value = hours + ':' + mins;
+                    createEditReminderTime.style.display = 'block';
+                }
+            }
+            
+            // Store todoId for save function
+            createEditModalBackdrop._currentTodoId = todoId;
+            
+            createEditModalBackdrop.style.display = '';
+            createEditModalBackdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            createEditTitle.focus();
+        }
+        
+        function closeCreateEditModal(){
+            createEditModalBackdrop.style.display = 'none';
+            createEditModalBackdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        function closeAllDesktopModals(){
+            closeViewModal();
+            closeCreateEditModal();
+        }
+        
         // Unified render function that updates BOTH desktop and mobile lists
         function renderTodos(){
             const todos = loadTodos();
             
-            // Render to mobile modal list
+            // Render mobile modal list (keep existing inline edit behavior)
             modalList.innerHTML = '';
             
-            // Render to desktop list (if it exists)
+            // Render desktop list (new: show titles only, click to view)
             if(desktopList) desktopList.innerHTML = '';
             
             todos.forEach(t => {
-                // Create todo item for mobile modal
-                const createTodoLi = () => {
+                // MOBILE: Create todo item with inline editing
+                const createMobileTodoLi = () => {
                     const li = document.createElement('li'); li.className = 'todo-item'; li.dataset.id = t.id;
                     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
                     cb.addEventListener('change', ()=>{ if(cb.checked){ const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderTodos(); } });
@@ -468,22 +571,165 @@ if (leaveBtn) {
                 };
                 
                 // Add to mobile modal
-                modalList.appendChild(createTodoLi());
+                modalList.appendChild(createMobileTodoLi());
                 
-                // Add to desktop list if it exists
-                if(desktopList) desktopList.appendChild(createTodoLi());
+                // DESKTOP: Create todo item (title only, click to view)
+                if(desktopList) {
+                    const li = document.createElement('li'); 
+                    li.className = 'todo-item'; 
+                    li.dataset.id = t.id;
+                    li.style.cursor = 'pointer';
+                    li.style.padding = '12px 8px';
+                    li.style.border = 'none';
+                    li.style.display = 'flex';
+                    li.style.justifyContent = 'space-between';
+                    li.style.alignItems = 'center';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = t.text || '(No title)';
+                    textSpan.style.flex = '1';
+                    textSpan.style.cursor = 'pointer';
+                    textSpan.addEventListener('click', ()=> openViewModal(t.id));
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'small-tmr-btn';
+                    deleteBtn.textContent = '✕';
+                    deleteBtn.style.marginLeft = '8px';
+                    deleteBtn.addEventListener('click', (e)=>{
+                        e.stopPropagation();
+                        if(!confirm('Delete this todo?')) return;
+                        const remaining = loadTodos().filter(x=>x.id!==t.id);
+                        saveTodos(remaining);
+                        renderTodos();
+                    });
+                    
+                    li.appendChild(textSpan);
+                    li.appendChild(deleteBtn);
+                    desktopList.appendChild(li);
+                }
             });
         }
-
-        function openModal(){ backdrop.hidden = false; backdrop.classList.add('active'); modalInput.focus(); document.body.style.overflow = 'hidden'; }
-        function closeModal(){ backdrop.hidden = true; backdrop.classList.remove('active'); document.body.style.overflow = ''; }
 
         // Listen for Meibot todo creation and re-render
         window.addEventListener('meibotTodoCreated', () => {
             renderTodos(); // Re-render the todo list to show new todo
         });
 
-        // Mobile button click handler
+// Desktop "+ Create Todo" button
+        if(desktopCreateBtn){
+            desktopCreateBtn.addEventListener('click', ()=>{
+                openCreateEditModal(null);
+            });
+        }
+        
+        // View Modal: Edit button
+        if(viewModalEditBtn){
+            viewModalEditBtn.addEventListener('click', ()=>{
+                const todoId = viewModalBackdrop._currentTodoId;
+                closeViewModal();
+                openCreateEditModal(todoId);
+            });
+        }
+        
+        // View Modal: Close button
+        if(viewModalCloseBtn){
+            viewModalCloseBtn.addEventListener('click', closeViewModal);
+        }
+        
+        // View Modal: Click backdrop to close
+        if(viewModalBackdrop){
+            viewModalBackdrop.addEventListener('click', (e)=>{
+                if(e.target === viewModalBackdrop) closeViewModal();
+            });
+        }
+        
+        // Create/Edit Modal: Save button
+        if(createEditSaveBtn){
+            createEditSaveBtn.addEventListener('click', ()=>{
+                const title = createEditTitle.value.trim();
+                if(!title) {
+                    alert('Title is required');
+                    return;
+                }
+                
+                const todos = loadTodos();
+                const todoId = createEditModalBackdrop._currentTodoId;
+                const isNew = todoId === null || todoId === undefined;
+                
+                if(isNew){
+                    // Create new todo
+                    const item = {
+                        id: generateId(),
+                        text: title,
+                        notes: createEditNotes.value.trim(),
+                        reminderAt: null
+                    };
+                    
+                    const reminderType = createEditReminderType.value;
+                    const reminderTimestamp = getReminderTimestamp(reminderType, createEditReminderMinutes.value, createEditReminderTime.value);
+                    if(reminderTimestamp) item.reminderAt = reminderTimestamp;
+                    
+                    todos.push(item);
+                    
+                    // Schedule reminder and post to server if needed
+                    if(item.reminderAt && getNotifyMode() !== 'local'){
+                        (async ()=>{
+                            try{
+                                const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
+                                const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
+                                console.log('[createEdit] Posting reminder to server:', payload);
+                                const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                                console.log('[createEdit] Server response:', { ok: res.ok, status: res.status });
+                            }catch(err){ console.warn('[createEdit] Failed to persist reminder to server', err); }
+                        })();
+                    }
+                } else {
+                    // Edit existing todo
+                    const idx = todos.findIndex(t => t.id === todoId);
+                    if(idx >= 0){
+                        todos[idx].text = title;
+                        todos[idx].notes = createEditNotes.value.trim();
+                        
+                        const reminderType = createEditReminderType.value;
+                        const reminderTimestamp = getReminderTimestamp(reminderType, createEditReminderMinutes.value, createEditReminderTime.value);
+                        if(reminderTimestamp){
+                            todos[idx].reminderAt = reminderTimestamp;
+                        } else {
+                            delete todos[idx].reminderAt;
+                        }
+                    }
+                }
+                
+                saveTodos(todos);
+                console.log('[createEdit] Saved todo(s)');
+                renderTodos();
+                closeCreateEditModal();
+                
+                // Reschedule notifications
+                try{ rescheduleAll(); }catch(e){ console.error('[createEdit] rescheduleAll error:', e); }
+            });
+        }
+        
+        // Create/Edit Modal: Cancel button
+        if(createEditCancelBtn){
+            createEditCancelBtn.addEventListener('click', closeCreateEditModal);
+        }
+        
+        // Create/Edit Modal: Click backdrop to close
+        if(createEditModalBackdrop){
+            createEditModalBackdrop.addEventListener('click', (e)=>{
+                if(e.target === createEditModalBackdrop) closeCreateEditModal();
+            });
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e)=>{
+            if(e.key === 'Escape'){
+                closeAllDesktopModals();
+            }
+        });
+        
+        // Mobile button click handler (switch to mobile todo modal)
         if(mobileBtn) {
             mobileBtn.addEventListener('click', (e)=>{ 
                 e.stopPropagation(); 
@@ -493,29 +739,55 @@ if (leaveBtn) {
             });
         }
         
-        // Desktop add button handler
-        if(desktopAdd && desktopInput) {
-            desktopAdd.addEventListener('click', ()=>{
-                const text = desktopInput.value.trim();
+        // Mobile modal: Add button handler
+        if(modalAdd && modalInput) {
+            modalAdd.addEventListener('click', ()=>{
+                const text = modalInput.value.trim();
                 if(!text) return;
-                const reminderType = desktopReminderType ? desktopReminderType.value : 'none';
-                const reminderTimestamp = getReminderTimestamp(reminderType, desktopReminderMinutes.value, desktopReminderTime.value);
+                const reminderType = modalReminderType ? modalReminderType.value : 'none';
+                const reminderTimestamp = getReminderTimestamp(reminderType, modalReminderMinutes.value, modalReminderTime.value);
                 
                 const todos = loadTodos();
-                const item = { id: Date.now(), text };
+                const item = { id: generateId(), text, notes: '' };
                 if(reminderTimestamp) item.reminderAt = reminderTimestamp;
                 todos.push(item);
                 saveTodos(todos);
-                desktopInput.value = '';
-                if(desktopReminderType) desktopReminderType.value = 'none';
-                if(desktopReminderMinutes) desktopReminderMinutes.value = '';
-                if(desktopReminderTime) desktopReminderTime.value = '';
+                console.log('[modalAdd] Saved todo:', { id: item.id, text: item.text, reminderAt: item.reminderAt });
+                modalInput.value = '';
+                if(modalReminderType) modalReminderType.value = 'none';
+                if(modalReminderMinutes) modalReminderMinutes.value = '';
+                if(modalReminderTime) modalReminderTime.value = '';
                 renderTodos();
+                
+                // Schedule reminder and post to server if needed
+                console.log('[modalAdd] Calling rescheduleAll()...');
+                try{ rescheduleAll(); }catch(e){ console.error('[modalAdd] rescheduleAll error:', e); }
+                
+                if(item.reminderAt && getNotifyMode() !== 'local'){
+                    console.log('[modalAdd] Reminder mode allows server, posting...');
+                    (async ()=>{
+                        try{
+                            const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
+                            const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
+                            console.log('[modalAdd] Posting reminder to server:', payload);
+                            const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                            console.log('[modalAdd] Server response:', { ok: res.ok, status: res.status });
+                            if(res && res.ok){ console.log('[modalAdd] Server reminder posted successfully'); }
+                            else { console.warn('[modalAdd] Server returned non-ok status:', res.status); }
+                        }catch(err){ console.warn('[modalAdd] Failed to persist reminder to server', err); }
+                    })();
+                } else {
+                    if(!item.reminderAt) console.log('[modalAdd] No reminder set, skipping server post');
+                    if(getNotifyMode() === 'local') console.log('[modalAdd] Local-only mode, skipping server post');
+                }
             });
-            desktopInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') desktopAdd.click(); });
+            modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); if(e.key==='Escape') { closeModal(); } });
         }
         
-
+        // Mobile modal: Close when clicking on backdrop outside modal
+        if(backdrop){
+            backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
+        }
 
         // notification toggle wiring in the TMR menu
         const notifyToggle = document.getElementById('notify-toggle');
@@ -784,53 +1056,7 @@ if (leaveBtn) {
                     }
                 }catch(e){ console.warn('[TMR] Auto-subscribe failed', e); }
             });
-
-            modalAdd.addEventListener('click', ()=>{
-            const v = modalInput.value.trim(); if(!v) return;
-            const reminderType = modalReminderType ? modalReminderType.value : 'none';
-            const reminderTimestamp = getReminderTimestamp(reminderType, modalReminderMinutes.value, modalReminderTime.value);
-            console.log('[modalAdd] Creating todo:', { text: v, reminderType, reminderTimestamp, reminderDate: reminderTimestamp ? new Date(reminderTimestamp) : 'none' });
             
-            const all = loadTodos();
-            const item = { id: generateId(), text: v };
-            if(reminderTimestamp) { item.reminderAt = reminderTimestamp; }
-            all.unshift(item);
-            saveTodos(all);
-            console.log('[modalAdd] Saved todo:', { id: item.id, text: item.text, reminderAt: item.reminderAt });
-            modalInput.value = '';
-            if(modalReminderType) modalReminderType.value = 'none';
-            if(modalReminderMinutes) modalReminderMinutes.value = '';
-            if(modalReminderTime) modalReminderTime.value = '';
-            renderTodos();
-            // schedule immediately if enabled
-            console.log('[modalAdd] Calling rescheduleAll()...');
-            try{ rescheduleAll(); }catch(e){ console.error('[modalAdd] rescheduleAll error:', e); }
-            // If this todo includes a reminder time, also persist it to the push server so
-            // the server-side scheduler will send notifications even if the browser is closed.
-            // Only POST to server when user hasn't chosen Local-only mode.
-            if(item.reminderAt && getNotifyMode() !== 'local'){
-                console.log('[modalAdd] Reminder mode allows server, posting...');
-                (async ()=>{
-                    try{
-                        const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
-                        const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
-                        console.log('[modalAdd] Posting reminder to server:', payload);
-                        const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        console.log('[modalAdd] Server response:', { ok: res.ok, status: res.status });
-                        if(res && res.ok){ console.log('[modalAdd] Server reminder posted successfully'); }
-                        else { console.warn('[modalAdd] Server returned non-ok status:', res.status); }
-                    }catch(err){ console.warn('[modalAdd] Failed to persist reminder to server', err); }
-                })();
-            } else {
-                if(!item.reminderAt) console.log('[modalAdd] No reminder set, skipping server post');
-                if(getNotifyMode() === 'local') console.log('[modalAdd] Local-only mode, skipping server post');
-            }
-        });
-        modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); if(e.key==='Escape') { closeModal(); } });
-
-        // close when clicking on backdrop outside modal
-        backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
-
         // initial render (keeps sync with other pages)
         renderTodos();
         // initialize badge state immediately when modal is initialized
