@@ -48,7 +48,7 @@
                 padding: 16px;
                 font-size: 18px;
                 font-weight: 600;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                background: var(--accent-color, #0089f1);
                 color: white;
                 border-radius: 12px 12px 0 0;
                 flex-shrink: 0;
@@ -145,7 +145,7 @@
                 padding: 20px;
                 font-size: 20px;
                 font-weight: 700;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1) 0%, var(--accent-hover, #0073d1) 100%);
+                background: var(--accent-color, #0089f1);
                 color: white;
                 border-radius: 16px 16px 0 0;
                 flex-shrink: 0;
@@ -405,7 +405,7 @@
                 width: calc(100% - 626px);
                 height: calc(100% - 88px);
                 overflow: hidden;
-                border-radius: 0 !important;
+                border-radius: 12px !important;
             }
 
             /* Calendar section visibility */
@@ -466,22 +466,32 @@
                 overflow-y: auto;
                 display: flex;
                 flex-direction: column;
-                border-radius: 0 !important;
+                border-radius: 12px !important;
                 margin: 0;
+                padding: 0;
             }
 
-            .todo-modal h3 {
+            .todo-modal .todo-banner {
                 margin: 0;
-                padding: 12px 16px;
-                font-size: 16px;
-                font-weight: 600;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                padding: 16px;
+                background: var(--accent-color, #0089f1);
                 color: white;
+                display: flex;
+                align-items: center;
                 flex-shrink: 0;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .todo-modal .todo-banner h3 {
+                margin: 0;
+                padding: 0;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
             }
 
             .todo-modal .todo-input-row {
-                padding: 12px 16px;
+                padding: 16px;
                 display: flex;
                 gap: 8px;
                 flex-wrap: wrap;
@@ -493,44 +503,59 @@
             .todo-modal input[type="text"],
             .todo-modal input[type="number"] {
                 flex: 1;
-                min-width: 80px;
-                padding: 8px 10px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                font-size: 13px;
+                min-width: 150px;
+                padding: 10px 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                font-size: 14px;
+                transition: border-color 0.2s ease;
+            }
+
+            .todo-modal input:focus {
+                outline: none;
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
             }
 
             .todo-modal .todo-list {
                 max-height: 70vh;
                 overflow-y: auto;
                 list-style: none;
-                padding: 0 12px 12px 12px;
+                padding: 16px;
                 margin: 0;
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
+                gap: 8px;
+                flex: 1;
             }
 
             .todo-modal .todo-item {
                 background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
                 border: 1px solid #e0e8f0;
-                padding: 10px;
-                border-radius: 6px;
+                padding: 12px;
+                border-radius: 8px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                gap: 8px;
                 transition: all 0.2s ease;
+            }
+
+            .todo-modal .todo-item:hover {
+                background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 2px 8px rgba(0,137,241,0.1);
             }
 
             .todo-modal .small-tmr-btn {
                 background: #d7dbdf !important;
                 border: none !important;
                 color: #333 !important;
-                padding: 6px 10px !important;
-                border-radius: 6px !important;
+                padding: 8px 14px !important;
+                border-radius: 8px !important;
                 box-shadow: none !important;
-                font-size: 12px !important;
-                transition: background 0.15s ease !important;
+                transition: background 0.15s ease !important;\
+                transform: none !important;
                 transform: none !important;
             }
 
@@ -551,7 +576,7 @@
                 padding: 8px 16px;
                 font-size: 16px;
                 font-weight: 600;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                background: var(--accent-color, #0089f1);
                 color: white;
                 flex-shrink: 0;
                 display: flex;
@@ -702,12 +727,12 @@
             #todo-modal-backdrop,
             #meibot-modal {
                 position: fixed !important;
-                top: 130px !important;
+                top: 75px !important;
                 left: 8px !important;
                 right: 8px !important;
                 width: calc(100% - 16px);
                 overflow: hidden;
-                border-radius: 0 !important;
+                border-radius: 12px !important;
                 height: auto;
             }
 
@@ -769,22 +794,32 @@
                 overflow-y: auto;
                 display: flex;
                 flex-direction: column;
-                border-radius: 0 !important;
+                border-radius: 12px !important;
                 margin: 0;
+                padding: 0;
             }
 
-            .todo-modal h3 {
+            .todo-modal .todo-banner {
                 margin: 0;
-                padding: 12px 16px;
-                font-size: 16px;
-                font-weight: 600;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                padding: 16px;
+                background: var(--accent-color, #0089f1);
                 color: white;
+                display: flex;
+                align-items: center;
                 flex-shrink: 0;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .todo-modal .todo-banner h3 {
+                margin: 0;
+                padding: 0;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
             }
 
             .todo-modal .todo-input-row {
-                padding: 12px 16px;
+                padding: 16px;
                 display: flex;
                 gap: 8px;
                 flex-wrap: wrap;
@@ -796,43 +831,59 @@
             .todo-modal input[type="text"],
             .todo-modal input[type="number"] {
                 flex: 1;
-                min-width: 80px;
-                padding: 8px 10px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                font-size: 13px;
+                min-width: 150px;
+                padding: 10px 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                font-size: 14px;
+                transition: border-color 0.2s ease;
+            }
+
+            .todo-modal input:focus {
+                outline: none;
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 0 0 3px rgba(0,137,241,0.15);
             }
 
             .todo-modal .todo-list {
                 max-height: 70vh;
                 overflow-y: auto;
                 list-style: none;
-                padding: 0 12px 12px 12px;
+                padding: 16px;
                 margin: 0;
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
+                gap: 8px;
+                flex: 1;
             }
 
             .todo-modal .todo-item {
                 background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
                 border: 1px solid #e0e8f0;
-                padding: 10px;
-                border-radius: 6px;
+                padding: 12px;
+                border-radius: 8px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                gap: 8px;
+                transition: all 0.2s ease;
+            }
+
+            .todo-modal .todo-item:hover {
+                background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
+                border-color: var(--accent-color, #0089f1);
+                box-shadow: 0 2px 8px rgba(0,137,241,0.1);
             }
 
             .todo-modal .small-tmr-btn {
                 background: #d7dbdf !important;
                 border: none !important;
                 color: #333 !important;
-                padding: 6px 10px !important;
-                border-radius: 6px !important;
+                padding: 8px 14px !important;
+                border-radius: 8px !important;
                 box-shadow: none !important;
-                font-size: 12px !important;
                 transition: background 0.15s ease !important;
+                transform: none !important;
             }
 
             /* MEIBOT MODAL - full screen in portrait */
@@ -852,7 +903,7 @@
                 padding: 8px 16px;
                 font-size: 16px;
                 font-weight: 600;
-                background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
+                background: var(--accent-color, #0089f1);
                 color: white;
                 flex-shrink: 0;
                 display: flex;
@@ -983,7 +1034,9 @@
 
         <!-- TODO PANEL (LEFT SIDE - Desktop only) -->
         <div class="todo-panel">
-            <h3>To Do</h3>
+            <div class="todo-banner">
+                <h3>To Do</h3>
+            </div>
             <button id="desktop-create-todo-btn" class="small-tmr-btn" style="width: 100%; padding: 12px; margin-bottom: 12px; font-size: 16px;">+ Create Todo</button>
             <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
         </div>
@@ -1145,19 +1198,9 @@
         <!-- TODO MODAL (for mobile) -->
         <div id="todo-modal-backdrop" class="todo-modal-backdrop">
             <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
-                <h3 id="todo-modal-title">To Do</h3>
-                <div class="todo-input-row">
-                    <input id="todo-modal-input" type="text" placeholder="Add a todo..." />
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <select id="todo-modal-reminder-type" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
-                            <option value="none">No reminder</option>
-                            <option value="minutes">In minutes</option>
-                            <option value="time">At time</option>
-                        </select>
-                        <input id="todo-modal-minutes-input" type="number" min="0" placeholder="remind in (min)" style="width:100px; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
-                        <input id="todo-modal-reminder-time" type="time" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
-                    </div>
-                    <button id="todo-modal-add" class="small-tmr-btn">Add</button>
+                <div class="todo-banner">
+                    <h3 id="todo-modal-title">To Do</h3>
+                    <button id="todo-modal-create-btn" class="small-tmr-btn">+ Create Todo</button>
                 </div>
                 <ul id="todo-modal-list" class="todo-list"></ul>
             </div>
@@ -1186,16 +1229,12 @@
 
         <!-- DESKTOP CREATE/EDIT TODO MODAL -->
         <div id="todo-create-edit-modal-backdrop" class="todo-modal-backdrop" style="display: none;">
-            <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-create-edit-modal-title">
+            <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-create-edit-modal-title" style="border-radius: 12px !important;">
                 <h3 id="todo-create-edit-modal-title">Create Todo</h3>
                 <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
                     <div>
                         <label for="todo-edit-title" style="display: block; font-weight: bold; margin-bottom: 4px;">Title *</label>
                         <input id="todo-edit-title" type="text" placeholder="Enter todo title..." style="width: 100%; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; box-sizing: border-box;" />
-                    </div>
-                    <div>
-                        <label for="todo-edit-notes" style="display: block; font-weight: bold; margin-bottom: 4px;">Notes</label>
-                        <textarea id="todo-edit-notes" placeholder="Add detailed notes..." style="width: 100%; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; min-height: 100px; box-sizing: border-box; font-family: inherit;"></textarea>
                     </div>
                     <div style="border-top: 1px solid #e0e0e0; padding-top: 12px;">
                         <label style="display: block; font-weight: bold; margin-bottom: 8px;">Reminder</label>
@@ -1208,6 +1247,14 @@
                             <input id="todo-edit-reminder-minutes" type="number" min="0" placeholder="minutes" style="width: 80px; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
                             <input id="todo-edit-reminder-time" type="time" style="padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; display: none;" />
                         </div>
+                    </div>
+                    <div>
+                        <label for="todo-edit-notes" style="display: block; font-weight: bold; margin-bottom: 4px;">Notes</label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <button type="button" id="bullet-point-btn" class="small-tmr-btn" style="padding: 6px 12px; font-size: 14px;">• Bullet</button>
+                            <button type="button" id="checkbox-marker-btn" class="small-tmr-btn" style="padding: 6px 12px; font-size: 14px;">☐ Checkbox</button>
+                        </div>
+                        <textarea id="todo-edit-notes" placeholder="Add detailed notes..." style="width: 100%; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 6px; min-height: 100px; box-sizing: border-box; font-family: inherit;"></textarea>
                     </div>
                     <div style="border-top: 1px solid #e0e0e0; padding-top: 12px; display: flex; gap: 8px; justify-content: flex-end;">
                         <button id="todo-edit-save-btn" class="small-tmr-btn">Save</button>

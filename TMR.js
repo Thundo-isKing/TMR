@@ -288,8 +288,6 @@ if (leaveBtn) {
         // Get all todo-related elements
         const mobileBtn = document.getElementById('todo-btn-mobile');
         const backdrop = document.getElementById('todo-modal-backdrop');
-        const modalInput = document.getElementById('todo-modal-input');
-        const modalAdd = document.getElementById('todo-modal-add');
         const modalList = document.getElementById('todo-modal-list');
         
         // Desktop elements
@@ -313,14 +311,9 @@ if (leaveBtn) {
         const createEditReminderTime = document.getElementById('todo-edit-reminder-time');
         const createEditSaveBtn = document.getElementById('todo-edit-save-btn');
         const createEditCancelBtn = document.getElementById('todo-edit-cancel-btn');
-        
-        // Reminder type and time selectors for mobile modal
-        const modalReminderType = document.getElementById('todo-modal-reminder-type');
-        const modalReminderMinutes = document.getElementById('todo-modal-minutes-input');
-        const modalReminderTime = document.getElementById('todo-modal-reminder-time');
 
         // Check required elements
-        if(!backdrop || !modalInput || !modalAdd || !modalList) return;
+        if(!backdrop || !modalList) return;
         if(!desktopList || !desktopCreateBtn || !viewModalBackdrop || !createEditModalBackdrop) return;
         
         // Helper function to calculate reminder timestamp from type and value
@@ -370,16 +363,10 @@ if (leaveBtn) {
             });
         }
         
-        // Setup for mobile modal reminder selector
-        if (modalReminderType) setupReminderTypeSelector(modalReminderType, modalReminderMinutes, modalReminderTime);
-        
         // Setup for desktop CREATE/EDIT modal reminder selector
         if (createEditReminderType) setupReminderTypeSelector(createEditReminderType, createEditReminderMinutes, createEditReminderTime);
         
-        // Modal open/close functions
-        function openModal(){ backdrop.hidden = false; backdrop.classList.add('active'); modalInput.focus(); document.body.style.overflow = 'hidden'; }
-        function closeModal(){ backdrop.hidden = true; backdrop.classList.remove('active'); document.body.style.overflow = ''; }
-        
+        // Modal open/close functions for desktop/mobile
         function openViewModal(todoId){
             const todos = loadTodos();
             const todo = todos.find(t => t.id === todoId);
@@ -470,103 +457,68 @@ if (leaveBtn) {
             if(desktopList) desktopList.innerHTML = '';
             
             todos.forEach(t => {
-                // MOBILE: Create todo item with inline editing
+                // MOBILE: Create todo item with modal workflow (same as desktop)
                 const createMobileTodoLi = () => {
-                    const li = document.createElement('li'); li.className = 'todo-item'; li.dataset.id = t.id;
-                    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
-                    cb.addEventListener('change', ()=>{ if(cb.checked){ const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderTodos(); } });
-                    const textWrap = document.createElement('div'); textWrap.className = 'todo-text';
-                    const span = document.createElement('span'); span.textContent = t.text; span.tabIndex = 0;
-                    span.addEventListener('dblclick', ()=> startEdit());
-                    span.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') startEdit(); });
-
-                    function startEdit(){
-                        const inputEl = document.createElement('input'); inputEl.type = 'text'; inputEl.value = t.text;
-                        const reminderTypeSelect = document.createElement('select');
-                        reminderTypeSelect.style.padding = '8px';
-                        reminderTypeSelect.style.borderRadius = '4px';
-                        reminderTypeSelect.style.border = '1px solid #ccc';
-                        const optNone = document.createElement('option'); optNone.value = 'none'; optNone.textContent = 'No reminder';
-                        const optMin = document.createElement('option'); optMin.value = 'minutes'; optMin.textContent = 'In minutes';
-                        const optTime = document.createElement('option'); optTime.value = 'time'; optTime.textContent = 'At time';
-                        reminderTypeSelect.appendChild(optNone);
-                        reminderTypeSelect.appendChild(optMin);
-                        reminderTypeSelect.appendChild(optTime);
-                        
-                        const minutesInput = document.createElement('input'); minutesInput.type = 'number'; minutesInput.min = 0;
-                        minutesInput.style.width = '60px';
-                        minutesInput.style.padding = '8px';
-                        minutesInput.style.borderRadius = '4px';
-                        minutesInput.style.border = '1px solid #ccc';
-                        minutesInput.style.display = 'none';
-                        
-                        const timeInput = document.createElement('input'); timeInput.type = 'time';
-                        timeInput.style.padding = '8px';
-                        timeInput.style.borderRadius = '4px';
-                        timeInput.style.border = '1px solid #ccc';
-                        timeInput.style.display = 'none';
-                        
-                        // prefill if reminder exists
-                        if(t.reminderAt){ 
-                            const now = Date.now();
-                            const reminderMs = Number(t.reminderAt);
-                            const minsLeft = Math.max(0, Math.ceil((reminderMs - now)/60000));
-                            if (minsLeft < 1440) { // if less than 24 hours, assume it's a relative minutes reminder
-                                reminderTypeSelect.value = 'minutes';
-                                minutesInput.value = String(minsLeft);
-                                minutesInput.style.display = 'block';
-                            } else {
-                                // assume it's a specific time reminder
-                                const reminderDate = new Date(reminderMs);
-                                const hours = String(reminderDate.getHours()).padStart(2, '0');
-                                const mins = String(reminderDate.getMinutes()).padStart(2, '0');
-                                reminderTypeSelect.value = 'time';
-                                timeInput.value = hours + ':' + mins;
-                                timeInput.style.display = 'block';
-                            }
-                        }
-                        
-                        reminderTypeSelect.addEventListener('change', (e) => {
-                            minutesInput.style.display = e.target.value === 'minutes' ? 'block' : 'none';
-                            timeInput.style.display = e.target.value === 'time' ? 'block' : 'none';
-                        });
-                        
-                        inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') finishEdit(); if(e.key==='Escape') renderTodos(); });
-                        function finishEdit(){ 
-                            const v = inputEl.value.trim(); 
-                            if(v){ 
-                                const all = loadTodos(); 
-                                const idx = all.findIndex(x=>x.id===t.id); 
-                                if(idx>=0){ 
-                                    all[idx].text = v;
-                                    const reminderType = reminderTypeSelect.value;
-                                    const newReminderAt = getReminderTimestamp(reminderType, minutesInput.value, timeInput.value);
-                                    if(newReminderAt) { 
-                                        all[idx].reminderAt = newReminderAt; 
-                                    } else { 
-                                        delete all[idx].reminderAt; 
-                                    }
-                                    saveTodos(all);
-                                } 
-                            } 
-                            renderTodos();
-                        }
-                        const saveBtn = document.createElement('button'); saveBtn.className='small-tmr-btn'; saveBtn.textContent='Save'; saveBtn.addEventListener('click', finishEdit);
-                        const cancelBtn = document.createElement('button'); cancelBtn.className='small-tmr-btn'; cancelBtn.textContent='Cancel'; cancelBtn.addEventListener('click', renderTodos);
-                        const reminderWrap = document.createElement('div'); reminderWrap.style.display = 'flex'; reminderWrap.style.gap = '6px'; reminderWrap.style.alignItems = 'center'; reminderWrap.style.marginLeft = '8px';
-                        reminderWrap.appendChild(reminderTypeSelect);
-                        reminderWrap.appendChild(minutesInput);
-                        reminderWrap.appendChild(timeInput);
-                        textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(reminderWrap); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
+                    const li = document.createElement('li'); 
+                    li.className = 'todo-item'; 
+                    li.dataset.id = t.id;
+                    li.style.padding = '12px 8px';
+                    li.style.border = 'none';
+                    li.style.display = 'flex';
+                    li.style.justifyContent = 'space-between';
+                    li.style.alignItems = 'center';
+                    
+                    // Add checkbox for completion
+                    const cb = document.createElement('input'); 
+                    cb.type = 'checkbox'; 
+                    cb.className = 'todo-check';
+                    cb.checked = t.completed || false;
+                    cb.style.cursor = 'pointer';
+                    cb.style.width = '18px';
+                    cb.style.height = '18px';
+                    cb.style.marginRight = '8px';
+                    cb.addEventListener('change', ()=>{ 
+                        const todos = loadTodos(); 
+                        const idx = todos.findIndex(x=>x.id===t.id); 
+                        if(idx>=0){ 
+                            todos[idx].completed = cb.checked; 
+                            saveTodos(todos); 
+                            renderTodos(); 
+                        } 
+                    });
+                    
+                    const textWrap = document.createElement('div'); 
+                    textWrap.className = 'todo-text';
+                    textWrap.style.flex = '1';
+                    
+                    const span = document.createElement('span'); 
+                    span.textContent = t.text || '(No title)'; 
+                    span.style.cursor = t.completed ? 'not-allowed' : 'pointer';
+                    if(t.completed){ 
+                        span.style.textDecoration = 'line-through'; 
+                        span.style.opacity = '0.6'; 
+                        span.style.color = '#999'; 
                     }
-
-                    const actions = document.createElement('div'); actions.className = 'todo-actions';
-                    const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent='Edit'; editBtn.addEventListener('click', startEdit);
-                    const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); renderTodos(); });
-                    actions.appendChild(editBtn); actions.appendChild(delBtn);
+                    // Only open modal if NOT completed
+                    if(!t.completed){
+                        span.addEventListener('click', ()=> openViewModal(t.id));
+                    }
+                    
+                    const delBtn = document.createElement('button'); 
+                    delBtn.className='small-tmr-btn'; 
+                    delBtn.textContent='Delete'; 
+                    delBtn.style.marginLeft = '8px';
+                    delBtn.addEventListener('click', ()=>{ 
+                        if(!confirm('Delete this todo?')) return; 
+                        const remaining = loadTodos().filter(x=>x.id!==t.id); 
+                        saveTodos(remaining); 
+                        renderTodos(); 
+                    });
 
                     textWrap.appendChild(span);
-                    li.appendChild(cb); li.appendChild(textWrap); li.appendChild(actions);
+                    li.appendChild(cb); 
+                    li.appendChild(textWrap); 
+                    li.appendChild(delBtn);
                     return li;
                 };
                 
@@ -578,18 +530,43 @@ if (leaveBtn) {
                     const li = document.createElement('li'); 
                     li.className = 'todo-item'; 
                     li.dataset.id = t.id;
-                    li.style.cursor = 'pointer';
                     li.style.padding = '12px 8px';
                     li.style.border = 'none';
                     li.style.display = 'flex';
                     li.style.justifyContent = 'space-between';
                     li.style.alignItems = 'center';
                     
+                    // Add checkbox for strikethrough
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = t.completed || false;
+                    checkbox.style.cursor = 'pointer';
+                    checkbox.style.width = '18px';
+                    checkbox.style.height = '18px';
+                    checkbox.style.marginRight = '8px';
+                    checkbox.addEventListener('change', (e)=>{
+                        const todos = loadTodos();
+                        const idx = todos.findIndex(x => x.id === t.id);
+                        if(idx >= 0){
+                            todos[idx].completed = e.target.checked;
+                            saveTodos(todos);
+                            renderTodos();
+                        }
+                    });
+                    
                     const textSpan = document.createElement('span');
                     textSpan.textContent = t.text || '(No title)';
                     textSpan.style.flex = '1';
-                    textSpan.style.cursor = 'pointer';
-                    textSpan.addEventListener('click', ()=> openViewModal(t.id));
+                    textSpan.style.cursor = t.completed ? 'not-allowed' : 'pointer';
+                    if(t.completed){
+                        textSpan.style.textDecoration = 'line-through';
+                        textSpan.style.opacity = '0.6';
+                        textSpan.style.color = '#999';
+                    }
+                    // Only open modal if NOT completed
+                    if(!t.completed){
+                        textSpan.addEventListener('click', ()=> openViewModal(t.id));
+                    }
                     
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'small-tmr-btn';
@@ -603,6 +580,7 @@ if (leaveBtn) {
                         renderTodos();
                     });
                     
+                    li.appendChild(checkbox);
                     li.appendChild(textSpan);
                     li.appendChild(deleteBtn);
                     desktopList.appendChild(li);
@@ -618,6 +596,14 @@ if (leaveBtn) {
 // Desktop "+ Create Todo" button
         if(desktopCreateBtn){
             desktopCreateBtn.addEventListener('click', ()=>{
+                openCreateEditModal(null);
+            });
+        }
+
+        // Mobile "+ Create Todo" button
+        const mobileCreateBtn = document.getElementById('todo-modal-create-btn');
+        if(mobileCreateBtn){
+            mobileCreateBtn.addEventListener('click', ()=>{
                 openCreateEditModal(null);
             });
         }
@@ -662,6 +648,7 @@ if (leaveBtn) {
                         id: generateId(),
                         text: title,
                         notes: createEditNotes.value.trim(),
+                        completed: false,
                         reminderAt: null
                     };
                     
@@ -715,6 +702,38 @@ if (leaveBtn) {
             createEditCancelBtn.addEventListener('click', closeCreateEditModal);
         }
         
+        // Checkbox Marker Button: Insert ☐ at cursor
+        const checkboxMarkerBtn = document.getElementById('checkbox-marker-btn');
+        if(checkboxMarkerBtn){
+            checkboxMarkerBtn.addEventListener('click', (e)=>{
+                e.preventDefault();
+                const textarea = document.getElementById('todo-edit-notes');
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+                const newText = text.substring(0, start) + '☐ ' + text.substring(end);
+                textarea.value = newText;
+                textarea.selectionStart = textarea.selectionEnd = start + 2;
+                textarea.focus();
+            });
+        }
+        
+        // Bullet Point Button: Insert • at cursor
+        const bulletPointBtn = document.getElementById('bullet-point-btn');
+        if(bulletPointBtn){
+            bulletPointBtn.addEventListener('click', (e)=>{
+                e.preventDefault();
+                const textarea = document.getElementById('todo-edit-notes');
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+                const newText = text.substring(0, start) + '\n• ' + text.substring(end);
+                textarea.value = newText;
+                textarea.selectionStart = textarea.selectionEnd = start + 3;
+                textarea.focus();
+            });
+        }
+        
         // Create/Edit Modal: Click backdrop to close
         if(createEditModalBackdrop){
             createEditModalBackdrop.addEventListener('click', (e)=>{
@@ -734,59 +753,8 @@ if (leaveBtn) {
             mobileBtn.addEventListener('click', (e)=>{ 
                 e.stopPropagation(); 
                 const menu = document.getElementById('tmr-menu'); if(menu) menu.hidden = true; 
-                renderTodos(); 
-                openModal();
-            });
-        }
-        
-        // Mobile modal: Add button handler
-        if(modalAdd && modalInput) {
-            modalAdd.addEventListener('click', ()=>{
-                const text = modalInput.value.trim();
-                if(!text) return;
-                const reminderType = modalReminderType ? modalReminderType.value : 'none';
-                const reminderTimestamp = getReminderTimestamp(reminderType, modalReminderMinutes.value, modalReminderTime.value);
-                
-                const todos = loadTodos();
-                const item = { id: generateId(), text, notes: '' };
-                if(reminderTimestamp) item.reminderAt = reminderTimestamp;
-                todos.push(item);
-                saveTodos(todos);
-                console.log('[modalAdd] Saved todo:', { id: item.id, text: item.text, reminderAt: item.reminderAt });
-                modalInput.value = '';
-                if(modalReminderType) modalReminderType.value = 'none';
-                if(modalReminderMinutes) modalReminderMinutes.value = '';
-                if(modalReminderTime) modalReminderTime.value = '';
                 renderTodos();
-                
-                // Schedule reminder and post to server if needed
-                console.log('[modalAdd] Calling rescheduleAll()...');
-                try{ rescheduleAll(); }catch(e){ console.error('[modalAdd] rescheduleAll error:', e); }
-                
-                if(item.reminderAt && getNotifyMode() !== 'local'){
-                    console.log('[modalAdd] Reminder mode allows server, posting...');
-                    (async ()=>{
-                        try{
-                            const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
-                            const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
-                            console.log('[modalAdd] Posting reminder to server:', payload);
-                            const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                            console.log('[modalAdd] Server response:', { ok: res.ok, status: res.status });
-                            if(res && res.ok){ console.log('[modalAdd] Server reminder posted successfully'); }
-                            else { console.warn('[modalAdd] Server returned non-ok status:', res.status); }
-                        }catch(err){ console.warn('[modalAdd] Failed to persist reminder to server', err); }
-                    })();
-                } else {
-                    if(!item.reminderAt) console.log('[modalAdd] No reminder set, skipping server post');
-                    if(getNotifyMode() === 'local') console.log('[modalAdd] Local-only mode, skipping server post');
-                }
             });
-            modalInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') modalAdd.click(); if(e.key==='Escape') { closeModal(); } });
-        }
-        
-        // Mobile modal: Close when clicking on backdrop outside modal
-        if(backdrop){
-            backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
         }
 
         // notification toggle wiring in the TMR menu
