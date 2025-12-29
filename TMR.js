@@ -522,8 +522,12 @@ if (leaveBtn) {
                     return li;
                 };
                 
-                // Add to mobile modal
-                modalList.appendChild(createMobileTodoLi());
+                // Add to mobile modal at TOP
+                if(modalList.firstChild){
+                    modalList.insertBefore(createMobileTodoLi(), modalList.firstChild);
+                } else {
+                    modalList.appendChild(createMobileTodoLi());
+                }
                 
                 // DESKTOP: Create todo item (title only, click to view)
                 if(desktopList) {
@@ -583,7 +587,12 @@ if (leaveBtn) {
                     li.appendChild(checkbox);
                     li.appendChild(textSpan);
                     li.appendChild(deleteBtn);
-                    desktopList.appendChild(li);
+                    // Add to TOP instead of bottom
+                    if(desktopList.firstChild){
+                        desktopList.insertBefore(li, desktopList.firstChild);
+                    } else {
+                        desktopList.appendChild(li);
+                    }
                 }
             });
         }
