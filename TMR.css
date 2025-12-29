@@ -1565,7 +1565,6 @@ body.currentschedules-page #clock {
 .gcal-syncing {
     animation: hueRotate 1.2s ease-in-out infinite !important;
 }
-<<<<<<< HEAD
 
 /* ===== TODO MODAL STYLES ===== */
 
@@ -1586,27 +1585,6 @@ body.currentschedules-page #clock {
 
 /* Modal Container */
 .todo-modal {
-=======
-/* Todo Modal Styles */
-#todo-modal {
-    z-index: 3000;
-}
-
-#todo-modal.modal {
-    display: none !important;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    align-items: center;
-    justify-content: center;
-}
-
-#todo-modal.modal:not(.hidden) {
-    display: flex !important;
-}
-
-#todo-modal .modal-content {
->>>>>>> 3973a782013a1a9ebbbb9aa0ac1d21e4c16c6aef
     width: 90vw;
     max-width: 500px;
     max-height: 80vh;
@@ -1616,7 +1594,6 @@ body.currentschedules-page #clock {
     flex-direction: column;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     animation: slideUp 0.3s ease-out;
-<<<<<<< HEAD
     overflow: hidden;
 }
 
@@ -1781,10 +1758,6 @@ body.currentschedules-page #clock {
 }
 
 /* Modal Slide-Up Animation */
-=======
-}
-
->>>>>>> 3973a782013a1a9ebbbb9aa0ac1d21e4c16c6aef
 @keyframes slideUp {
     from {
         transform: translateY(20px);
@@ -1796,7 +1769,6 @@ body.currentschedules-page #clock {
     }
 }
 
-<<<<<<< HEAD
 /* ===== TODO PANEL STYLES ===== */
 
 /* Desktop Todo Panel Container */
@@ -1916,193 +1888,10 @@ body.currentschedules-page #clock {
     font-size: 12px;
     font-weight: 500;
     transition: all 0.15s ease;
-=======
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    background: linear-gradient(135deg, var(--accent-color, #0089f1), var(--accent-hover, #0073d1));
-    color: white;
-    border-radius: 12px 12px 0 0;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.2s;
-}
-
-.close-btn:hover {
-    opacity: 0.8;
-}
-
-.modal-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.form-group label {
-    font-weight: 500;
-    color: #333;
-    font-size: 14px;
-}
-
-.form-group input[type="text"],
-.form-group textarea {
-    padding: 10px 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 14px;
-    transition: border-color 0.2s;
-}
-
-.form-group input[type="text"]:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--accent-color, #0089f1);
-    box-shadow: 0 0 0 3px rgba(0, 137, 241, 0.1);
-}
-
-.form-group textarea {
-    min-height: 120px;
-    resize: vertical;
-}
-
-.formatting-toolbar {
-    display: flex;
-    gap: 8px;
-    padding: 8px;
-    background: #f5f5f5;
-    border-radius: 6px;
-}
-
-.format-btn {
-    padding: 6px 12px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.format-btn:hover {
-    background: var(--accent-color, #0089f1);
-    color: white;
-    border-color: var(--accent-color, #0089f1);
-}
-
-.form-group.preview {
-    background: #f9f9f9;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 12px;
-    max-height: 150px;
-    overflow-y: auto;
-}
-
-#todo-display-group {
-    background: #f9f9f9;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 12px;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-#todo-preview {
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-#todo-display {
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-#todo-display > div:first-child {
-    font-weight: bold;
-    font-size: 1.1em;
-    margin-bottom: 12px;
-    color: #333;
-}
-
-#todo-display > div:not(:first-child) {
-    color: #555;
-}
-
-.todo-line {
-    margin: 6px 0;
-    padding: 4px 0;
-}
-
-.todo-line input[type="checkbox"] {
-    margin-right: 6px;
-    cursor: default;
-}
-
-.modal-footer {
-    display: flex;
-    gap: 8px;
-    padding: 16px;
-    border-top: 1px solid #e0e0e0;
-    justify-content: flex-end;
-}
-
-.modal-footer button {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-#save-todo-btn {
-    background: var(--accent-color, #0089f1);
-    color: white;
-}
-
-#save-todo-btn:hover {
-    background: var(--accent-hover, #0073d1);
-}
-
-#cancel-todo-btn {
->>>>>>> 3973a782013a1a9ebbbb9aa0ac1d21e4c16c6aef
     background: #f0f0f0;
     color: #333;
 }
 
-<<<<<<< HEAD
 .todo-item .todo-actions button:hover {
     background: #e0e0e0;
     transform: translateY(-1px);
@@ -2121,50 +1910,3 @@ body.currentschedules-page #clock {
 .todo-item button[style*="marginLeft"]:hover {
     background: #fdd !important;
 }
-=======
-#cancel-todo-btn:hover {
-    background: #e0e0e0;
-}
-
-/* Todo text display enhancements */
-.todo-item .todo-text {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.todo-item .todo-title {
-    font-weight: 600;
-    color: #333;
-}
-
-.todo-item .todo-preview-text {
-    display: none;
-}
-
-/* Create Todo Button */
-#create-todo-btn {
-    background: var(--accent-color, #0089f1) !important;
-    color: white !important;
-    font-weight: 700 !important;
-    width: auto !important;
-    padding: 10px 20px !important;
-    margin: 12px auto 12px auto !important;
-    display: block !important;
-}
-
-#create-todo-btn:hover {
-    background: var(--accent-hover, #0073d1) !important;
-}
-
-/* Todo item completed state */
-.todo-item input[type="checkbox"]:checked + .todo-text {
-    opacity: 0.6;
-    text-decoration: line-through;
-}
-
-.todo-item input[type="checkbox"]:checked + .todo-text .todo-title {
-    color: #999;
-}
->>>>>>> 3973a782013a1a9ebbbb9aa0ac1d21e4c16c6aef
