@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "cd server && npm start",
-    "postinstall": "cd server && npm install"
+    "build": "cd server && npm install && npm rebuild",
+    "postinstall": "cd server && npm install && npm rebuild"
   },
   "engines": {
     "node": ">=14.0.0"

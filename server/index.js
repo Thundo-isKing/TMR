@@ -592,5 +592,5 @@ app.post('/api/meibot', async (req, res) => {
   }
 });
 
-const port = process.env.PUSH_SERVER_PORT || 3002;
+const port = process.env.PORT || process.env.PUSH_SERVER_PORT || 3002;
 app.listen(port, () => console.log('TMR push server listening on port', port));
