@@ -1,4 +1,16 @@
 {
+  "name": "tmr-app",
+  "version": "1.0.0",
+  "description": "TMR - Time Replication App with Google Calendar, Push Notifications, and Todos",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "cd server && npm start",
+    "postinstall": "cd server && npm install"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
