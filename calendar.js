@@ -20,7 +20,7 @@
         const res = await fetch(path, opts);
         if(res.ok) return res;
       }catch(e){ /* try fallback */ }
-      const url = 'http://localhost:3003' + path;
+      const url = 'http://localhost:3002' + path;
       const res = await fetch(url, opts);
       return res;
     }catch(e){
@@ -79,8 +79,35 @@
     try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id: event.id } })); }catch(e){}
   }
   function deleteEvent(id){
-    const events = loadEvents().filter(e => e.id !== id);
-    saveEvents(events);
+    const events = loadEvents();
+    const eventToDelete = events.find(e => e.id === id);
+    
+    // If event has a googleEventId, sync deletion to Google Calendar
+    if (eventToDelete && eventToDelete.googleEventId) {
+      try {
+        // Get userId - try from window.GoogleCalendarClient first, then from localStorage
+        let userId = 'default';
+        if (window.GoogleCalendarClient && typeof window.GoogleCalendarClient.getGoogleCalendarUserId === 'function') {
+          userId = window.GoogleCalendarClient.getGoogleCalendarUserId();
+        } else {
+          userId = localStorage.getItem('tmr_gcal_user_id') || 'default';
+        }
+        
+        console.log('[calendar] Syncing deletion with userId:', userId);
+        
+        // Send delete request to server (don't wait for response)
+        serverFetch('/sync/google-calendar/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, googleEventId: eventToDelete.googleEventId, tmrEventId: id })
+        }).catch(err => console.warn('[calendar] Failed to sync deletion to Google Calendar:', err));
+      } catch (err) {
+        console.warn('[calendar] Error syncing deletion:', err);
+      }
+    }
+    
+    const filtered = events.filter(e => e.id !== id);
+    saveEvents(filtered);
     try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id } })); }catch(e){}
   }
 
@@ -102,7 +129,9 @@
       }
       const newTodo = {
         id: 'td_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        text: todoText,
+        title: todoText,
+        details: '',
+        text: todoText, // for backward compatibility
         reminderAt: reminderAtTime
       };
       todos.unshift(newTodo);
@@ -587,14 +616,74 @@
 })();
 
 /* To-do app: saves to localStorage (key: tmr_todos)
-   Features: add, edit, delete by checking checkbox (immediate deletion), persists in browser
+   Features: title + detailed notes with formatting (checkboxes, bullets, numbering)
+   Modal editor for viewing/editing todo details
 */
 (function(){
   const TODO_KEY = 'tmr_todos';
-  const input = document.getElementById('todo-input');
-  const addBtn = document.getElementById('add-todo');
+  const createBtn = document.getElementById('create-todo-btn');
   const listEl = document.getElementById('todo-list');
-  if(!input || !addBtn || !listEl) return;
+  if(!createBtn || !listEl) return;
+
+  // Create todo modal
+  const modal = document.createElement('div');
+  modal.id = 'todo-modal';
+  modal.className = 'modal hidden';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Todo</h3>
+        <button id="close-todo-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" id="todo-title-group">
+          <label for="todo-title-input">Title:</label>
+          <input type="text" id="todo-title-input" placeholder="Todo title">
+        </div>
+        <div class="form-group" id="todo-details-group">
+          <label for="todo-details-input">Details:</label>
+          <div class="formatting-toolbar" id="formatting-toolbar" style="display: none;">
+            <button id="btn-checkbox" class="format-btn" title="Add checkbox">☐ Checkbox</button>
+            <button id="btn-bullet" class="format-btn" title="Add bullet">• Bullet</button>
+            <button id="btn-number" class="format-btn" title="Add number">1. Number</button>
+          </div>
+          <textarea id="todo-details-input" placeholder="Add details here. Use formatting buttons or type:&#10;☐ for checkbox&#10;• for bullet&#10;1. for numbered"></textarea>
+        </div>
+        <div class="form-group preview" id="preview-group" style="display: none;">
+          <label>Preview:</label>
+          <div id="todo-preview"></div>
+        </div>
+        <div class="form-group" id="todo-display-group" style="display: none;">
+          <div id="todo-display"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="edit-todo-btn" class="small-tmr-btn" style="display: none;">Edit</button>
+        <button id="save-todo-btn" class="small-tmr-btn" style="display: none;">Save</button>
+        <button id="cancel-todo-btn" class="small-tmr-btn" style="display: none;">Cancel</button>
+        <button id="close-todo-btn" class="small-tmr-btn">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const closeBtn = document.getElementById('close-todo-modal');
+  const editBtn = document.getElementById('edit-todo-btn');
+  const saveTodoBtn = document.getElementById('save-todo-btn');
+  const cancelBtn = document.getElementById('cancel-todo-btn');
+  const closeViewBtn = document.getElementById('close-todo-btn');
+  const titleInput = document.getElementById('todo-title-input');
+  const detailsInput = document.getElementById('todo-details-input');
+  const preview = document.getElementById('todo-preview');
+  const formattingToolbar = document.getElementById('formatting-toolbar');
+  const titleGroup = document.getElementById('todo-title-group');
+  const detailsGroup = document.getElementById('todo-details-group');
+  const previewGroup = document.getElementById('preview-group');
+  const displayGroup = document.getElementById('todo-display-group');
+  const todoDisplay = document.getElementById('todo-display');
+  
+  let currentTodoId = null;
+  let isEditMode = false;
 
   function loadTodos(){ try{ return JSON.parse(localStorage.getItem(TODO_KEY) || '[]'); }catch(e){ return []; } }
   function saveTodos(todos){ localStorage.setItem(TODO_KEY, JSON.stringify(todos));
@@ -602,44 +691,251 @@
   }
   function generateId(){ return 'td_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
+  function formatDetailsToHtml(text) {
+    if (!text) return '';
+    let html = '';
+    const lines = text.split('\n');
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('☐')) {
+        html += `<div class="todo-line"><input type="checkbox" disabled> ${trimmed.substring(1).trim()}</div>`;
+      } else if (trimmed.startsWith('•')) {
+        html += `<div class="todo-line">• ${trimmed.substring(1).trim()}</div>`;
+      } else if (trimmed.match(/^\d+\./)) {
+        html += `<div class="todo-line">${trimmed}</div>`;
+      } else if (trimmed) {
+        html += `<div class="todo-line">${trimmed}</div>`;
+      }
+    });
+    return html || '<p style="opacity: 0.6;">No details</p>';
+  }
+
+  function openTodoModal(todoId) {
+    currentTodoId = todoId;
+    const todos = loadTodos();
+    const todo = todos.find(t => t.id === todoId);
+
+    if (todo) {
+      isEditMode = false;
+      // Show view mode
+      titleGroup.style.display = 'none';
+      detailsGroup.style.display = 'none';
+      previewGroup.style.display = 'none';
+      displayGroup.style.display = 'block';
+      
+      // Display todo content
+      const titleDiv = document.createElement('div');
+      titleDiv.style.cssText = 'font-weight: bold; font-size: 1.1em; margin-bottom: 12px; color: #333;';
+      titleDiv.textContent = todo.title || todo.text || '(Untitled)';
+      
+      const detailsDiv = document.createElement('div');
+      detailsDiv.innerHTML = formatDetailsToHtml(todo.details || '');
+      
+      todoDisplay.innerHTML = '';
+      todoDisplay.appendChild(titleDiv);
+      if (todo.details) {
+        todoDisplay.appendChild(detailsDiv);
+      }
+      
+      // Show edit button and close button, hide edit controls
+      editBtn.style.display = 'block';
+      saveTodoBtn.style.display = 'none';
+      cancelBtn.style.display = 'none';
+      closeViewBtn.style.display = 'block';
+      
+      modal.classList.remove('hidden');
+    }
+  }
+
+  function openTodoModalForCreation() {
+    currentTodoId = null;
+    isEditMode = true;
+    titleInput.value = '';
+    detailsInput.value = '';
+    updatePreview();
+    
+    // Show edit mode
+    titleGroup.style.display = 'block';
+    detailsGroup.style.display = 'block';
+    previewGroup.style.display = 'block';
+    displayGroup.style.display = 'none';
+    formattingToolbar.style.display = 'flex';
+    
+    // Hide view button, show save/cancel
+    editBtn.style.display = 'none';
+    saveTodoBtn.style.display = 'block';
+    cancelBtn.style.display = 'block';
+    closeViewBtn.style.display = 'none';
+    
+    modal.classList.remove('hidden');
+    titleInput.focus();
+  }
+
+  function enterEditMode() {
+    isEditMode = true;
+    const todos = loadTodos();
+    const todo = todos.find(t => t.id === currentTodoId);
+    
+    if (todo) {
+      titleInput.value = todo.title || todo.text || '';
+      detailsInput.value = todo.details || '';
+      updatePreview();
+      
+      // Show edit mode
+      titleGroup.style.display = 'block';
+      detailsGroup.style.display = 'block';
+      previewGroup.style.display = 'block';
+      displayGroup.style.display = 'none';
+      formattingToolbar.style.display = 'flex';
+      
+      // Switch buttons
+      editBtn.style.display = 'none';
+      saveTodoBtn.style.display = 'block';
+      cancelBtn.style.display = 'block';
+      closeViewBtn.style.display = 'none';
+      
+      titleInput.focus();
+    }
+  }
+
+  function closeModal() {
+    modal.classList.add('hidden');
+    currentTodoId = null;
+    isEditMode = false;
+  }
+
+  function updatePreview() {
+    preview.innerHTML = formatDetailsToHtml(detailsInput.value);
+  }
+
+  function saveTodo() {
+    const title = titleInput.value.trim() || '(Untitled)';
+    const details = detailsInput.value.trim();
+    
+    if (!title && !details) return;
+
+    const todos = loadTodos();
+    
+    if (currentTodoId) {
+      // Update existing
+      const idx = todos.findIndex(t => t.id === currentTodoId);
+      if (idx >= 0) {
+        todos[idx] = { id: currentTodoId, title, details, text: title }; // Keep text for backward compatibility
+      }
+    } else {
+      // Create new
+      const newTodo = { id: generateId(), title, details, text: title };
+      todos.unshift(newTodo);
+    }
+    
+    saveTodos(todos);
+    closeModal();
+    render();
+    renderMenu();
+  }
+
   function render(){
     const todos = loadTodos();
     listEl.innerHTML = '';
     todos.forEach(t => {
-      const li = document.createElement('li'); li.className = 'todo-item'; li.dataset.id = t.id;
+      const li = document.createElement('li'); 
+      li.className = 'todo-item'; 
+      li.dataset.id = t.id;
 
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
-      cb.addEventListener('change', ()=>{ if(cb.checked){ // delete when checked
-        const remaining = loadTodos().filter(x => x.id !== t.id); saveTodos(remaining); render(); }
+      const cb = document.createElement('input'); 
+      cb.type = 'checkbox'; 
+      cb.className = 'todo-check';
+      cb.checked = t.completed || false;
+      cb.addEventListener('change', ()=>{ 
+        const todos = loadTodos();
+        const idx = todos.findIndex(x => x.id === t.id);
+        if (idx >= 0) {
+          todos[idx].completed = cb.checked;
+          saveTodos(todos);
+          render();
+        }
       });
 
-      const textWrap = document.createElement('div'); textWrap.className = 'todo-text';
-      const span = document.createElement('span'); span.textContent = t.text; span.tabIndex = 0;
-      span.addEventListener('dblclick', ()=> startEdit());
-      span.addEventListener('keydown', (e)=>{ if(e.key==='Enter') startEdit(); });
+      const textWrap = document.createElement('div'); 
+      textWrap.className = 'todo-text';
+      textWrap.style.cursor = 'pointer';
+      
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'todo-title';
+      titleSpan.textContent = t.title || t.text || '(Untitled)';
+      titleSpan.style.fontWeight = 'bold';
+      titleSpan.addEventListener('click', () => openTodoModal(t.id));
+      
+      const actions = document.createElement('div'); 
+      actions.className = 'todo-actions';
+      
+      const delBtn = document.createElement('button'); 
+      delBtn.className='small-tmr-btn'; 
+      delBtn.textContent = 'Delete'; 
+      delBtn.addEventListener('click', ()=>{ 
+        if(!confirm('Delete this todo?')) return; 
+        const remaining = loadTodos().filter(x=>x.id!==t.id); 
+        saveTodos(remaining); 
+        render(); 
+      });
+      
+      actions.appendChild(delBtn);
 
-      function startEdit(){
-        const inputEl = document.createElement('input'); inputEl.type = 'text'; inputEl.value = t.text;
-        inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') finishEdit(); if(e.key==='Escape') render(); });
-        function finishEdit(){ const v = inputEl.value.trim(); if(v){ t.text = v; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0) { all[idx]=t; saveTodos(all); } render(); } else { render(); } }
-        const saveBtn = document.createElement('button'); saveBtn.className='small-tmr-btn'; saveBtn.textContent='Save'; saveBtn.addEventListener('click', finishEdit);
-        const cancelBtn = document.createElement('button'); cancelBtn.className='small-tmr-btn'; cancelBtn.textContent='Cancel'; cancelBtn.addEventListener('click', render);
-        textWrap.innerHTML = ''; textWrap.appendChild(inputEl); textWrap.appendChild(saveBtn); textWrap.appendChild(cancelBtn); inputEl.focus();
-      }
-
-      const actions = document.createElement('div'); actions.className = 'todo-actions';
-      const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent = 'Edit'; editBtn.addEventListener('click', startEdit);
-      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent = 'Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); render(); });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
-
-      textWrap.appendChild(span);
-      li.appendChild(cb); li.appendChild(textWrap); li.appendChild(actions);
+      textWrap.appendChild(titleSpan);
+      
+      li.appendChild(cb); 
+      li.appendChild(textWrap); 
+      li.appendChild(actions);
       listEl.appendChild(li);
     });
   }
 
-  addBtn.addEventListener('click', ()=>{ const v = input.value.trim(); if(!v) return; const todos = loadTodos(); const item = { id: generateId(), text: v }; todos.unshift(item); saveTodos(todos); input.value = ''; render(); });
-  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ addBtn.click(); } });
+  // Format button handlers
+  document.getElementById('btn-checkbox').addEventListener('click', () => {
+    const start = detailsInput.selectionStart;
+    const end = detailsInput.selectionEnd;
+    const before = detailsInput.value.substring(0, start);
+    const after = detailsInput.value.substring(end);
+    detailsInput.value = before + '☐ ' + after;
+    detailsInput.selectionStart = start + 2;
+    detailsInput.focus();
+    updatePreview();
+  });
+
+  document.getElementById('btn-bullet').addEventListener('click', () => {
+    const start = detailsInput.selectionStart;
+    const end = detailsInput.selectionEnd;
+    const before = detailsInput.value.substring(0, start);
+    const after = detailsInput.value.substring(end);
+    detailsInput.value = before + '• ' + after;
+    detailsInput.selectionStart = start + 2;
+    detailsInput.focus();
+    updatePreview();
+  });
+
+  document.getElementById('btn-number').addEventListener('click', () => {
+    const start = detailsInput.selectionStart;
+    const end = detailsInput.selectionEnd;
+    const before = detailsInput.value.substring(0, start);
+    const after = detailsInput.value.substring(end);
+    detailsInput.value = before + '1. ' + after;
+    detailsInput.selectionStart = start + 3;
+    detailsInput.focus();
+    updatePreview();
+  });
+
+  detailsInput.addEventListener('input', updatePreview);
+
+  closeBtn.addEventListener('click', closeModal);
+  editBtn.addEventListener('click', enterEditMode);
+  cancelBtn.addEventListener('click', closeModal);
+  closeViewBtn.addEventListener('click', closeModal);
+  saveTodoBtn.addEventListener('click', saveTodo);
+
+  // Create todo button
+  createBtn.addEventListener('click', () => {
+    openTodoModalForCreation();
+  });
 
   // initial
   render();
@@ -656,7 +952,6 @@
 
   function renderMenu(){
     if(!menuList) return;
-    // toggle hidden attribute depending on if there are todos
     const todos = loadTodos();
     menuList.innerHTML = '';
     if(todos.length === 0){
@@ -665,15 +960,33 @@
     todos.forEach(t => {
       const li = document.createElement('div'); li.className = 'todo-item'; li.dataset.id = t.id;
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'todo-check';
-      cb.addEventListener('change', ()=>{ if(cb.checked){ const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); render(); renderMenu(); } });
-      const txt = document.createElement('div'); txt.className = 'todo-text'; const span = document.createElement('span'); span.textContent = t.text; txt.appendChild(span);
-      const actions = document.createElement('div'); actions.className = 'todo-actions';
-      const editBtn = document.createElement('button'); editBtn.className='small-tmr-btn'; editBtn.textContent='Edit'; editBtn.addEventListener('click', ()=>{
-        const v = prompt('Edit todo', t.text); if(v === null) return; const nv = v.trim(); if(!nv) return; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all[idx].text = nv; saveTodos(all); render(); renderMenu(); }
+      cb.checked = t.completed || false;
+      cb.addEventListener('change', ()=>{ 
+        const todos = loadTodos();
+        const idx = todos.findIndex(x=>x.id===t.id);
+        if (idx >= 0) {
+          todos[idx].completed = cb.checked;
+          saveTodos(todos);
+          render();
+          renderMenu();
+        }
       });
-      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const remaining = loadTodos().filter(x=>x.id!==t.id); saveTodos(remaining); render(); renderMenu(); });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
-      li.appendChild(cb); li.appendChild(txt); li.appendChild(actions); menuList.appendChild(li);
+      const txt = document.createElement('div'); txt.className = 'todo-text'; 
+      const titleSpan = document.createElement('span'); 
+      titleSpan.className = 'todo-title';
+      titleSpan.textContent = t.title || t.text || '(Untitled)'; 
+      titleSpan.style.fontWeight = 'bold';
+      titleSpan.style.cursor = 'pointer';
+      titleSpan.addEventListener('click', () => openTodoModal(t.id));
+      txt.appendChild(titleSpan);
+      const actions = document.createElement('div'); actions.className = 'todo-actions';
+      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all.splice(idx,1); saveTodos(all); render(); renderMenu(); }
+      });
+      actions.appendChild(delBtn);
+      li.appendChild(cb);
+      li.appendChild(txt);
+      li.appendChild(actions);
+      menuList.appendChild(li);
     });
   }
 

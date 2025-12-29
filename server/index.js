@@ -420,6 +420,55 @@ app.post('/sync/google-calendar', async (req, res) => {
   }
 });
 
+// Delete synced event from Google Calendar
+app.post('/sync/google-calendar/delete', async (req, res) => {
+  console.log('[GoogleCalendar] Delete request received:', req.body);
+  
+  if (!googleCalendarManager) {
+    console.error('[GoogleCalendar] Manager not initialized');
+    return res.status(503).json({ error: 'Google Calendar not configured' });
+  }
+  
+  const userId = req.body.userId || 'default';
+  const googleEventId = req.body.googleEventId;
+  const tmrEventId = req.body.tmrEventId;
+  
+  if (!googleEventId) {
+    console.error('[GoogleCalendar] No googleEventId provided');
+    return res.status(400).json({ error: 'googleEventId required' });
+  }
+  
+  try {
+    console.log('[GoogleCalendar] Deleting event:', googleEventId, 'for user:', userId);
+    
+    await googleCalendarManager.deleteGoogleCalendarEvent(userId, googleEventId);
+    console.log('[GoogleCalendar] Event deleted from Google Calendar successfully');
+    
+    // Delete mapping from database
+    if (tmrEventId) {
+      console.log('[GoogleCalendar] Deleting mapping for tmrEventId:', tmrEventId);
+      await new Promise((resolve) => {
+        db.deleteEventMapping(tmrEventId, (err) => {
+          if (err) {
+            console.error('[GoogleCalendar] Failed to delete mapping:', err);
+          } else {
+            console.log('[GoogleCalendar] Mapping deleted successfully');
+          }
+          resolve();
+        });
+      });
+    }
+    
+    console.log('[GoogleCalendar] Event deleted successfully');
+    res.json({ ok: true, deleted: googleEventId });
+  } catch (err) {
+    console.error('[GoogleCalendar] Delete error:', err);
+    console.error('[GoogleCalendar] Error message:', err.message);
+    console.error('[GoogleCalendar] Error stack:', err.stack);
+    res.status(500).json({ error: 'Delete failed', details: err.message });
+  }
+});
+
 // Fetch Google Calendar events
 app.get('/sync/google-calendar/fetch', async (req, res) => {
   if (!googleCalendarManager) {
