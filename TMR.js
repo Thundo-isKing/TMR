@@ -671,8 +671,12 @@ if (leaveBtn) {
                     if(item.reminderAt && getNotifyMode() !== 'local'){
                         (async ()=>{
                             try{
-                                const deviceId = localStorage.getItem('tmr_device_id') || 'unknown';
-                                const payload = { title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt), deviceId };
+                                const subscriptionId = localStorage.getItem('tmr_push_sub_id');
+                                if(!subscriptionId) {
+                                    console.warn('[createEdit] No subscription ID available - reminder will not be delivered');
+                                    return;
+                                }
+                                const payload = { subscriptionId: Number(subscriptionId), userId: null, title: 'To-do: ' + (item.text||''), body: item.text || '', deliverAt: Number(item.reminderAt) };
                                 console.log('[createEdit] Posting reminder to server:', payload);
                                 const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                                 console.log('[createEdit] Server response:', { ok: res.ok, status: res.status });

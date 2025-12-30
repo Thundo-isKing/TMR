@@ -303,6 +303,31 @@
     font-family: inherit;
 }
 
+.mobile-color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.mobile-color-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mobile-color-btn:hover {
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-color-btn.selected {
+    border-width: 3px;
+    border-color: #333;
+}
+
 .mobile-form-actions {
     display: flex;
     gap: 8px;

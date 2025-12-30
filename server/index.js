@@ -5,6 +5,10 @@ const express = require('express');
 const webpush = require('web-push');
 const db = require('./db');
 
+// ADD: Import security modules
+const SessionStore = require('./session-store');
+const TokenRefreshManager = require('./token-refresh');
+
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
@@ -40,6 +44,8 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3002/auth/google/callback';
 
 let googleCalendarManager = null;
+let sessionStore = null;
+let tokenRefreshManager = null;
 
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
   googleCalendarManager = new GoogleCalendarManager(
@@ -49,6 +55,16 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
     db
   );
   console.log('[GoogleCalendar] Manager initialized with OAuth credentials');
+  
+  // ADD: Initialize secure session store and token refresh
+  sessionStore = new SessionStore();
+  tokenRefreshManager = new TokenRefreshManager(db, googleCalendarManager);
+  
+  // Cleanup expired sessions every 5 minutes
+  setInterval(() => {
+    sessionStore.cleanup();
+  }, 5 * 60 * 1000);
+  
 } else {
   console.warn('[GoogleCalendar] OAuth credentials not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env');
 }
@@ -107,35 +123,28 @@ app.get('/debug/reminders', (req, res) => {
 // Subscribe endpoint: store subscription and optional userId
 app.post('/subscribe', (req, res) => {
   const { subscription, userId } = req.body;
-  if(!subscription) return res.status(400).json({ error: 'missing subscription' });
-  // Deduplicate: try to avoid storing the same subscription endpoint twice
-  try{
-    const endpoint = (subscription && subscription.endpoint) ? subscription.endpoint : null;
-    if(endpoint){
-      db.getAllSubscriptions((err, subs) => {
-        if(err) return res.status(500).json({ error: 'db error' });
-        const exists = (subs || []).find(s => (s.subscription && s.subscription.endpoint ? s.subscription.endpoint : (JSON.parse(s.subscription || '{}').endpoint)) === endpoint);
-        if(exists) return res.json({ ok: true, id: exists.id, note: 'already_exists' });
-        // not found -> insert
-        db.addSubscription(userId || null, subscription, (err2, id) => {
-          if(err2) return res.status(500).json({ error: 'db error' });
-          res.json({ ok: true, id });
-        });
-      });
-    } else {
-      // Fallback: just add
-      db.addSubscription(userId || null, subscription, (err, id) => {
-        if(err) return res.status(500).json({ error: 'db error' });
-        res.json({ ok: true, id });
-      });
-    }
-  }catch(e){
-    // On error, attempt add as last resort
-    db.addSubscription(userId || null, subscription, (err, id) => {
-      if(err) return res.status(500).json({ error: 'db error' });
-      res.json({ ok: true, id });
-    });
+  
+  if (!subscription) {
+    return res.status(400).json({ error: 'missing subscription' });
   }
+  
+  if (!subscription.endpoint) {
+    return res.status(400).json({ error: 'subscription.endpoint required' });
+  }
+
+  db.addSubscription(userId || null, subscription, (err, id) => {
+    if (err) {
+      if (err.message.includes('UNIQUE constraint failed')) {
+        // Duplicate subscription - silently accept
+        console.log('[Subscribe] Duplicate subscription ignored');
+        return res.json({ ok: true, id, note: 'duplicate_ignored' });
+      }
+      console.error('[Subscribe] Error:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    console.log('[Subscribe] Subscription added:', id, 'userId:', userId);
+    res.json({ ok: true, id });
+  });
 });
 
 // Unsubscribe / delete subscription endpoint (development helper)
@@ -160,96 +169,137 @@ app.post('/unsubscribe', (req, res) => {
 
 // Reminder endpoint: persist a reminder to be delivered at deliverAt (ms)
 app.post('/reminder', (req, res) => {
-  const { userId, title, body, deliverAt } = req.body;
+  const { subscriptionId, userId, title, body, deliverAt } = req.body;
+  
+  if (!subscriptionId) {
+    return res.status(400).json({ error: 'subscriptionId required' });
+  }
+  
+  if (!deliverAt) {
+    return res.status(400).json({ error: 'deliverAt required (epoch ms)' });
+  }
+  
+  if (typeof deliverAt !== 'number' && typeof Number(deliverAt) !== 'number') {
+    return res.status(400).json({ error: 'deliverAt must be number (epoch ms)' });
+  }
+
   const now = Date.now();
   const deliverAtNum = Number(deliverAt);
   const delayMs = deliverAtNum - now;
+  
+  if (deliverAtNum < now - 60000) {
+    return res.status(400).json({ error: 'deliverAt cannot be more than 1 minute in past' });
+  }
+
   const delaySecs = Math.round(delayMs / 1000);
-  console.log('[Reminder] POST received:', { title, body, deliverAt: deliverAtNum });
-  console.log('[Reminder] Current time:', now, 'Deliver at:', deliverAtNum, 'Delay:', delaySecs, 'seconds');
-  if(!deliverAt) return res.status(400).json({ error: 'deliverAt required (epoch ms)' });
-  db.addReminder(userId || null, title || '', body || '', deliverAtNum, (err, id) => {
-    if(err) return res.status(500).json({ error: 'db error' });
-    console.log('[Reminder] Added reminder:', id, 'delivering at:', new Date(deliverAtNum), '(in', delaySecs, 'seconds)');
-    res.json({ ok: true, id });
+  console.log('[Reminder] POST received:', { subscriptionId, userId, title, body, deliverAt: deliverAtNum, delaySecs });
+  
+  db.addReminder(subscriptionId, userId || null, title || '', body || '', deliverAtNum, (err, id) => {
+    if (err) {
+      console.error('[Reminder] Error:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    console.log('[Reminder] Added:', id, '- delivering in', delaySecs, 'seconds to subscriptionId:', subscriptionId);
+    res.json({ ok: true, id, deliversIn: delaySecs });
   });
 });
 
 // ========== GOOGLE CALENDAR ENDPOINTS ==========
 
-// Get OAuth authorization URL
+// Get OAuth authorization URL (with CSRF protection)
 app.get('/auth/google', (req, res) => {
-  if (!googleCalendarManager) {
-    console.error('[GoogleCalendar] Manager not initialized - missing OAuth credentials in .env');
-    return res.status(503).json({ error: 'Google Calendar not configured - missing credentials' });
+  if (!googleCalendarManager || !sessionStore) {
+    console.error('[GoogleCalendar] Manager not initialized');
+    return res.status(503).json({ error: 'Google Calendar not configured' });
   }
-  
+
   try {
-    const state = 'state_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     const userId = req.query.userId || 'default';
     
-    // Get the origin from the request (handles localhost, ngrok, render, etc.)
+    // Validate userId
+    if (typeof userId !== 'string' || userId.length === 0 || userId.length > 255) {
+      return res.status(400).json({ error: 'Invalid userId' });
+    }
+
+    // Create secure session with CSRF token
+    const { sessionId, state } = sessionStore.createSession(userId);
+
+    // Get origin
     let origin = req.get('origin');
     if (!origin) {
       const host = req.get('host');
-      // Check for X-Forwarded-Proto header (set by reverse proxies like ngrok)
       const protocol = req.get('X-Forwarded-Proto') || req.protocol;
       origin = `${protocol}://${host}`;
     }
+
     const redirectUri = `${origin}/auth/google/callback`;
-    
-    // Store state and redirect URI temporarily (in production, use a proper session store)
-    process.env.OAUTH_STATE = state;
-    process.env.OAUTH_USER_ID = userId;
-    process.env.OAUTH_REDIRECT_URI = redirectUri;
-    
-    console.log('[GoogleCalendar] Request headers - origin:', req.get('origin'), 'host:', req.get('host'), 'protocol:', req.protocol);
-    console.log('[GoogleCalendar] Final redirect URI:', redirectUri);
-    
-    // Update the OAuth manager with the correct redirect URI (recreates oauth2Client)
+    sessionStore.setRedirectUri(sessionId, redirectUri);
+
+    console.log('[GoogleCalendar] Auth initiated - Session:', sessionId, 'User:', userId);
+
+    // Update OAuth manager with correct redirect URI
     googleCalendarManager.setRedirectUri(redirectUri);
-    
     const authUrl = googleCalendarManager.getAuthUrl(state);
-    console.log('[GoogleCalendar] Generated auth URL for user:', userId, 'authUrl:', authUrl);
-    res.json({ authUrl });
+
+    res.json({ authUrl, sessionId });
+
   } catch (err) {
-    console.error('[GoogleCalendar] Failed to generate auth URL:', err);
-    res.status(500).json({ error: 'Failed to generate authorization URL', details: err.message });
+    console.error('[GoogleCalendar] Auth error:', err);
+    res.status(500).json({ error: 'Failed to generate auth URL', details: err.message });
   }
 });
 
-// Google OAuth callback
+// Google OAuth callback (with CSRF validation)
 app.get('/auth/google/callback', async (req, res) => {
-  if (!googleCalendarManager) {
+  if (!googleCalendarManager || !sessionStore) {
     return res.status(503).json({ error: 'Google Calendar not configured' });
   }
-  
+
   const { code, state } = req.query;
-  const userId = process.env.OAUTH_USER_ID || 'default';
-  const redirectUri = process.env.OAUTH_REDIRECT_URI || `http://${req.get('host')}/auth/google/callback`;
-  
-  if (!code) {
-    return res.status(400).json({ error: 'Missing authorization code' });
+
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state parameter' });
   }
-  
+
   try {
-    // Ensure redirect URI matches what we generated
+    // Validate session (CSRF protection)
+    const session = sessionStore.validateSession(state, state);
+    if (!session) {
+      console.error('[GoogleCalendar] CSRF validation failed - State:', state);
+      return res.status(403).json({ error: 'Invalid or expired session - possible CSRF attack' });
+    }
+
+    const userId = session.userId;
+    const redirectUri = session.redirectUri;
+
+    console.log('[GoogleCalendar] Callback - Exchanging code for user:', userId);
+
     googleCalendarManager.setRedirectUri(redirectUri);
-    
     const tokens = await googleCalendarManager.exchangeCodeForTokens(code);
+
+    // Save tokens
     googleCalendarManager.saveTokens(userId, tokens, (err) => {
       if (err) {
         console.error('[GoogleCalendar] Failed to save tokens:', err);
         return res.status(500).json({ error: 'Failed to save tokens' });
       }
-      
+
       console.log('[GoogleCalendar] Tokens saved for user:', userId);
-      
-      // Redirect back to client with success message
+
+      // Start token refresh monitoring
+      if (tokenRefreshManager && tokens.expiry_date) {
+        const expiresIn = Math.round((tokens.expiry_date - Date.now()) / 1000);
+        tokenRefreshManager.startTokenMonitoring(userId, expiresIn);
+      }
+
+      // Clean up session
+      sessionStore.getAndDelete(state);
+
       res.redirect(`/TMR.html?gcal_auth=success&userId=${encodeURIComponent(userId)}`);
     });
+
   } catch (err) {
-    console.error('[GoogleCalendar] OAuth callback error:', err);
+    console.error('[GoogleCalendar] Callback error:', err);
     res.status(500).json({ error: 'Authentication failed', details: err.message });
   }
 });
@@ -570,27 +620,60 @@ app.post('/api/meibot-test', (req, res) => {
 
 app.post('/api/meibot', async (req, res) => {
   if (!groqAssistant) {
-    return res.status(503).json({ error: 'Groq assistant not initialized. Set GROQ_API_KEY in .env' });
+    return res.status(503).json({ error: 'Groq assistant not initialized. Set GROQ_API_KEY in environment.' });
   }
 
-  const { message, context, consent, userId } = req.body;
-  if (!message) return res.status(400).json({ error: 'message required' });
+  const { message, context, userId } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({ error: 'message required' });
+  }
+  
+  if (typeof message !== 'string' || message.trim().length === 0) {
+    return res.status(400).json({ error: 'message must be non-empty string' });
+  }
+  
+  if (message.length > 5000) {
+    return res.status(400).json({ error: 'message too long (max 5000 characters)' });
+  }
 
   try {
-    console.log('[Meibot] Received:', message.substring(0, 50));
-    const response = await groqAssistant.chat(message, context || '', userId || 'default');
-    console.log('[Meibot] Responding with action:', response.suggestedAction);
-    if (response.actionData) {
-      console.log('[Meibot] Action data:', JSON.stringify(response.actionData));
+    console.log('[Meibot] Processing message from user:', userId || 'anonymous', 'Length:', message.length);
+    
+    const response = await groqAssistant.chat(message.trim(), context || '', userId || 'anonymous');
+    
+    // Validate response structure
+    if (!response || typeof response !== 'object') {
+      throw new Error('Invalid response from Groq API');
     }
+    
+    console.log('[Meibot] Response action:', response.suggestedAction);
     res.json(response);
+    
   } catch (err) {
-    console.error('[Meibot] Error:', err);
-    console.error('[Meibot] Error message:', err.message);
-    console.error('[Meibot] Error status:', err.status);
-    res.status(500).json({ error: 'Meibot error', details: err.message });
+    console.error('[Meibot] Error:', err.message);
+    
+    // Differentiate between API errors and other errors
+    if (err.status === 401 || err.status === 403) {
+      return res.status(401).json({ 
+        error: 'Authentication failed with Groq API',
+        details: 'Check GROQ_API_KEY' 
+      });
+    }
+    
+    if (err.status === 429) {
+      return res.status(429).json({ 
+        error: 'Rate limited - try again later',
+        details: 'Groq API rate limit exceeded' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Meibot error', 
+      details: err.message 
+    });
   }
 });
 
 const port = process.env.PORT || process.env.PUSH_SERVER_PORT || 3002;
-app.listen(port, () => console.log('TMR push server listening on port', port));
+app.listen(port, () => console.log('[Server] TMR push server listening on port', port));

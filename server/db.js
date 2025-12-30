@@ -8,7 +8,40 @@ if(!fs.existsSync(dbPath)){
   fs.writeFileSync(dbPath, '');
 }
 
-const db = new sqlite3.Database(dbPath);
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('[Database] Connection error:', err);
+  } else {
+    console.log('[Database] Connected to:', dbPath);
+  }
+});
+
+// Add transaction support
+const runTransaction = (callback) => {
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION', (err) => {
+      if (err) {
+        console.error('[Database] Transaction BEGIN failed:', err);
+        return callback(err);
+      }
+      callback((transactionErr) => {
+        if (transactionErr) {
+          console.error('[Database] Transaction error, rolling back:', transactionErr.message);
+          db.run('ROLLBACK', (rollbackErr) => {
+            callback(rollbackErr || transactionErr);
+          });
+        } else {
+          db.run('COMMIT', (commitErr) => {
+            if (commitErr) {
+              console.error('[Database] Transaction COMMIT failed:', commitErr);
+            }
+            callback(commitErr);
+          });
+        }
+      });
+    });
+  });
+};
 
 // Initialize tables
 db.serialize(() => {
@@ -20,8 +53,7 @@ db.serialize(() => {
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS reminders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId TEXT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,    subscriptionId INTEGER,    userId TEXT,
     title TEXT,
     body TEXT,
     deliverAt INTEGER,
@@ -61,11 +93,42 @@ db.serialize(() => {
 });
 
 module.exports = {
+  runTransaction: runTransaction,
+  
   addSubscription: function(userId, subscription, cb){
+    if (!subscription || !subscription.endpoint) {
+      console.error('[Database] Invalid subscription - missing endpoint');
+      return cb && cb(new Error('Invalid subscription'));
+    }
+
     const now = Date.now();
     const subJson = JSON.stringify(subscription);
-    db.run(`INSERT INTO subscriptions (userId, subscription, createdAt) VALUES (?,?,?)`, [userId || null, subJson, now], function(err){
-      if(cb) cb(err, this && this.lastID);
+    
+    // Check for duplicate to prevent race conditions
+    runTransaction((txDone) => {
+      db.get(
+        `SELECT id FROM subscriptions WHERE subscription = ?`,
+        [subJson],
+        (err, row) => {
+          if (err) return txDone(err);
+          
+          if (row) {
+            console.log('[Database] Subscription already exists, skipping duplicate');
+            return txDone(null); // Already exists
+          }
+          
+          db.run(
+            `INSERT INTO subscriptions (userId, subscription, createdAt) VALUES (?,?,?)`,
+            [userId || null, subJson, now],
+            function(err) {
+              if (err) return txDone(err);
+              console.log('[Database] Subscription added:', this.lastID);
+              if (cb) cb(null, this.lastID);
+              txDone(null);
+            }
+          );
+        }
+      );
     });
   },
   getSubscriptionsByUserId: function(userId, cb){
@@ -82,16 +145,55 @@ module.exports = {
       cb(null, subs);
     });
   },
-  addReminder: function(userId, title, body, deliverAtMs, cb){
+  addReminder: function(subscriptionId, userId, title, body, deliverAtMs, cb){
+    // Validate input
+    if (!deliverAtMs) {
+      console.error('[Database] Invalid reminder - missing deliverAt');
+      return cb && cb(new Error('deliverAt required'));
+    }
+
+    if (typeof deliverAtMs !== 'number') {
+      console.error('[Database] Invalid reminder - deliverAt must be number');
+      return cb && cb(new Error('deliverAt must be number'));
+    }
+
     const now = Date.now();
-    db.run(`INSERT INTO reminders (userId, title, body, deliverAt, deliveredAt, createdAt) VALUES (?,?,?,?,?,?)`, [userId || null, title || '', body || '', deliverAtMs || null, null, now], function(err){
-      if(cb) cb(err, this && this.lastID);
-    });
+    
+    // Warn if time is in the past
+    if (deliverAtMs < now - 60000) {
+      console.warn('[Database] Reminder scheduled for past time:', new Date(deliverAtMs));
+    }
+
+    db.run(
+      `INSERT INTO reminders (subscriptionId, userId, title, body, deliverAt, deliveredAt, createdAt) VALUES (?,?,?,?,?,?,?)`,
+      [subscriptionId || null, userId || null, title || '', body || '', deliverAtMs, null, now],
+      function(err) {
+        if (err) {
+          console.error('[Database] Failed to add reminder:', err);
+          return cb && cb(err);
+        }
+        console.log('[Database] Reminder added:', this.lastID, 'for subscriptionId:', subscriptionId, 'deliverAt:', new Date(deliverAtMs));
+        if (cb) cb(null, this.lastID);
+      }
+    );
   },
   getDueReminders: function(nowMs, cb){
-    db.all(`SELECT id, userId, title, body, deliverAt FROM reminders WHERE deliveredAt IS NULL AND deliverAt IS NOT NULL AND deliverAt <= ?`, [nowMs], (err, rows) => {
+    db.all(`SELECT id, subscriptionId, userId, title, body, deliverAt FROM reminders WHERE deliveredAt IS NULL AND deliverAt IS NOT NULL AND deliverAt <= ?`, [nowMs], (err, rows) => {
       if(err) return cb(err);
       cb(null, rows || []);
+    });
+  },
+  getSubscriptionById: function(subscriptionId, cb){
+    db.get(`SELECT id, subscription, createdAt FROM subscriptions WHERE id = ?`, [subscriptionId], (err, row) => {
+      if(err) return cb(err);
+      if(!row) return cb(null, null);
+      try {
+        const sub = { id: row.id, subscription: JSON.parse(row.subscription), createdAt: row.createdAt };
+        cb(null, sub);
+      } catch(parseErr) {
+        console.error('[Database] Error parsing subscription JSON:', parseErr);
+        cb(parseErr);
+      }
     });
   },
   markDelivered: function(reminderId, cb){

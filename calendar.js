@@ -47,18 +47,18 @@
     // If event has date and time, calculate timestamp and POST to server
     if(!event.date || !event.time) return; // no time, don't send reminder
     try{
-      // Get or create a device ID for this device
-      let deviceId = localStorage.getItem('tmr_device_id');
-      if (!deviceId) {
-        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-        localStorage.setItem('tmr_device_id', deviceId);
+      // Get subscriptionId from localStorage
+      const subscriptionId = localStorage.getItem('tmr_push_sub_id');
+      if(!subscriptionId) {
+        console.warn('[calendar] No subscription ID available - event reminder will not be delivered');
+        return;
       }
       
       const [y, mo, d] = event.date.split('-').map(Number);
       const [hh, mm] = event.time.split(':').map(Number);
       if(!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return;
       const ts = new Date(y, mo-1, d, hh||0, mm||0).getTime();
-      const payload = { deviceId, title: 'Event: ' + (event.title||''), body: event.notes || event.title || '', deliverAt: ts };
+      const payload = { subscriptionId: Number(subscriptionId), userId: null, title: 'Event: ' + (event.title||''), body: event.notes || event.title || '', deliverAt: ts };
       await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       console.debug('[calendar] posted event reminder to server', event.id);
     }catch(err){
@@ -211,16 +211,16 @@
       return;
     }
     try {
-      // Get or create a device ID for this device
-      let deviceId = localStorage.getItem('tmr_device_id');
-      if (!deviceId) {
-        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-        localStorage.setItem('tmr_device_id', deviceId);
+      // Get subscriptionId from localStorage
+      const subscriptionId = localStorage.getItem('tmr_push_sub_id');
+      if(!subscriptionId) {
+        console.warn('[calendar] No subscription ID available - todo reminder will not be delivered');
+        return;
       }
       
       const reminderAtNum = Number(todo.reminderAt);
       console.log('[calendar] reminderAt as number:', reminderAtNum);
-      const payload = { deviceId, title: 'To-do: ' + (todo.text || ''), body: todo.text || '', deliverAt: reminderAtNum };
+      const payload = { subscriptionId: Number(subscriptionId), userId: null, title: 'To-do: ' + (todo.text || ''), body: todo.text || '', deliverAt: reminderAtNum };
       console.log('[calendar] posting todo reminder with payload:', payload);
       const res = await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       console.log('[calendar] posted todo reminder to server, response status:', res.status);

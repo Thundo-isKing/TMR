@@ -45,10 +45,10 @@
     async function postEventReminderToServer(event) {
         if (!event.date || !event.time) return;
         try {
-            let deviceId = localStorage.getItem('tmr_device_id');
-            if (!deviceId) {
-                deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-                localStorage.setItem('tmr_device_id', deviceId);
+            const subscriptionId = localStorage.getItem('tmr_push_sub_id');
+            if (!subscriptionId) {
+                console.warn('[calendar-mobile] No subscription ID available - event reminder will not be delivered');
+                return;
             }
             
             const [y, mo, d] = event.date.split('-').map(Number);
@@ -57,7 +57,8 @@
             
             const ts = new Date(y, mo - 1, d, hh || 0, mm || 0).getTime();
             const payload = { 
-                deviceId, 
+                subscriptionId: Number(subscriptionId), 
+                userId: null, 
                 title: 'Event: ' + (event.title || ''), 
                 body: event.notes || event.title || '', 
                 deliverAt: ts 
@@ -115,11 +116,13 @@
     const modalCloseBtn = document.getElementById('mobile-modal-close');
     const gcalAuthBtn = document.getElementById('mobile-gcal-auth-btn');
     const gcalSyncBtn = document.getElementById('mobile-gcal-sync-btn');
+    const colorBtns = document.querySelectorAll('.mobile-color-btn');
     
     // State
     let viewDate = new Date();
     let activeDate = null;
     let activeEventId = null;
+    let selectedEventColor = '#ff922b'; // Default color (orange)
     
     function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
     function endOfMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
@@ -191,6 +194,7 @@
                 for (let i = 0; i < Math.min(events.length, 3); i++) {
                     const dot = document.createElement('div');
                     dot.className = 'mobile-event-dot';
+                    dot.style.background = events[i].color || '#ff922b';
                     indicators.appendChild(dot);
                 }
                 btn.appendChild(indicators);
@@ -236,6 +240,15 @@
         titleInput.value = '';
         timeInput.value = '';
         notesInput.value = '';
+        
+        // Reset color to default
+        selectedEventColor = '#ff922b';
+        colorBtns.forEach(b => b.classList.remove('selected'));
+        const defaultBtn = document.querySelector(`.mobile-color-btn[data-color="#ff922b"]`);
+        if (defaultBtn) {
+            defaultBtn.classList.add('selected');
+        }
+        
         deleteBtn.style.display = 'none';
         modalTitle.textContent = 'Events for ' + dateStr;
         
@@ -248,6 +261,19 @@
         titleInput.value = ev.title || '';
         timeInput.value = ev.time || '';
         notesInput.value = ev.notes || '';
+        
+        // Restore color when editing
+        if (ev.color) {
+            selectedEventColor = ev.color;
+            const matchingBtn = document.querySelector(`.mobile-color-btn[data-color="${ev.color}"]`);
+            if (matchingBtn) {
+                colorBtns.forEach(b => b.classList.remove('selected'));
+                matchingBtn.classList.add('selected');
+            }
+        } else {
+            selectedEventColor = '#ff922b';
+        }
+        
         deleteBtn.style.display = 'block';
         modalTitle.textContent = 'Edit Event';
     }
@@ -376,6 +402,17 @@
     
     modalCloseBtn.addEventListener('click', closeModal);
     
+    // Color picker button handlers
+    colorBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            selectedEventColor = btn.dataset.color;
+            // Visual feedback: highlight selected color
+            colorBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        });
+    });
+    
     // Google Calendar buttons
     if (gcalAuthBtn) {
         gcalAuthBtn.addEventListener('click', () => {
@@ -409,7 +446,7 @@
             date: activeDate,
             time: timeInput.value || '',
             notes: notesInput.value || '',
-            color: '#f19100'
+            color: selectedEventColor
         };
         
         addOrUpdateEvent(event);
