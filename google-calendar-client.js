@@ -519,8 +519,11 @@
     
     // Mobile menu button opens Google Calendar modal
     if (mobileMenuBtn) {
-      mobileMenuBtn.addEventListener('click', () => {
+      mobileMenuBtn.addEventListener('click', async () => {
         if (gcalModalBackdrop) {
+          // Make sure buttons are updated before showing modal
+          const connected = await checkGoogleCalendarStatus();
+          updateGoogleCalendarButtons(connected);
           gcalModalBackdrop.style.display = 'flex';
         }
       });
