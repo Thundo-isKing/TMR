@@ -539,6 +539,10 @@
     document.getElementById('modal-title').textContent = 'Edit Event';
   }
 
+  // Export functions to window for external use (e.g., search navigation)
+  window.openModalForDate = openModalForDate;
+  window.fillFormForEvent = fillFormForEvent;
+
   function closeModal(){ modal.classList.add('hidden'); modal.setAttribute('aria-hidden','true'); activeDate = null; }
 
   function triggerMonthTransition() {

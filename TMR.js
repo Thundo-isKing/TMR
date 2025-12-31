@@ -352,11 +352,15 @@ if (leaveBtn) {
         selectedResultIndex = -1;
     }
 
-    // Convert score to star rating (1-5 stars)
+    // Convert score to star rating with better visual distinction
     function scoreToStars(score) {
-        const maxScore = 130;  // Theoretical max: 100 + 60 + 30 = 190, but typically lower
+        const maxScore = 130;
         const normalized = Math.min(5, Math.max(1, Math.round((score / maxScore) * 5)));
-        return '★'.repeat(normalized) + '☆'.repeat(5 - normalized);
+        
+        // Create HTML with styled stars - filled stars (⭐) and outline stars (☆)
+        const filled = '<span class="star-filled">⭐</span>'.repeat(normalized);
+        const outline = '<span class="star-outline">☆</span>'.repeat(5 - normalized);
+        return filled + outline;
     }
 
     // Display search results
@@ -524,6 +528,95 @@ if (leaveBtn) {
             suggestions.hidden = false;
         }
     });
+})();
+
+// Search result navigation handlers
+(function(){
+    // Listen for search navigation events and jump to items
+    window.addEventListener('search:navigate', (e) => {
+        const { type, id, date } = e.detail;
+
+        if (type === 'event') {
+            navigateToEvent(id, date);
+        } else if (type === 'todo') {
+            navigateToTodo(id);
+        } else if (type === 'note') {
+            navigateToNote(id);
+        }
+    });
+
+    // Navigate to calendar event
+    function navigateToEvent(eventId, eventDate) {
+        try {
+            console.log('[Search Navigation] Starting navigateToEvent with eventId:', eventId);
+            const events = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+            const event = events.find(e => e.id === eventId);
+            if (!event) {
+                console.warn('[Search Navigation] Event not found:', eventId);
+                return;
+            }
+
+            console.log('[Search Navigation] Found event:', event);
+            console.log('[Search Navigation] Checking for window.openModalForDate...');
+            console.log('[Search Navigation] window.openModalForDate =', window.openModalForDate);
+
+            // Call the calendar's openModalForDate function if available
+            // This will display the modal with events for the date
+            if (window.openModalForDate && typeof window.openModalForDate === 'function') {
+                console.log('[Search Navigation] Calling openModalForDate with date:', event.date);
+                window.openModalForDate(event.date);
+                console.log('[Search Navigation] Opened event modal for:', event.title, 'on', event.date);
+            } else {
+                console.warn('[Search Navigation] openModalForDate function not available');
+                console.warn('[Search Navigation] window object keys related to modal:', Object.keys(window).filter(k => k.includes('modal') || k.includes('Modal')));
+            }
+        } catch (err) {
+            console.error('[Search Navigation] Error navigating to event:', err);
+        }
+    }
+
+    // Navigate to todo
+    function navigateToTodo(todoId) {
+        try {
+            const todos = JSON.parse(localStorage.getItem('tmr_todos') || '[]');
+            const todo = todos.find(t => t.id === todoId);
+            if (!todo) {
+                console.warn('[Search Navigation] Todo not found:', todoId);
+                return;
+            }
+
+            // Call the todo's openViewModal function if available
+            // This will display the todo view modal
+            if (window.openViewModal && typeof window.openViewModal === 'function') {
+                window.openViewModal(todoId);
+                console.log('[Search Navigation] Opened todo modal for:', todo.text);
+            } else {
+                console.warn('[Search Navigation] openViewModal function not available');
+            }
+        } catch (err) {
+            console.error('[Search Navigation] Error navigating to todo:', err);
+        }
+    }
+
+    // Navigate to note (placeholder - will be expanded when notes page exists)
+    function navigateToNote(noteId) {
+        try {
+            const notes = JSON.parse(localStorage.getItem('tmr_notes') || '[]');
+            const note = notes.find(n => n.id === noteId);
+            if (!note) {
+                console.warn('[Search Navigation] Note not found:', noteId);
+                return;
+            }
+
+            // TODO: When notes-editor.html exists, navigate to it
+            // window.location.href = `notes-editor.html?id=${noteId}`;
+            
+            console.log('[Search Navigation] Navigating to note:', note.title);
+            alert('Notes feature coming soon! Note: ' + note.title);
+        } catch (err) {
+            console.error('[Search Navigation] Error navigating to note:', err);
+        }
+    }
 })();
 
 /* Dropdown toggle for the TMR tag menu */
@@ -769,6 +862,10 @@ if (leaveBtn) {
             viewModalBackdrop.classList.remove('active');
             document.body.style.overflow = '';
         }
+
+        // Export functions to window for external use (e.g., search navigation)
+        window.openViewModal = openViewModal;
+        window.closeViewModal = closeViewModal;
         
         function openCreateEditModal(todoId){
             const todos = loadTodos();
@@ -1558,4 +1655,5 @@ if (leaveBtn) {
             e.target.value = '';
         });
     }
+
 })();

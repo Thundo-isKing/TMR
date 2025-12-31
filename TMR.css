@@ -201,6 +201,18 @@ body {
     color: #ffc107;
     white-space: nowrap;
     flex-shrink: 0;
+    display: flex;
+    gap: 2px;
+}
+
+.star-filled {
+    color: #ffc107;
+    text-shadow: 0 0 1px rgba(0,0,0,0.2);
+}
+
+.star-outline {
+    color: #ddd;
+    text-shadow: 0 0 1px rgba(0,0,0,0.1);
 }
 
 /* TMR Menu positioning (dropdown from header button) */
