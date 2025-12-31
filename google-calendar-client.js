@@ -240,8 +240,8 @@
         console.log('[GoogleCalendar] No new or modified events to sync');
       }
       
-      // Fetch Google Calendar events (last month + next year)
-      const fetchRes = await serverFetch(`/sync/google-calendar/fetch?userId=${encodeURIComponent(userId)}&daysBack=30&daysForward=365`);
+      // Fetch Google Calendar events (last 3 months + next year)
+      const fetchRes = await serverFetch(`/sync/google-calendar/fetch?userId=${encodeURIComponent(userId)}&daysBack=90&daysForward=365`);
       const fetchData = await fetchRes.json();
       
       if (fetchData.ok && fetchData.events) {
