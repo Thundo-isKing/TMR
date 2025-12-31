@@ -27,15 +27,15 @@ body {
     max-width: 1400px;
     height: 60px;
     
-    /* Frosted glass effect - more transparent */
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    /* Frosted glass effect */
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: 30px;
     
     /* Drop shadow */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     
     /* Layout */
     display: flex;
@@ -603,7 +603,7 @@ body.triangle-background .tmr-menu {
     max-width: 690px;
     margin: auto;
     padding: 0;
-    background: rgba(255, 255, 255, 0.6) !important;
+    background: rgba(255, 255, 255, 0.5) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
     border-radius: 12px;
@@ -613,7 +613,7 @@ body.triangle-background .tmr-menu {
     display: flex;
     flex-direction: column;
     /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
     overflow: hidden;
     position: fixed;
     top: 50%;
@@ -624,7 +624,7 @@ body.triangle-background .tmr-menu {
 .todo-app {
     margin: 8px 0 12px 0;
     padding: 8px;
-    background: rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.5) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
     border-radius: 8px;
@@ -859,8 +859,8 @@ body.triangle-background .tmr-menu {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.25) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: rgba(255, 255, 255, 0.5) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     border-radius: 12px 12px 0 0;
     gap: 8px;
@@ -957,8 +957,8 @@ body.triangle-background .tmr-menu {
     gap: 2px;
     margin-bottom: 0;
     padding: 8px 8px 2px 8px;
-    background: rgba(255, 255, 255, 0.25) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.5) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
 .weekday-row > div {
@@ -982,7 +982,7 @@ body.triangle-background .tmr-menu {
     /* make grid take remaining space inside .calendar-app */
     flex: 1 1 auto;
     padding: 2px 8px 8px 8px;
-    background: rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.3) !important;
     border-radius: 0 0 12px 12px;
 }
 
