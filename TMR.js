@@ -205,7 +205,7 @@ if (leaveBtn) {
     }
 })();
 
-// Header search functionality
+// Header search functionality with fuzzy matching and debounce
 (function(){
     const searchInput = document.getElementById('header-search-input');
     const clearBtn = document.getElementById('search-clear-btn');
@@ -213,37 +213,316 @@ if (leaveBtn) {
 
     if(!searchInput) return;
 
+    let searchTimeout;
+    let selectedResultIndex = -1;
+
+    // ===== SEARCH HELPERS =====
+    
+    // Fuzzy search: check if query is loosely contained in text (case-insensitive)
+    function fuzzyMatch(query, text) {
+        if (!query || !text) return false;
+        const q = query.toLowerCase();
+        const t = text.toLowerCase();
+        
+        // Exact substring match
+        if (t.includes(q)) return true;
+        
+        // Loose fuzzy match: find all chars of query in sequence in text
+        let queryIdx = 0;
+        for (let i = 0; i < t.length && queryIdx < q.length; i++) {
+            if (t[i] === q[queryIdx]) queryIdx++;
+        }
+        return queryIdx === q.length;
+    }
+
+    // Calculate relevance score (higher = better match)
+    function calculateRelevance(query, title, content, date) {
+        let score = 0;
+        const q = query.toLowerCase();
+        
+        // Title exact match: 100 points
+        if (title && title.toLowerCase() === q) score += 100;
+        // Title contains: 80 points
+        else if (title && title.toLowerCase().includes(q)) score += 80;
+        // Title fuzzy match: 70 points
+        else if (title && fuzzyMatch(q, title)) score += 70;
+        
+        // Content contains: 60 points
+        if (content && content.toLowerCase().includes(q)) score += 60;
+        // Content fuzzy match: 40 points
+        else if (content && fuzzyMatch(q, content)) score += 40;
+        
+        // Date proximity bonus: if date exists, bonus for recent dates
+        if (date) {
+            const eventDate = new Date(date).getTime();
+            const now = Date.now();
+            const daysDiff = Math.abs((eventDate - now) / (1000 * 60 * 60 * 24));
+            if (daysDiff <= 7) score += 30;  // Within 7 days: +30
+            else if (daysDiff <= 30) score += 15; // Within 30 days: +15
+        }
+        
+        return score;
+    }
+
+    // Get events from calendar
+    function getCalendarEvents() {
+        try {
+            const events = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+            return events.map(e => ({
+                id: e.id,
+                type: 'event',
+                icon: '📅',
+                title: e.title || 'Untitled Event',
+                content: e.notes || '',
+                date: e.date,
+                timeStr: e.time || '',
+                color: e.color || '#ff922b'
+            }));
+        } catch (e) {
+            console.warn('[Search] Failed to load events:', e);
+            return [];
+        }
+    }
+
+    // Get todos
+    function getTodos() {
+        try {
+            const todos = JSON.parse(localStorage.getItem('tmr_todos') || '[]');
+            return todos.map(t => ({
+                id: t.id,
+                type: 'todo',
+                icon: '✓',
+                title: t.text || 'Untitled Todo',
+                content: '',
+                date: null,
+                completed: t.completed || false
+            }));
+        } catch (e) {
+            console.warn('[Search] Failed to load todos:', e);
+            return [];
+        }
+    }
+
+    // Get notes (placeholder - will be replaced with actual notes)
+    function getNotes() {
+        try {
+            const notes = JSON.parse(localStorage.getItem('tmr_notes') || '[]');
+            return notes.map(n => ({
+                id: n.id,
+                type: 'note',
+                icon: '📝',
+                title: n.title || 'Untitled Note',
+                content: n.content || '',
+                date: null
+            }));
+        } catch (e) {
+            console.warn('[Search] Failed to load notes:', e);
+            return [];
+        }
+    }
+
+    // Main search function
+    function performSearch(query) {
+        if (!query || query.trim().length === 0) {
+            suggestions.hidden = true;
+            suggestions.innerHTML = '';
+            selectedResultIndex = -1;
+            return;
+        }
+
+        // Collect all results
+        const allResults = [
+            ...getCalendarEvents(),
+            ...getTodos(),
+            ...getNotes()
+        ];
+
+        // Score and filter results
+        const scored = allResults
+            .map(item => ({
+                ...item,
+                score: calculateRelevance(query, item.title, item.content, item.date)
+            }))
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5);  // Top 5 results
+
+        // Display results
+        displayResults(scored, query);
+        selectedResultIndex = -1;
+    }
+
+    // Convert score to star rating (1-5 stars)
+    function scoreToStars(score) {
+        const maxScore = 130;  // Theoretical max: 100 + 60 + 30 = 190, but typically lower
+        const normalized = Math.min(5, Math.max(1, Math.round((score / maxScore) * 5)));
+        return '★'.repeat(normalized) + '☆'.repeat(5 - normalized);
+    }
+
+    // Display search results
+    function displayResults(results, query) {
+        if (results.length === 0) {
+            suggestions.innerHTML = '<div class="search-suggestion-item" style="text-align:center;color:#999;cursor:default;pointer-events:none;">No results found</div>';
+            suggestions.hidden = false;
+            return;
+        }
+
+        suggestions.innerHTML = results.map((item, idx) => {
+            const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            const timeStr = item.timeStr ? ` ${item.timeStr}` : '';
+            const subtitle = dateStr ? `${dateStr}${timeStr}` : (item.completed ? '(Completed)' : '');
+            
+            return `
+                <div class="search-suggestion-item" data-result-index="${idx}" data-id="${item.id}" data-type="${item.type}">
+                    <div class="suggestion-content">
+                        <div class="suggestion-title">${item.icon} ${escapeHtml(item.title)}</div>
+                        ${subtitle ? `<div class="suggestion-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                    </div>
+                    <div class="suggestion-stars">${scoreToStars(item.score)}</div>
+                </div>
+            `;
+        }).join('');
+
+        suggestions.hidden = false;
+
+        // Add click handlers
+        document.querySelectorAll('.search-suggestion-item').forEach((el, idx) => {
+            el.addEventListener('click', () => selectResult(idx, results));
+        });
+    }
+
+    // Jump to result
+    function selectResult(idx, results) {
+        const result = results[idx];
+        if (!result) return;
+
+        suggestions.hidden = true;
+        searchInput.value = '';
+
+        jumpToResult(result);
+    }
+
+    // Navigate to result (scroll/jump)
+    function jumpToResult(result) {
+        if (result.type === 'event') {
+            // Scroll calendar to date and highlight event
+            console.log('[Search] Jumping to event:', result.title, 'on', result.date);
+            // TODO: Implement calendar navigation when search-specific logic is ready
+            // For now, just log
+            try {
+                window.dispatchEvent(new CustomEvent('search:navigate', { 
+                    detail: { type: 'event', id: result.id, date: result.date } 
+                }));
+            } catch (e) { }
+        } else if (result.type === 'todo') {
+            // Scroll todo list to item
+            console.log('[Search] Jumping to todo:', result.title);
+            try {
+                window.dispatchEvent(new CustomEvent('search:navigate', { 
+                    detail: { type: 'todo', id: result.id } 
+                }));
+            } catch (e) { }
+        } else if (result.type === 'note') {
+            // Navigate to notes editor
+            console.log('[Search] Jumping to note:', result.title);
+            // TODO: Navigate to notes-editor.html?id=<noteId>
+            try {
+                window.dispatchEvent(new CustomEvent('search:navigate', { 
+                    detail: { type: 'note', id: result.id } 
+                }));
+            } catch (e) { }
+        }
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Debounced search
+    function debounceSearch(query) {
+        clearTimeout(searchTimeout);
+        if (query.trim().length === 0) {
+            suggestions.hidden = true;
+            return;
+        }
+        searchTimeout = setTimeout(() => {
+            performSearch(query);
+        }, 300);  // 300ms debounce
+    }
+
     // Clear search
     clearBtn.addEventListener('click', () => {
         searchInput.value = '';
         searchInput.focus();
         suggestions.hidden = true;
+        selectedResultIndex = -1;
     });
 
     // Ctrl+F focus search
     document.addEventListener('keydown', (e) => {
-        if((e.ctrlKey || e.metaKey) && e.key === 'f'){
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
             searchInput.focus();
         }
     });
 
-    // Search on input (placeholder - will expand later)
+    // Search with debounce on input
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
-        if(query.length === 0){
-            suggestions.hidden = true;
-            return;
-        }
-        // TODO: Implement actual search across events, todos, notes
-        console.log('[Search] Query:', query);
+        debounceSearch(query);
     });
+
+    // Keyboard navigation (arrow keys, enter, escape)
+    searchInput.addEventListener('keydown', (e) => {
+        const items = suggestions.querySelectorAll('.search-suggestion-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedResultIndex = Math.min(selectedResultIndex + 1, items.length - 1);
+            updateHighlight(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedResultIndex = Math.max(selectedResultIndex - 1, -1);
+            updateHighlight(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedResultIndex >= 0 && selectedResultIndex < items.length) {
+                items[selectedResultIndex].click();
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            suggestions.hidden = true;
+            selectedResultIndex = -1;
+        }
+    });
+
+    function updateHighlight(items) {
+        items.forEach((item, idx) => {
+            if (idx === selectedResultIndex) {
+                item.classList.add('highlighted');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('highlighted');
+            }
+        });
+    }
 
     // Close suggestions on blur
     searchInput.addEventListener('blur', () => {
         setTimeout(() => {
             suggestions.hidden = true;
-        }, 150);
+            selectedResultIndex = -1;
+        }, 200);
+    });
+
+    // Focus shows existing suggestions if not empty
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim().length > 0 && !suggestions.hidden) {
+            suggestions.hidden = false;
+        }
     });
 })();
 

@@ -164,24 +164,43 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 
 .search-suggestion-item:last-child {
     border-bottom: none;
 }
 
-.search-suggestion-item:hover {
-    background: #f9f9f9;
+.search-suggestion-item:hover,
+.search-suggestion-item.highlighted {
+    background: #f5f9ff;
 }
 
-.suggestion-type {
+.suggestion-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.suggestion-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.suggestion-subtitle {
     font-size: 12px;
     color: #999;
+    margin-top: 2px;
 }
 
 .suggestion-stars {
     font-size: 12px;
     color: #ffc107;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* TMR Menu positioning (dropdown from header button) */
