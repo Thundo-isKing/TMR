@@ -324,14 +324,30 @@ app.get('/auth/google/callback', async (req, res) => {
 // Check if user has Google Calendar connected
 app.get('/auth/google/status', (req, res) => {
   if (!googleCalendarManager) {
+    console.debug('[GoogleCalendar] Status check: googleCalendarManager not initialized');
     return res.json({ connected: false });
   }
   
   const userId = req.query.userId || 'default';
   db.getGoogleCalendarToken(userId, (err, token) => {
-    if (err || !token) {
+    if (err) {
+      console.error('[GoogleCalendar] Status check error for user', userId, ':', err.message);
+      return res.json({ connected: false, error: err.message });
+    }
+    if (!token) {
+      console.debug('[GoogleCalendar] Status check: no token found for user', userId);
       return res.json({ connected: false });
     }
+    
+    // Check if token is still valid (not expired)
+    const now = Date.now();
+    const isExpired = token.expiry_date && token.expiry_date < now;
+    if (isExpired) {
+      console.warn('[GoogleCalendar] Token expired for user', userId, '- requires refresh');
+      return res.json({ connected: false, reason: 'token_expired' });
+    }
+    
+    console.debug('[GoogleCalendar] Status check: connected for user', userId);
     res.json({ connected: true, userId });
   });
 });

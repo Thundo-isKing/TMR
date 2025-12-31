@@ -67,9 +67,11 @@
       
       return data.connected;
     } catch (err) {
-      console.error('[GoogleCalendar] Status check failed:', err);
-      updateGoogleCalendarButtons(false);
-      return false;
+      // Don't update buttons on error - keep last known state
+      // This prevents false disconnects from network glitches or temporary server issues
+      console.warn('[GoogleCalendar] Status check failed - keeping last known state:', err.message);
+      const lastStatus = localStorage.getItem(GCAL_STATUS_KEY) || 'disconnected';
+      return lastStatus === 'connected';
     }
   }
 
@@ -467,7 +469,7 @@
     // First check connection status
     checkGoogleCalendarStatus();
     
-    // Auto-sync every 10 minutes if connected
+    // Auto-sync every 30 minutes if connected (reduced from 10 to minimize network dependency)
     setInterval(async () => {
       try {
         const connected = await checkGoogleCalendarStatus();
@@ -478,7 +480,7 @@
       } catch (err) {
         console.debug('[GoogleCalendar] Auto-sync error:', err);
       }
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 30 * 60 * 1000); // 30 minutes
   }
 
   // Initialize when DOM is ready
