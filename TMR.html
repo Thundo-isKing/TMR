@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMR - Calendar</title>
-    <link rel="stylesheet" href="TMR.css?v=20251217a">
+    <link rel="stylesheet" href="TMR.css?v=20251231x">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
     <link rel="stylesheet" href="calendar-mobile.css?v=20251208b">
     <style>
@@ -32,7 +32,9 @@
             /* TODO Panel on LEFT - modal-sized (420px) */
             .todo-panel {
                 flex: 0 0 420px;
-                background: white;
+                background: rgba(255, 255, 255, 0.25);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
                 border-radius: 12px;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.2);
                 display: flex;
@@ -129,7 +131,9 @@
             /* MEIBOT Panel on RIGHT - modal-sized (400px) */
             .meibot-panel {
                 flex: 0 0 400px;
-                background: #fafafa;
+                background: rgba(255, 255, 255, 0.25) !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
                 border-radius: 16px;
                 box-shadow: 0 8px 32px rgba(0,0,0,0.12);
                 display: flex;
@@ -137,7 +141,6 @@
                 height: 60vh;
                 max-height: calc(100vh - 24px);
                 overflow: hidden;
-                border: 1px solid #f0f0f0;
             }
 
             .meibot-panel h3 {
@@ -159,7 +162,7 @@
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
-                background: #fafafa;
+                background: transparent;
             }
 
             .meibot-message {
@@ -204,7 +207,7 @@
                 gap: 10px;
                 flex-wrap: nowrap;
                 flex-shrink: 0;
-                background: #fafafa;
+                background: transparent;
             }
 
             .meibot-panel #meibot-input {
@@ -1216,7 +1219,7 @@
         </div>
 
         <!-- MEIBOT PANEL (RIGHT SIDE - Desktop only) -->
-        <div class="meibot-panel">
+        <div class="meibot-panel" style="background: rgba(255, 255, 255, 0.25) !important;">
             <h3>Meibot</h3>
             <div id="meibot-chat" class="meibot-chat" role="log" aria-live="polite" aria-label="Chat messages"></div>
             <form id="meibot-form" class="meibot-form" role="search">

@@ -603,14 +603,17 @@ body.triangle-background .tmr-menu {
     max-width: 690px;
     margin: auto;
     padding: 0;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
     border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
     /* Keep calendar within viewport without forcing page scroll */
     max-height: calc(100vh - 160px);
     display: flex;
     flex-direction: column;
     /* internal overflow will be handled by the grid so the app header/weekday row stay fixed */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
     overflow: hidden;
     position: fixed;
     top: 50%;
@@ -621,7 +624,9 @@ body.triangle-background .tmr-menu {
 .todo-app {
     margin: 8px 0 12px 0;
     padding: 8px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01));
+    background: rgba(255, 255, 255, 0.25) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
     border-radius: 8px;
     display: none; /* hidden by default; toggled from the dropdown menu */
 }
@@ -854,9 +859,9 @@ body.triangle-background .tmr-menu {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
-    border-bottom: 1px solid #ddd;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     border-radius: 12px 12px 0 0;
     gap: 8px;
     flex-wrap: wrap;
@@ -952,7 +957,8 @@ body.triangle-background .tmr-menu {
     gap: 2px;
     margin-bottom: 0;
     padding: 8px 8px 2px 8px;
-    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
 .weekday-row > div {
@@ -976,7 +982,7 @@ body.triangle-background .tmr-menu {
     /* make grid take remaining space inside .calendar-app */
     flex: 1 1 auto;
     padding: 2px 8px 8px 8px;
-    background: color-mix(in srgb, var(--accent-color, #0089f1) 10%, white);
+    background: rgba(255, 255, 255, 0.15) !important;
     border-radius: 0 0 12px 12px;
 }
 
@@ -2338,4 +2344,9 @@ body.currentschedules-page #clock {
     text-align: center;
     color: #999;
     font-size: 13px;
+}
+
+/* Meibot panel background */
+.meibot-panel {
+    background: transparent !important;
 }
