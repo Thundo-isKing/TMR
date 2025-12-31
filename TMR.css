@@ -17,6 +17,209 @@ body {
     font-family: 'Product Sans', Arial, Helvetica, sans-serif;
 }
 
+/* ===== PAGE HEADER (Desktop only, 60px) ===== */
+.page-header {
+    position: fixed;
+    top: 27px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 24px);
+    max-width: 1400px;
+    height: 60px;
+    
+    /* Frosted glass effect - more transparent */
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 30px;
+    
+    /* Drop shadow */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    
+    /* Layout */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 24px;
+    gap: 20px;
+    z-index: 2500;
+}
+
+.header-left, .header-right {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.header-center {
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+}
+
+.header-text-btn {
+    background: none;
+    border: none;
+    color: var(--accent-color, #0089f1);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    font-family: 'Product Sans', Arial, sans-serif;
+    border-bottom: 2px solid transparent;
+}
+
+.header-text-btn:hover {
+    border-bottom-color: var(--accent-color, #0089f1);
+}
+
+.header-text-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 137, 241, 0.2);
+    border-radius: 4px;
+}
+
+.gear-icon {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+}
+
+/* Search Container */
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 36px 10px 16px;
+    border: 1.5px solid #ddd;
+    border-radius: 16px;
+    font-size: 14px;
+    background: white;
+    transition: all 0.2s ease;
+    font-family: 'Product Sans', Arial, sans-serif;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--accent-color, #0089f1);
+    box-shadow: 0 0 0 3px rgba(0, 137, 241, 0.1);
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    transition: color 0.2s ease;
+    display: none;
+}
+
+.search-clear-btn:hover {
+    color: #333;
+}
+
+.search-input:not(:placeholder-shown) ~ .search-clear-btn {
+    display: block;
+}
+
+/* Search Suggestions Dropdown */
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 2600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.search-suggestion-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.search-suggestion-item:hover {
+    background: #f9f9f9;
+}
+
+.suggestion-type {
+    font-size: 12px;
+    color: #999;
+}
+
+.suggestion-stars {
+    font-size: 12px;
+    color: #ffc107;
+}
+
+/* TMR Menu positioning (dropdown from header button) */
+#tmr-header-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    padding: 12px 18px;
+    min-width: 220px;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 2610;
+    border: 1px solid #f0f0f0;
+}
+
+/* Remove old margin-top from .tmr-menu since it's now in header */
+.tmr-menu {
+    position: absolute;
+}
+
+/* Adjust calendar-page for header space (desktop only) */
+@media (min-width: 1025px) {
+    .calendar-page {
+        margin-top: 84px;  /* 60px header + 12px top + 12px bottom */
+    }
+}
+
+/* Hide header on mobile */
+@media (max-width: 1024px) {
+    .page-header {
+        display: none !important;
+    }
+}
+
 /* Remove the global 20px shift specifically for CurrentSchedules page */
 .triangle-background {
     transform: none;

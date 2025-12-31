@@ -236,10 +236,15 @@ app.get('/auth/google', (req, res) => {
     sessionStore.setRedirectUri(sessionId, redirectUri);
 
     console.log('[GoogleCalendar] Auth initiated - Session:', sessionId, 'User:', userId);
+    console.log('[GoogleCalendar] Origin detected:', origin);
+    console.log('[GoogleCalendar] Redirect URI being sent to Google:', redirectUri);
+    console.log('[GoogleCalendar] Request headers - origin:', req.get('origin'), 'host:', req.get('host'), 'protocol:', req.protocol, 'x-forwarded-proto:', req.get('X-Forwarded-Proto'));
 
     // Update OAuth manager with correct redirect URI
     googleCalendarManager.setRedirectUri(redirectUri);
     const authUrl = googleCalendarManager.getAuthUrl(state);
+
+    console.log('[GoogleCalendar] Auth URL generated:', authUrl.substring(0, 100) + '...');
 
     res.json({ authUrl, sessionId });
 
@@ -257,13 +262,25 @@ app.get('/auth/google/callback', async (req, res) => {
 
   const { code, state } = req.query;
 
+  console.log('[GoogleCalendar] Callback received');
+  console.log('[GoogleCalendar] Callback - code:', code ? code.substring(0, 20) + '...' : 'MISSING');
+  console.log('[GoogleCalendar] Callback - state:', state);
+  console.log('[GoogleCalendar] Callback - request origin:', req.get('origin'));
+  console.log('[GoogleCalendar] Callback - request headers - host:', req.get('host'), 'protocol:', req.protocol, 'x-forwarded-proto:', req.get('X-Forwarded-Proto'));
+
   if (!code || !state) {
+    console.error('[GoogleCalendar] Callback missing code or state');
     return res.status(400).json({ error: 'Missing code or state parameter' });
   }
 
   try {
     // Validate session (CSRF protection)
     const session = sessionStore.validateSession(state, state);
+    console.log('[GoogleCalendar] Session validation result:', session ? 'VALID' : 'INVALID');
+    if (session) {
+      console.log('[GoogleCalendar] Session found - userId:', session.userId, 'redirectUri:', session.redirectUri);
+    }
+    
     if (!session) {
       console.error('[GoogleCalendar] CSRF validation failed - State:', state);
       return res.status(403).json({ error: 'Invalid or expired session - possible CSRF attack' });

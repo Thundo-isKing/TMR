@@ -145,7 +145,109 @@ if (leaveBtn) {
     }
 })();
 
-// Dropdown toggle for the TMR tag menu
+// Dropdown toggle for the TMR header menu (in page header - desktop only)
+(function(){
+    const toggle = document.getElementById('tmr-header-btn');
+    const menu = document.getElementById('tmr-header-menu');
+    if(!toggle || !menu) return;
+
+    function closeMenu(){
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+    function openMenu(){
+        menu.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+    }
+
+    toggle.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(menu.hidden) openMenu(); else closeMenu();
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e)=>{
+        if(menu.hidden) return;
+        if(!menu.contains(e.target) && !toggle.contains(e.target)) closeMenu();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape' && !menu.hidden) closeMenu();
+    });
+
+    // Keyboard support (Enter/Space to open)
+    toggle.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault();
+            if(menu.hidden) openMenu(); else closeMenu();
+        }
+    });
+})();
+
+// Header buttons: Notes and Themes (placeholder handlers for now)
+(function(){
+    const notesBtn = document.getElementById('header-notes-btn');
+    const themesBtn = document.getElementById('header-themes-btn');
+
+    if(notesBtn){
+        notesBtn.addEventListener('click', () => {
+            console.log('[Header] Notes button clicked - TODO: navigate to notes page');
+            // TODO: Navigate to notes.html
+        });
+    }
+
+    if(themesBtn){
+        themesBtn.addEventListener('click', () => {
+            console.log('[Header] Themes button clicked - TODO: show themes modal');
+            // TODO: Show themes modal
+        });
+    }
+})();
+
+// Header search functionality
+(function(){
+    const searchInput = document.getElementById('header-search-input');
+    const clearBtn = document.getElementById('search-clear-btn');
+    const suggestions = document.getElementById('search-suggestions');
+
+    if(!searchInput) return;
+
+    // Clear search
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        searchInput.focus();
+        suggestions.hidden = true;
+    });
+
+    // Ctrl+F focus search
+    document.addEventListener('keydown', (e) => {
+        if((e.ctrlKey || e.metaKey) && e.key === 'f'){
+            e.preventDefault();
+            searchInput.focus();
+        }
+    });
+
+    // Search on input (placeholder - will expand later)
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        if(query.length === 0){
+            suggestions.hidden = true;
+            return;
+        }
+        // TODO: Implement actual search across events, todos, notes
+        console.log('[Search] Query:', query);
+    });
+
+    // Close suggestions on blur
+    searchInput.addEventListener('blur', () => {
+        setTimeout(() => {
+            suggestions.hidden = true;
+        }, 150);
+    });
+})();
+
+/* Dropdown toggle for the TMR tag menu */
 (function(){
     const toggle = document.getElementById('tmr-toggle');
     const menu = document.getElementById('tmr-menu');

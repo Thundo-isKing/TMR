@@ -964,13 +964,18 @@
 
 <body class="page-background triangle-background currentschedules-page">
 
-    <!-- TMR dropdown menu -->
-    <div id="TMR-tag" class="tmr-tag">
-        <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
-            <h1 style="margin:0;">TMR</h1>
-            <span class="caret">▾</span>
-        </button>
-        <div id="tmr-menu" class="tmr-menu" hidden>
+    <!-- PAGE HEADER (Desktop only) -->
+    <header class="page-header">
+        <!-- Left: TMR Button + Settings Menu -->
+        <div class="header-left">
+            <button id="tmr-header-btn" class="header-text-btn" aria-haspopup="true" aria-expanded="false" tabindex="0">
+                TMR
+                <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m2.98 2.98l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m2.98-2.98l4.24-4.24M19.78 19.78l-4.24-4.24m-2.98-2.98l-4.24-4.24"></path>
+                </svg>
+            </button>
+            <div id="tmr-header-menu" class="tmr-menu" hidden>
             <div class="tmr-menu-item">
                 <label for="accent-picker">Accent
                     <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color">
@@ -1020,7 +1025,23 @@
                 <button id="fullscreen-btn-tmr" type="button" class="small-tmr-btn">Fullscreen</button>
             </div>
         </div>
-    </div>
+        </div>
+        
+        <!-- Center: Search Bar -->
+        <div class="header-center">
+            <div class="search-container">
+                <input id="header-search-input" type="text" placeholder="Search events, notes..." class="search-input" aria-label="Search">
+                <button id="search-clear-btn" class="search-clear-btn" aria-label="Clear search" title="Clear search">✕</button>
+                <div id="search-suggestions" class="search-suggestions" hidden></div>
+            </div>
+        </div>
+        
+        <!-- Right: Notes & Themes Buttons -->
+        <div class="header-right">
+            <button id="header-notes-btn" class="header-text-btn" tabindex="0">📝 Notes</button>
+            <button id="header-themes-btn" class="header-text-btn" tabindex="0">🎨 Themes</button>
+        </div>
+    </header>
 
     <!-- Main Page Container -->
     <div class="calendar-page">
