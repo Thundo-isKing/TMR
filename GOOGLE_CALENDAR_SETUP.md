@@ -22,7 +22,38 @@ Full bi-directional synchronization between TMR and Google Calendar with the fol
    - `client_id` → `GOOGLE_CLIENT_ID` in .env
    - `client_secret` → `GOOGLE_CLIENT_SECRET` in .env
 
-### 2. Update .env File
+### 2. Register Redirect URIs in Google Cloud Console
+
+**CRITICAL**: You must register the redirect URIs in Google Cloud Console before the OAuth flow will work.
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **Credentials** → Select your OAuth 2.0 Client ID
+3. Under **Authorized redirect URIs**, add ALL of the following URLs you plan to use:
+
+**For Local Development:**
+```
+http://localhost:3002/auth/google/callback
+```
+
+**For ngrok Tunneling** (if using `ngrok http 3002`):
+- Start ngrok and note the URL (e.g., `https://abc123def456.ngrok.io`)
+- Add the callback URL:
+```
+https://your-ngrok-url.ngrok.io/auth/google/callback
+```
+Example: `https://abc123def456.ngrok.io/auth/google/callback`
+
+**For Production (Vercel):**
+```
+https://your-vercel-domain.vercel.app/auth/google/callback
+```
+
+4. Click **Save** to apply changes
+5. Changes take effect immediately
+
+**Why This Matters**: Google's OAuth only accepts authentication from exact, pre-registered redirect URIs. If the URI doesn't match, you'll get "Access blocked: This app's request is invalid" error.
+
+### 3. Update .env File
 
 ```env
 GOOGLE_CLIENT_ID=your_client_id_here.apps.googleusercontent.com
@@ -30,7 +61,9 @@ GOOGLE_CLIENT_SECRET=your_client_secret_here
 GOOGLE_REDIRECT_URI=http://localhost:3002/auth/google/callback
 ```
 
-### 3. Install Dependencies
+**Note**: The `GOOGLE_REDIRECT_URI` defaults to `http://localhost:3002/auth/google/callback` if not specified. When running locally, you don't need to change this. When deploying or using ngrok, the server dynamically constructs the correct redirect URI based on the incoming request origin.
+
+### 4. Install Dependencies
 
 ```bash
 cd server
@@ -41,7 +74,7 @@ This adds:
 - `googleapis`: Google Calendar API client
 - `google-auth-library`: OAuth 2.0 authentication
 
-### 4. Database Changes
+### 5. Database Changes
 
 New tables created automatically:
 - `google_calendar_tokens`: Stores user OAuth tokens (refresh tokens for persistent access)
@@ -175,6 +208,16 @@ Tokens are automatically refreshed when:
 
 Common issues and solutions:
 
+**"Access blocked: This app's request is invalid"**
+- **Cause**: Redirect URI is not registered in Google Cloud Console
+- **Solution**: Follow "Register Redirect URIs in Google Cloud Console" section above
+- **Debug**: Check that your exact redirect URI (e.g., `http://localhost:3002/auth/google/callback`) is listed in the OAuth credentials
+
+**"Possible CSRF attack"** 
+- **Cause**: Session state validation failed (usually timing issue)
+- **Solution**: Ensure server is running and session store is initialized
+- **Debug**: Check browser console for errors during OAuth flow
+
 **"Google Calendar not configured"**
 - Missing `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` in .env
 
@@ -200,6 +243,33 @@ Common issues and solutions:
 3. **Selective sync**: Allow user to choose which calendars to sync
 4. **Selective event sync**: Sync only certain event types/tags
 5. **Webhook-based sync**: Real-time sync instead of polling
+
+## Troubleshooting ngrok Setup
+
+If you're testing with ngrok tunneling:
+
+1. **Start ngrok**:
+   ```bash
+   ngrok http 3002
+   ```
+
+2. **Copy the HTTPS URL** from ngrok output (e.g., `https://abc123def456.ngrok.io`)
+
+3. **Register in Google Cloud Console**:
+   - Add `https://your-ngrok-url.ngrok.io/auth/google/callback` to authorized redirect URIs
+   - Save changes (takes effect immediately)
+
+4. **Access via ngrok URL**: Visit `https://your-ngrok-url.ngrok.io/TMR.html` (not localhost)
+
+5. **OAuth will work** because:
+   - Server detects the ngrok origin in the request
+   - Automatically builds the correct redirect URI: `https://your-ngrok-url.ngrok.io/auth/google/callback`
+   - Google receives a request from a registered redirect URI and accepts it
+
+**Note**: ngrok URLs change each time you restart. If you restart ngrok, you need to:
+1. Copy the new ngrok URL
+2. Update Google Cloud Console with the new redirect URI
+3. Test again
 
 ## Testing Checklist
 
