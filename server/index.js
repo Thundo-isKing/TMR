@@ -708,5 +708,73 @@ app.post('/api/meibot', async (req, res) => {
   }
 });
 
+// Theme endpoints
+app.post('/theme/save', (req, res) => {
+  try {
+    const userId = req.body.userId || 'default';
+    const theme = req.body.theme || {};
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+    
+    db.saveUserTheme(userId, theme, (err) => {
+      if (err) {
+        console.error('[Theme] Save error:', err);
+        return res.status(500).json({ error: 'Failed to save theme' });
+      }
+      console.log('[Theme] Saved for user:', userId);
+      res.json({ success: true, userId });
+    });
+  } catch (err) {
+    console.error('[Theme] Save error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/theme/load', (req, res) => {
+  try {
+    const userId = req.query.userId || 'default';
+    
+    db.getUserTheme(userId, (err, theme) => {
+      if (err) {
+        console.error('[Theme] Load error:', err);
+        return res.status(500).json({ error: 'Failed to load theme' });
+      }
+      console.log('[Theme] Loaded for user:', userId);
+      res.json({ 
+        theme: theme || {
+          accentColor: '#6366f1',
+          backgroundImage: null,
+          animation: 'none',
+          animationSpeed: 1,
+          animationIntensity: 1
+        }
+      });
+    });
+  } catch (err) {
+    console.error('[Theme] Load error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/theme/delete', (req, res) => {
+  try {
+    const userId = req.body.userId || 'default';
+    
+    db.deleteUserTheme(userId, (err) => {
+      if (err) {
+        console.error('[Theme] Delete error:', err);
+        return res.status(500).json({ error: 'Failed to delete theme' });
+      }
+      console.log('[Theme] Deleted for user:', userId);
+      res.json({ success: true });
+    });
+  } catch (err) {
+    console.error('[Theme] Delete error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 const port = process.env.PORT || process.env.PUSH_SERVER_PORT || 3002;
 app.listen(port, () => console.log('[Server] TMR push server listening on port', port));

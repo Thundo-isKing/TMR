@@ -90,6 +90,19 @@ db.serialize(() => {
     errorMessage TEXT,
     timestamp INTEGER NOT NULL
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS user_themes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT UNIQUE NOT NULL,
+    accentColor TEXT DEFAULT '#6366f1',
+    backgroundImage TEXT,
+    backgroundImageName TEXT,
+    animation TEXT DEFAULT 'none',
+    animationSpeed INTEGER DEFAULT 1,
+    animationIntensity INTEGER DEFAULT 1,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL
+  )`);
 });
 
 module.exports = {
@@ -295,5 +308,43 @@ module.exports = {
             WHERE userId = ? ORDER BY timestamp DESC LIMIT ?`, 
            [userId, limit || 10], 
            (err, rows) => { if(cb) cb(err, rows || []); });
+  },
+
+  // User Themes
+  saveUserTheme: function(userId, theme, cb){
+    const now = Date.now();
+    const query = `
+      INSERT INTO user_themes (userId, accentColor, backgroundImage, backgroundImageName, animation, animationSpeed, animationIntensity, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(userId) DO UPDATE SET 
+        accentColor = excluded.accentColor,
+        backgroundImage = excluded.backgroundImage,
+        backgroundImageName = excluded.backgroundImageName,
+        animation = excluded.animation,
+        animationSpeed = excluded.animationSpeed,
+        animationIntensity = excluded.animationIntensity,
+        updatedAt = excluded.updatedAt
+    `;
+    db.run(query, 
+           [userId, 
+            theme.accentColor || '#6366f1',
+            theme.backgroundImage || null,
+            theme.backgroundImageName || null,
+            theme.animation || 'none',
+            theme.animationSpeed || 1,
+            theme.animationIntensity || 1,
+            now, now],
+           function(err){ if(cb) cb(err); });
+  },
+
+  getUserTheme: function(userId, cb){
+    db.get(`SELECT * FROM user_themes WHERE userId = ?`, [userId], (err, row) => {
+      if(cb) cb(err, row || null);
+    });
+  },
+
+  deleteUserTheme: function(userId, cb){
+    db.run(`DELETE FROM user_themes WHERE userId = ?`, [userId], 
+           function(err){ if(cb) cb(err); });
   }
 };

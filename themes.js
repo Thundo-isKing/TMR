@@ -80,6 +80,46 @@
 
         console.log('[Themes] Current theme loaded:', currentTheme);
 
+        // Load theme from server on startup
+        async function loadThemeFromServer() {
+            try {
+                const userId = localStorage.getItem('tmr_device_id') || localStorage.getItem('user_id') || 'default';
+                const response = await fetch(`/theme/load?userId=${encodeURIComponent(userId)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.theme) {
+                        console.log('[Themes] ✓ Loaded theme from server:', data.theme);
+                        
+                        // Update current theme with server values
+                        if (data.theme.accentColor) {
+                            currentTheme.accent = data.theme.accentColor;
+                            localStorage.setItem(STORAGE_KEY_ACCENT, data.theme.accentColor);
+                        }
+                        if (data.theme.backgroundImage) {
+                            currentTheme.bgImage = data.theme.backgroundImage;
+                            localStorage.setItem(STORAGE_KEY_BG_IMAGE, data.theme.backgroundImage);
+                        }
+                        if (data.theme.animation) {
+                            currentTheme.animation = data.theme.animation;
+                            localStorage.setItem(STORAGE_KEY_ANIMATION, data.theme.animation);
+                        }
+                        
+                        // Apply the loaded theme
+                        applyTheme(currentTheme);
+                    }
+                } else {
+                    console.debug('[Themes] No theme found on server (first time or server unavailable)');
+                }
+            } catch (err) {
+                console.debug('[Themes] Could not load theme from server:', err.message);
+                // Continue with localStorage theme
+            }
+        }
+
+        // Load theme from server
+        loadThemeFromServer();
+
         // Apply stored theme on init - but only if there's actually a custom theme saved
         const hasCustomTheme = localStorage.getItem(STORAGE_KEY_ANIMATION) !== null || 
                                localStorage.getItem(STORAGE_KEY_BG_IMAGE) !== null;
@@ -159,27 +199,31 @@
             // Apply theme
             applyTheme(currentTheme);
 
-            // Save to server if logged in
-            const token = localStorage.getItem('access_token');
-            if (token) {
-                try {
-                    await fetch('/api/themes', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'x-user-id': localStorage.getItem('user_id') || 'guest',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
+            // Save to server
+            try {
+                const userId = localStorage.getItem('tmr_device_id') || localStorage.getItem('user_id') || 'default';
+                const response = await fetch('/theme/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        theme: {
                             accentColor: currentTheme.accent,
-                            backgroundColor: currentTheme.bgColor,
                             backgroundImage: currentTheme.bgImage,
-                            animationType: currentTheme.animation
-                        })
-                    });
-                } catch (err) {
-                    console.error('[Themes] Error saving to server:', err);
+                            animation: currentTheme.animation
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('[Themes] ✓ Theme saved to server');
+                } else {
+                    console.warn('[Themes] Server save returned status:', response.status);
                 }
+            } catch (err) {
+                console.warn('[Themes] Could not save to server:', err.message);
             }
 
             closeModal();
