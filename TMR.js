@@ -100,48 +100,237 @@ if (leaveBtn) {
 // Accent picker (global site accent)
 (function(){
     const ACCENT_KEY = 'tmr_accent';
-    function hexToRgb(hex){
-        const h = hex.replace('#','');
-        return h.length === 3 ? h.split('').map(c => parseInt(c+c,16)) : [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+    
+    function initAccentPicker() {
+        const picker = document.getElementById('accent-picker');
+        const preview = document.getElementById('accent-preview');
+        const saved = localStorage.getItem(ACCENT_KEY) || '#0089f1';
+        
+        console.log('[Accent] Init. Picker:', !!picker, 'Preview:', !!preview, 'Saved:', saved);
+        
+        if(!picker) {
+            console.error('[Accent] Picker not found!');
+            return false;
+        }
+        
+        function hexToRgb(hex){
+            const h = hex.replace('#','');
+            return h.length === 3 ? h.split('').map(c => parseInt(c+c,16)) : [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+        }
+        function rgbToHex(r,g,b){
+            return '#'+[r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+        }
+        function darkenHex(hex,percent){
+            const [r,g,b] = hexToRgb(hex).map(v => Math.max(0, Math.round(v*(1 - percent/100))));
+            return rgbToHex(r,g,b);
+        }
+        function hexToRgbArr(hex) {
+            const h = hex.replace('#','');
+            if(h.length === 3) {
+                return h.split('').map(c => parseInt(c+c,16));
+            } else {
+                return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+            }
+        }
+        function lightenHex(hex, percent) {
+            const [r, g, b] = hexToRgb(hex).map(v => Math.min(255, Math.round(v + (255 - v) * (percent / 100))));
+            return rgbToHex(r, g, b);
+        }
+        function applyAccent(hex){
+            if(!hex) return;
+            const root = document.documentElement;
+            root.style.setProperty('--accent-color', hex);
+            root.style.setProperty('--accent-hover', darkenHex(hex,18));
+            root.style.setProperty('--accent-light', lightenHex(hex, 38));
+            // Also set --accent-rgb for backgrounds.css
+            const rgb = hexToRgbArr(hex);
+            root.style.setProperty('--accent-rgb', rgb.join(','));
+        }
+        
+        // Apply on load
+        applyAccent(saved);
+        if(preview) preview.style.backgroundColor = saved;
+        
+        picker.value = saved;
+        console.log('[Accent] Picker found, value set to:', picker.value);
+        
+        // Update on input (while dragging) and on change
+        function updateColor(hex) {
+            console.log('[Accent] updateColor called with:', hex);
+            localStorage.setItem(ACCENT_KEY, hex);
+            applyAccent(hex);
+            if(preview) {
+                console.log('[Accent] Updating preview to:', hex);
+                preview.style.backgroundColor = hex;
+            }
+        }
+        
+        picker.addEventListener('input', (e) => {
+            console.log('[Accent] input event fired, value:', e.target.value);
+            updateColor(e.target.value);
+        });
+        picker.addEventListener('change', (e) => {
+            console.log('[Accent] change event fired, value:', e.target.value);
+            updateColor(e.target.value);
+        });
+        
+        console.log('[Accent] Initialized successfully');
+        return true;
     }
-    function rgbToHex(r,g,b){
-        return '#'+[r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
-    }
-    function darkenHex(hex,percent){
-        const [r,g,b] = hexToRgb(hex).map(v => Math.max(0, Math.round(v*(1 - percent/100))));
-        return rgbToHex(r,g,b);
-    }
-    function hexToRgbArr(hex) {
-        const h = hex.replace('#','');
-        if(h.length === 3) {
-            return h.split('').map(c => parseInt(c+c,16));
-        } else {
-            return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+    
+    // Try to init immediately
+    if(!initAccentPicker()) {
+        // If it fails, wait for DOM to be ready
+        if(document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAccentPicker);
         }
     }
-    function lightenHex(hex, percent) {
-        const [r, g, b] = hexToRgb(hex).map(v => Math.min(255, Math.round(v + (255 - v) * (percent / 100))));
-        return rgbToHex(r, g, b);
-    }
-    function applyAccent(hex){
-        if(!hex) return;
-        const root = document.documentElement;
-        root.style.setProperty('--accent-color', hex);
-        root.style.setProperty('--accent-hover', darkenHex(hex,18));
-        root.style.setProperty('--accent-light', lightenHex(hex, 38));
-        // Also set --accent-rgb for backgrounds.css
-        const rgb = hexToRgbArr(hex);
-        root.style.setProperty('--accent-rgb', rgb.join(','));
-    }
+})();
 
-    const picker = document.getElementById('accent-picker');
-    const saved = localStorage.getItem(ACCENT_KEY) || '#0089f1';
-    applyAccent(saved);
-    if(picker){
-        picker.value = saved;
-        picker.addEventListener('change', (e)=>{
-            const v = e.target.value; localStorage.setItem(ACCENT_KEY, v); applyAccent(v);
+// Themes modal control
+(function(){
+    function initThemesModal() {
+        const themesBtn = document.getElementById('header-themes-btn');
+        const themesModal = document.getElementById('themes-modal-backdrop');
+        const themesCloseBtn = document.getElementById('themes-modal-close');
+        const themesCloseBtnFooter = document.getElementById('themes-close-btn');
+        
+        console.log('[Themes] Initializing modal. Button:', !!themesBtn, 'Modal:', !!themesModal);
+        
+        if(!themesBtn || !themesModal) {
+            console.warn('[Themes] Modal elements not found. Will retry on load.');
+            return false;
+        }
+        
+        function openThemesModal() {
+            console.log('[Themes] Opening modal');
+            themesModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeThemesModal() {
+            console.log('[Themes] Closing modal');
+            themesModal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        
+        themesBtn.addEventListener('click', openThemesModal);
+        if(themesCloseBtn) themesCloseBtn.addEventListener('click', closeThemesModal);
+        if(themesCloseBtnFooter) themesCloseBtnFooter.addEventListener('click', closeThemesModal);
+        themesModal.addEventListener('click', (e) => {
+            if(e.target === themesModal) closeThemesModal();
         });
+        
+        console.log('[Themes] Modal initialized successfully');
+        return true;
+    }
+    
+    // Try to init immediately
+    if(!initThemesModal()) {
+        // If it fails, wait for DOM to be ready
+        if(document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initThemesModal);
+        }
+    }
+})();
+
+// Background Image Handler
+(function(){
+    const BG_IMAGE_KEY = 'tmr_bg_image';
+    
+    function initBackgroundImage() {
+        const fileInput = document.getElementById('bg-image-upload');
+        const clearBtn = document.getElementById('bg-image-clear-btn');
+        const previewContainer = document.getElementById('bg-image-preview-container');
+        const previewImg = document.getElementById('bg-image-preview');
+        const noneText = document.getElementById('bg-image-none-text');
+        
+        console.log('[BgImage] Initializing. Upload input:', !!fileInput);
+        
+        if(!fileInput) {
+            console.error('[BgImage] Upload input not found');
+            return false;
+        }
+        
+        // Load and display stored image on init
+        const stored = localStorage.getItem(BG_IMAGE_KEY);
+        if(stored) {
+            console.log('[BgImage] Found stored image');
+            previewImg.src = stored;
+            previewContainer.style.display = 'flex';
+            noneText.style.display = 'none';
+            applyBackgroundImage(stored);
+        }
+        
+        function applyBackgroundImage(dataUrl) {
+            if(dataUrl) {
+                console.log('[BgImage] Applying background image');
+                document.body.classList.remove('triangle-background');
+                document.body.style.backgroundImage = `url('${dataUrl}')`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+                document.body.style.backgroundAttachment = 'fixed';
+                document.body.style.backgroundRepeat = 'no-repeat';
+            } else {
+                console.log('[BgImage] Clearing background image, restoring default triangles');
+                // Clear ALL inline background styles
+                document.body.style.backgroundImage = '';
+                document.body.style.backgroundSize = '';
+                document.body.style.backgroundPosition = '';
+                document.body.style.backgroundAttachment = '';
+                document.body.style.backgroundRepeat = '';
+                // Re-add triangle class
+                document.body.classList.add('triangle-background');
+            }
+        }
+        
+        function clearBackgroundImage() {
+            console.log('[BgImage] Clearing image');
+            localStorage.removeItem(BG_IMAGE_KEY);
+            fileInput.value = '';
+            previewContainer.style.display = 'none';
+            noneText.style.display = 'block';
+            applyBackgroundImage(null);
+        }
+        
+        // Handle file upload
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            console.log('[BgImage] File selected:', file.name);
+            const reader = new FileReader();
+            
+            reader.onload = (event) => {
+                const dataUrl = event.target.result;
+                console.log('[BgImage] File read, storing and applying');
+                localStorage.setItem(BG_IMAGE_KEY, dataUrl);
+                previewImg.src = dataUrl;
+                previewContainer.style.display = 'flex';
+                noneText.style.display = 'none';
+                applyBackgroundImage(dataUrl);
+            };
+            
+            reader.onerror = () => {
+                console.error('[BgImage] Error reading file');
+            };
+            
+            reader.readAsDataURL(file);
+        });
+        
+        // Handle clear button
+        clearBtn.addEventListener('click', clearBackgroundImage);
+        
+        console.log('[BgImage] Initialized successfully');
+        return true;
+    }
+    
+    // Try to init immediately
+    if(!initBackgroundImage()) {
+        // If it fails, wait for DOM to be ready
+        if(document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initBackgroundImage);
+        }
     }
 })();
 
@@ -185,22 +374,14 @@ if (leaveBtn) {
     });
 })();
 
-// Header buttons: Notes and Themes (placeholder handlers for now)
+// Header buttons: Notes (placeholder handler for now)
 (function(){
     const notesBtn = document.getElementById('header-notes-btn');
-    const themesBtn = document.getElementById('header-themes-btn');
 
     if(notesBtn){
         notesBtn.addEventListener('click', () => {
             console.log('[Header] Notes button clicked - TODO: navigate to notes page');
             // TODO: Navigate to notes.html
-        });
-    }
-
-    if(themesBtn){
-        themesBtn.addEventListener('click', () => {
-            console.log('[Header] Themes button clicked - TODO: show themes modal');
-            // TODO: Show themes modal
         });
     }
 })();

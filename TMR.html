@@ -977,11 +977,6 @@
             </button>
             <div id="tmr-header-menu" class="tmr-menu" hidden>
             <div class="tmr-menu-item">
-                <label for="accent-picker">Accent
-                    <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color">
-                </label>
-            </div>
-            <div class="tmr-menu-item">
                 <label>
                     <input id="notify-toggle" type="checkbox" /> Enable notifications
                 </label>
@@ -1418,5 +1413,40 @@
             }
         });
     </script>
+
+    <!-- THEMES MODAL -->
+    <div id="themes-modal-backdrop" class="themes-modal-backdrop" style="display: none;">
+        <div class="themes-modal">
+            <div class="themes-modal-header">
+                <h2>Theme Settings</h2>
+                <button id="themes-modal-close" class="themes-close" type="button">&times;</button>
+            </div>
+            <div class="themes-modal-content">
+                <!-- Accent Color Section -->
+                <div class="themes-section">
+                    <label for="accent-picker">Accent Color</label>
+                    <div class="accent-picker-row">
+                        <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color" />
+                        <div id="accent-preview" class="color-preview" style="background-color: #0089f1;"></div>
+                    </div>
+                </div>
+
+                <!-- Background Image Section -->
+                <div class="themes-section">
+                    <label for="bg-image-upload">Background Image</label>
+                    <div class="bg-upload-row">
+                        <input id="bg-image-upload" type="file" accept="image/*" />
+                        <button id="bg-image-clear-btn" type="button" class="themes-btn-secondary">Clear</button>
+                    </div>
+                    <div id="bg-image-preview-container" class="bg-preview-container" style="display: none;">
+                        <img id="bg-image-preview" src="" alt="Background preview" />
+                    </div>
+                    <div id="bg-image-none-text" class="bg-none-text">No image uploaded</div>
+            </div>
+            <div class="themes-modal-footer">
+                <button id="themes-close-btn" type="button" class="themes-btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
