@@ -103,6 +103,35 @@ db.serialize(() => {
     createdAt INTEGER NOT NULL,
     updatedAt INTEGER NOT NULL
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS note_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT NOT NULL,
+    categoryName TEXT NOT NULL,
+    createdAt INTEGER NOT NULL,
+    UNIQUE(userId, categoryName)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT NOT NULL,
+    categoryId INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT DEFAULT '',
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL,
+    FOREIGN KEY(categoryId) REFERENCES note_categories(id)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS note_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT NOT NULL,
+    noteId INTEGER NOT NULL,
+    taskTitle TEXT NOT NULL,
+    todoId INTEGER,
+    createdAt INTEGER NOT NULL,
+    FOREIGN KEY(noteId) REFERENCES notes(id)
+  )`);
 });
 
 module.exports = {
@@ -346,5 +375,142 @@ module.exports = {
   deleteUserTheme: function(userId, cb){
     db.run(`DELETE FROM user_themes WHERE userId = ?`, [userId], 
            function(err){ if(cb) cb(err); });
+  },
+
+  // Notes - Categories
+  createNoteCategory: function(userId, categoryName, cb){
+    const now = Date.now();
+    db.run(`INSERT INTO note_categories (userId, categoryName, createdAt) VALUES (?, ?, ?)`,
+           [userId, categoryName, now],
+           function(err){
+             if(err) {
+               console.error('[Database] Error creating category:', err);
+               return cb && cb(err);
+             }
+             console.log('[Database] Category created:', this.lastID);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  getNoteCategories: function(userId, cb){
+    db.all(`SELECT id, categoryName, createdAt FROM note_categories WHERE userId = ? ORDER BY createdAt DESC`,
+           [userId],
+           (err, rows) => {
+             if(err) return cb && cb(err);
+             cb && cb(null, rows || []);
+           });
+  },
+
+  deleteNoteCategory: function(categoryId, cb){
+    db.run(`DELETE FROM note_categories WHERE id = ?`,
+           [categoryId],
+           function(err){ cb && cb(err, this && this.changes); });
+  },
+
+  // Notes - Documents
+  createNote: function(userId, categoryId, title, content, cb){
+    const now = Date.now();
+    db.run(`INSERT INTO notes (userId, categoryId, title, content, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
+           [userId, categoryId, title, content || '', now, now],
+           function(err){
+             if(err) {
+               console.error('[Database] Error creating note:', err);
+               return cb && cb(err);
+             }
+             console.log('[Database] Note created:', this.lastID);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  getNotesInCategory: function(categoryId, cb){
+    db.all(`SELECT id, title, content, createdAt, updatedAt FROM notes WHERE categoryId = ? ORDER BY updatedAt DESC`,
+           [categoryId],
+           (err, rows) => {
+             if(err) return cb && cb(err);
+             cb && cb(null, rows || []);
+           });
+  },
+
+  getNote: function(noteId, cb){
+    db.get(`SELECT id, userId, categoryId, title, content, createdAt, updatedAt FROM notes WHERE id = ?`,
+           [noteId],
+           (err, row) => {
+             if(err) return cb && cb(err);
+             cb && cb(null, row || null);
+           });
+  },
+
+  updateNote: function(noteId, title, content, cb){
+    const now = Date.now();
+    db.run(`UPDATE notes SET title = ?, content = ?, updatedAt = ? WHERE id = ?`,
+           [title, content, now, noteId],
+           function(err){
+             if(err) {
+               console.error('[Database] Error updating note:', err);
+               return cb && cb(err);
+             }
+             console.log('[Database] Note updated:', noteId);
+             cb && cb(null);
+           });
+  },
+
+  deleteNote: function(noteId, cb){
+    db.run(`DELETE FROM notes WHERE id = ?`,
+           [noteId],
+           function(err){ 
+             if(err) return cb && cb(err);
+             cb && cb(null, this && this.changes); 
+           });
+  },
+
+  searchNotes: function(userId, query, categoryId, cb){
+    let sql = `SELECT id, title, content, categoryId, createdAt, updatedAt FROM notes WHERE userId = ?`;
+    let params = [userId];
+
+    if(categoryId) {
+      sql += ` AND categoryId = ?`;
+      params.push(categoryId);
+    }
+
+    sql += ` AND (title LIKE ? OR content LIKE ?) ORDER BY updatedAt DESC`;
+    params.push(`%${query}%`, `%${query}%`);
+
+    db.all(sql, params, (err, rows) => {
+      if(err) return cb && cb(err);
+      cb && cb(null, rows || []);
+    });
+  },
+
+  // Notes - Tasks (for Meibot integration)
+  addNoteTask: function(userId, noteId, taskTitle, cb){
+    const now = Date.now();
+    db.run(`INSERT INTO note_tasks (userId, noteId, taskTitle, createdAt) VALUES (?, ?, ?, ?)`,
+           [userId, noteId, taskTitle, now],
+           function(err){
+             if(err) {
+               console.error('[Database] Error creating task:', err);
+               return cb && cb(err);
+             }
+             console.log('[Database] Task created:', this.lastID);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  updateNoteTaskTodoId: function(taskId, todoId, cb){
+    db.run(`UPDATE note_tasks SET todoId = ? WHERE id = ?`,
+           [todoId, taskId],
+           function(err){
+             if(err) return cb && cb(err);
+             cb && cb(null);
+           });
+  },
+
+  getNoteTasksForNote: function(noteId, cb){
+    db.all(`SELECT id, taskTitle, todoId FROM note_tasks WHERE noteId = ? ORDER BY createdAt DESC`,
+           [noteId],
+           (err, rows) => {
+             if(err) return cb && cb(err);
+             cb && cb(null, rows || []);
+           });
   }
 };

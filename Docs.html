@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs ~ Write & Edit</title>
+    <link rel="stylesheet" href="TMR.css?v=20251231z">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .docs-container {
+            display: flex;
+            height: 100vh;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        /* Editor Area */
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .editor-header {
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .editor-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            flex: 1;
+        }
+
+        .editor-title-input {
+            flex: 1;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .editor-title-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .editor-title-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .save-status {
+            font-size: 12px;
+            opacity: 0.9;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        .save-status.saving {
+            color: #ffd700;
+        }
+
+        .save-status.saved {
+            color: #4caf50;
+        }
+
+        .save-status.error {
+            color: #ff6b6b;
+        }
+
+        .editor-toolbar {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            padding: 0 8px;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toolbar-btn:hover {
+            background: white;
+            border-color: #667eea;
+        }
+
+        .toolbar-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .toolbar-input {
+            padding: 6px 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toolbar-input:hover {
+            border-color: #667eea;
+        }
+
+        .editor-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            position: relative;
+        }
+
+        .editor-text {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: none;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            outline: none;
+        }
+
+        /* Toolbar Sidebar */
+        .toolbar-sidebar {
+            position: fixed;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .toolbar-sidebar.active {
+            display: flex;
+        }
+
+        .toolbar-sidebar-btn {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toolbar-sidebar-btn:hover {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .toolbar-sidebar-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* Meibot Button */
+        .meibot-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .meibot-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(102, 126, 234, 0.6);
+        }
+
+        .meibot-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            background: #f5f5f5;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.cancel {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .modal-btn.cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-btn.submit {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn.submit:hover {
+            background: #5568d3;
+        }
+
+        /* Task Extraction UI */
+        .task-item {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .task-item-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .task-item-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .task-item-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .task-item-action.skip {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .task-item-action.skip:hover {
+            background: #e0e0e0;
+        }
+
+        .task-item-action.add {
+            background: #667eea;
+            color: white;
+        }
+
+        .task-item-action.add:hover {
+            background: #5568d3;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 500;
+        }
+
+        .back-btn:hover {
+            background: white;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .docs-container {
+                padding: 8px;
+                gap: 8px;
+            }
+
+            .editor-header {
+                padding: 12px 16px;
+            }
+
+            .editor-header h1 {
+                font-size: 18px;
+            }
+
+            .editor-content {
+                padding: 16px;
+            }
+
+            .toolbar-sidebar {
+                left: 8px;
+            }
+
+            .meibot-btn {
+                width: 50px;
+                height: 50px;
+                bottom: 16px;
+                right: 16px;
+                font-size: 24px;
+            }
+
+            .back-btn {
+                top: 8px;
+                left: 8px;
+            }
+
+            .modal-content {
+                width: 95%;
+                max-height: 90vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" id="back-btn">← Back</button>
+
+    <div class="docs-container">
+        <div class="editor-area">
+            <div class="editor-header">
+                <input type="text" class="editor-title-input" id="note-title" placeholder="Note title...">
+                <div class="save-status" id="save-status">Unsaved</div>
+            </div>
+            
+            <div class="editor-toolbar">
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="font-decrease" title="Decrease font size">−</button>
+                    <span class="toolbar-input" id="font-size-display" style="min-width: 40px; text-align: center;">14</span>
+                    <button class="toolbar-btn" id="font-increase" title="Increase font size">+</button>
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="bold-btn" title="Bold">B</button>
+                    <button class="toolbar-btn" id="italic-btn" title="Italic">I</button>
+                </div>
+                
+                <div class="toolbar-group">
+                    <input type="color" class="toolbar-input" id="text-color" title="Text color" value="#333333">
+                    <input type="color" class="toolbar-input" id="highlight-color" title="Highlight color" value="#FFFF00">
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="bullet-btn" title="Bullet list">•</button>
+                    <button class="toolbar-btn" id="number-btn" title="Numbered list">1.</button>
+                    <button class="toolbar-btn" id="checkbox-btn" title="Checkbox">☐</button>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="meibot-extract" title="Get AI insights">🤖</button>
+                </div>
+            </div>
+            
+            <div class="editor-content">
+                <textarea class="editor-text" id="editor-text" placeholder="Start typing..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meibot Button -->
+    <button class="meibot-btn" id="meibot-btn" title="Chat with Meibot">🤖</button>
+
+    <!-- Meibot Modal -->
+    <div class="modal" id="meibot-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Chat with Meibot</h2>
+            </div>
+            <div class="modal-body" id="meibot-chat">
+                <!-- Messages will be rendered here -->
+            </div>
+            <div class="modal-footer">
+                <input type="text" id="meibot-input" placeholder="Ask Meibot..." style="flex: 1; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 4px;">
+                <button class="modal-btn submit" id="meibot-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Extraction Modal -->
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add to Todo List</h2>
+            </div>
+            <div class="modal-body" id="task-list">
+                <!-- Tasks will be rendered here -->
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" id="task-cancel">Cancel</button>
+                <button class="modal-btn submit" id="task-confirm">Add Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="meibot.js?v=20251231z"></script>
+    <script>
+        // Global state
+        let currentNoteId = null;
+        let currentUser = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let currentFontSize = 14;
+        let autoSaveTimeout;
+        let selectedTasks = new Set();
+
+        // DOM Elements
+        const noteTitle = document.getElementById('note-title');
+        const editorText = document.getElementById('editor-text');
+        const saveStatus = document.getElementById('save-status');
+        const backBtn = document.getElementById('back-btn');
+        const meibotBtn = document.getElementById('meibot-btn');
+        const meibotModal = document.getElementById('meibot-modal');
+        const taskModal = document.getElementById('task-modal');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            currentNoteId = params.get('noteId');
+
+            if (currentNoteId) {
+                loadNote();
+            } else {
+                noteTitle.placeholder = 'Untitled Document';
+            }
+
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            backBtn.addEventListener('click', () => window.location.href = 'NotesHQ.html');
+            
+            // Toolbar buttons
+            document.getElementById('font-decrease').addEventListener('click', () => changeFontSize(-1));
+            document.getElementById('font-increase').addEventListener('click', () => changeFontSize(1));
+            document.getElementById('bold-btn').addEventListener('click', insertBold);
+            document.getElementById('italic-btn').addEventListener('click', insertItalic);
+            document.getElementById('text-color').addEventListener('change', applyTextColor);
+            document.getElementById('highlight-color').addEventListener('change', applyHighlight);
+            document.getElementById('bullet-btn').addEventListener('click', insertBullet);
+            document.getElementById('number-btn').addEventListener('click', insertNumber);
+            document.getElementById('checkbox-btn').addEventListener('click', insertCheckbox);
+            document.getElementById('meibot-extract').addEventListener('click', extractTasks);
+
+            // Meibot
+            meibotBtn.addEventListener('click', openMeibotModal);
+            document.getElementById('meibot-send').addEventListener('click', sendMeibotMessage);
+            document.getElementById('meibot-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMeibotMessage();
+            });
+
+            // Task confirmation
+            document.getElementById('task-cancel').addEventListener('click', closeTaskModal);
+            document.getElementById('task-confirm').addEventListener('click', confirmTasks);
+
+            // Content changes
+            noteTitle.addEventListener('input', scheduleAutoSave);
+            editorText.addEventListener('input', scheduleAutoSave);
+
+            // Modal close on backdrop
+            meibotModal.addEventListener('click', (e) => {
+                if (e.target === meibotModal) closeMeibotModal();
+            });
+            taskModal.addEventListener('click', (e) => {
+                if (e.target === taskModal) closeTaskModal();
+            });
+        }
+
+        function loadNote() {
+            fetch(`/notes/${currentNoteId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.note) {
+                        noteTitle.value = data.note.title;
+                        editorText.value = data.note.content;
+                        updateSaveStatus('saved');
+                    }
+                })
+                .catch(err => {
+                    console.error('[Docs] Load note error:', err);
+                    updateSaveStatus('error');
+                });
+        }
+
+        function scheduleAutoSave() {
+            clearTimeout(autoSaveTimeout);
+            updateSaveStatus('unsaved');
+            autoSaveTimeout = setTimeout(saveNote, 2000);
+        }
+
+        function saveNote() {
+            if (!currentNoteId) {
+                updateSaveStatus('error');
+                return;
+            }
+
+            updateSaveStatus('saving');
+
+            fetch(`/notes/${currentNoteId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: noteTitle.value || 'Untitled',
+                    content: editorText.value
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateSaveStatus('saved');
+                    } else {
+                        updateSaveStatus('error');
+                    }
+                })
+                .catch(err => {
+                    console.error('[Docs] Save error:', err);
+                    updateSaveStatus('error');
+                });
+        }
+
+        function updateSaveStatus(status) {
+            const el = saveStatus;
+            el.classList.remove('saving', 'saved', 'error');
+            
+            switch(status) {
+                case 'saving':
+                    el.textContent = 'Saving...';
+                    el.classList.add('saving');
+                    break;
+                case 'saved':
+                    el.textContent = 'Saved';
+                    el.classList.add('saved');
+                    break;
+                case 'unsaved':
+                    el.textContent = 'Unsaved';
+                    break;
+                case 'error':
+                    el.textContent = 'Error';
+                    el.classList.add('error');
+                    break;
+            }
+        }
+
+        function changeFontSize(delta) {
+            currentFontSize = Math.max(10, Math.min(32, currentFontSize + delta));
+            document.getElementById('font-size-display').textContent = currentFontSize;
+            editorText.style.fontSize = currentFontSize + 'px';
+        }
+
+        function insertBold() {
+            const start = editorText.selectionStart;
+            const end = editorText.selectionEnd;
+            const selected = editorText.value.substring(start, end);
+            
+            if (selected) {
+                editorText.value = editorText.value.substring(0, start) + '**' + selected + '**' + editorText.value.substring(end);
+                editorText.selectionStart = start + 2;
+                editorText.selectionEnd = end + 2;
+            }
+            editorText.focus();
+            scheduleAutoSave();
+        }
+
+        function insertItalic() {
+            const start = editorText.selectionStart;
+            const end = editorText.selectionEnd;
+            const selected = editorText.value.substring(start, end);
+            
+            if (selected) {
+                editorText.value = editorText.value.substring(0, start) + '_' + selected + '_' + editorText.value.substring(end);
+                editorText.selectionStart = start + 1;
+                editorText.selectionEnd = end + 1;
+            }
+            editorText.focus();
+            scheduleAutoSave();
+        }
+
+        function applyTextColor() {
+            // For textarea, we can add color codes or just document the intent
+            const color = document.getElementById('text-color').value;
+            const start = editorText.selectionStart;
+            const end = editorText.selectionEnd;
+            const selected = editorText.value.substring(start, end);
+            
+            if (selected) {
+                editorText.value = editorText.value.substring(0, start) + 
+                                 `[COLOR:${color}]${selected}[/COLOR]` + 
+                                 editorText.value.substring(end);
+            }
+            editorText.focus();
+            scheduleAutoSave();
+        }
+
+        function applyHighlight() {
+            const color = document.getElementById('highlight-color').value;
+            const start = editorText.selectionStart;
+            const end = editorText.selectionEnd;
+            const selected = editorText.value.substring(start, end);
+            
+            if (selected) {
+                editorText.value = editorText.value.substring(0, start) + 
+                                 `[HIGHLIGHT:${color}]${selected}[/HIGHLIGHT]` + 
+                                 editorText.value.substring(end);
+            }
+            editorText.focus();
+            scheduleAutoSave();
+        }
+
+        function insertBullet() {
+            insertAtCursor('• ');
+        }
+
+        function insertNumber() {
+            insertAtCursor('1. ');
+        }
+
+        function insertCheckbox() {
+            insertAtCursor('☐ ');
+        }
+
+        function insertAtCursor(text) {
+            const start = editorText.selectionStart;
+            const end = editorText.selectionEnd;
+            const before = editorText.value.substring(0, start);
+            const after = editorText.value.substring(end);
+            
+            editorText.value = before + text + after;
+            editorText.selectionStart = editorText.selectionEnd = start + text.length;
+            editorText.focus();
+            scheduleAutoSave();
+        }
+
+        function extractTasks() {
+            if (!currentNoteId) {
+                alert('Save your note first');
+                return;
+            }
+
+            fetch('/notes/tasks/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser,
+                    noteId: currentNoteId,
+                    content: editorText.value
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.tasks && data.tasks.length > 0) {
+                        selectedTasks.clear();
+                        renderTaskModal(data.tasks);
+                        taskModal.classList.add('active');
+                    } else {
+                        alert('No checkboxes found in your note');
+                    }
+                })
+                .catch(err => {
+                    console.error('[Docs] Extract tasks error:', err);
+                    alert('Error extracting tasks');
+                });
+        }
+
+        function renderTaskModal(tasks) {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+
+            tasks.forEach((task, index) => {
+                const item = document.createElement('div');
+                item.className = 'task-item';
+
+                const title = document.createElement('div');
+                title.className = 'task-item-title';
+                title.textContent = task;
+
+                const actions = document.createElement('div');
+                actions.className = 'task-item-actions';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = true;
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        selectedTasks.add(task);
+                    } else {
+                        selectedTasks.delete(task);
+                    }
+                });
+
+                const label = document.createElement('label');
+                label.style.marginLeft = '8px';
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(' Add to Todo'));
+
+                actions.appendChild(label);
+                item.appendChild(title);
+                item.appendChild(actions);
+                taskList.appendChild(item);
+
+                selectedTasks.add(task);
+            });
+        }
+
+        function confirmTasks() {
+            const tasksArray = Array.from(selectedTasks);
+            if (tasksArray.length === 0) {
+                closeTaskModal();
+                return;
+            }
+
+            fetch('/notes/tasks/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser,
+                    noteId: currentNoteId,
+                    tasks: tasksArray
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        closeTaskModal();
+                        alert(`Added ${data.completed} task(s) to your Todo list`);
+                    } else {
+                        alert('Error adding tasks');
+                    }
+                })
+                .catch(err => {
+                    console.error('[Docs] Confirm tasks error:', err);
+                    alert('Error confirming tasks');
+                });
+        }
+
+        function closeTaskModal() {
+            taskModal.classList.remove('active');
+            selectedTasks.clear();
+        }
+
+        function openMeibotModal() {
+            meibotModal.classList.add('active');
+            document.getElementById('meibot-input').focus();
+        }
+
+        function closeMeibotModal() {
+            meibotModal.classList.remove('active');
+        }
+
+        function sendMeibotMessage() {
+            const input = document.getElementById('meibot-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chat = document.getElementById('meibot-chat');
+            const userMsg = document.createElement('div');
+            userMsg.style.marginBottom = '12px';
+            userMsg.style.textAlign = 'right';
+            userMsg.innerHTML = `<div style="background: #667eea; color: white; padding: 10px 14px; border-radius: 8px; display: inline-block; max-width: 80%;">${escapeHtml(message)}</div>`;
+            chat.appendChild(userMsg);
+
+            input.value = '';
+
+            // Call Meibot AI
+            callMeibot(message, (response) => {
+                const aiMsg = document.createElement('div');
+                aiMsg.style.marginBottom = '12px';
+                aiMsg.style.textAlign = 'left';
+                aiMsg.innerHTML = `<div style="background: #f0f0f0; color: #333; padding: 10px 14px; border-radius: 8px; display: inline-block; max-width: 80%;">${escapeHtml(response)}</div>`;
+                chat.appendChild(aiMsg);
+                chat.scrollTop = chat.scrollHeight;
+            });
+        }
+
+        function callMeibot(message, callback) {
+            // This would call your Meibot API
+            // For now, we'll use a placeholder
+            console.log('[Docs] Meibot message:', message);
+            callback('I\'m analyzing your note. This is a placeholder response. Connect to real Meibot API.');
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>

@@ -280,6 +280,159 @@
     }
   };
 
+  // ========== MEIBOT NOTE TASK EXTRACTION ==========
+  
+  window.meibotExtractTasks = function(content) {
+    /**
+     * Extract checkboxes and actionable items from note content
+     * Returns array of task objects with text and confidence
+     */
+    const tasks = [];
+    
+    // Pattern 1: Checkbox items (☐ or ☑)
+    const checkboxPattern = /[☐☑]\s+(.+?)(?:\n|$)/g;
+    let match;
+    while ((match = checkboxPattern.exec(content)) !== null) {
+      tasks.push({
+        text: match[1].trim(),
+        type: 'checkbox',
+        confidence: 0.95
+      });
+    }
+    
+    // Pattern 2: Text surrounded by asterisks or brackets (might be important)
+    const importantPattern = /\*\*(.+?)\*\*|\[(.+?)\]/g;
+    while ((match = importantPattern.exec(content)) !== null) {
+      const text = (match[1] || match[2]).trim();
+      if (text.length > 5 && !tasks.some(t => t.text === text)) {
+        tasks.push({
+          text: text,
+          type: 'important',
+          confidence: 0.6
+        });
+      }
+    }
+    
+    // Pattern 3: Lines starting with common action words
+    const actionWords = ['need', 'must', 'should', 'call', 'email', 'buy', 'schedule', 'book', 'finish', 'complete', 'review'];
+    const lines = content.split('\n');
+    lines.forEach(line => {
+      const trimmed = line.trim().toLowerCase();
+      for (const word of actionWords) {
+        if (trimmed.startsWith(word) && !tasks.some(t => t.text === line.trim())) {
+          tasks.push({
+            text: line.trim(),
+            type: 'action',
+            confidence: 0.7
+          });
+          break;
+        }
+      }
+    });
+    
+    return tasks;
+  };
+
+  window.meibotProposeTasks = function(tasks, callback) {
+    /**
+     * Present a proposal to user about extracting tasks to todo list
+     * Shows summary of how tasks will be formatted
+     */
+    if (!tasks || tasks.length === 0) {
+      if (callback) callback({ success: false, reason: 'No tasks found' });
+      return;
+    }
+    
+    const summary = tasks.map((t, i) => {
+      return `${i + 1}. "${t.text}" (${t.type})`;
+    }).join('\n');
+    
+    const proposal = {
+      count: tasks.length,
+      summary: summary,
+      tasks: tasks.filter(t => t.confidence >= 0.9) // Only highest confidence for initial proposal
+    };
+    
+    console.log('[Meibot] Task proposal:', proposal);
+    if (callback) callback(proposal);
+    return proposal;
+  };
+
+  window.meibotAnalyzeNoteInsights = function(content, callback) {
+    /**
+     * Provide AI insights about note themes, tone, and recommendations
+     */
+    const insights = {
+      wordCount: content.split(/\s+/).length,
+      sentenceCount: content.split(/[.!?]+/).length,
+      themes: extractThemes(content),
+      sentiment: analyzeSentiment(content),
+      recommendations: generateRecommendations(content)
+    };
+    
+    console.log('[Meibot] Note insights:', insights);
+    if (callback) callback(insights);
+    return insights;
+  };
+
+  function extractThemes(content) {
+    /**
+     * Extract key themes/topics from content
+     */
+    const themes = {};
+    const commonWords = ['team', 'project', 'goal', 'deadline', 'meeting', 'review', 'planning', 'design', 'development', 'testing'];
+    
+    commonWords.forEach(word => {
+      const regex = new RegExp(word, 'gi');
+      const matches = content.match(regex);
+      if (matches) {
+        themes[word] = matches.length;
+      }
+    });
+    
+    return Object.entries(themes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word, count]) => ({ word, count }));
+  }
+
+  function analyzeSentiment(content) {
+    /**
+     * Simple sentiment analysis (positive/neutral/negative)
+     */
+    const positive = /\b(good|great|excellent|perfect|awesome|happy|excited|love)\b/gi;
+    const negative = /\b(bad|terrible|awful|hate|frustrated|angry|disappointed)\b/gi;
+    
+    const positiveCount = (content.match(positive) || []).length;
+    const negativeCount = (content.match(negative) || []).length;
+    
+    if (positiveCount > negativeCount) return 'positive';
+    if (negativeCount > positiveCount) return 'negative';
+    return 'neutral';
+  }
+
+  function generateRecommendations(content) {
+    /**
+     * Generate actionable recommendations based on content
+     */
+    const recs = [];
+    
+    if (/☐/.test(content)) {
+      recs.push('You have unchecked items - consider adding these to your todo list');
+    }
+    if (content.length > 2000) {
+      recs.push('This is a long note - you might want to break it into sections');
+    }
+    if (/deadline|urgent|asap|today|tomorrow/i.test(content)) {
+      recs.push('This note mentions time-sensitive items - set reminders');
+    }
+    if (/\*\*.*?\*\*/.test(content)) {
+      recs.push('Important items are highlighted - make sure they\'re tracked');
+    }
+    
+    return recs;
+  }
+
   // Note: Meibot button click is now handled by switchTab() in TMR.html
   // Removing duplicate handler to prevent conflicts with the tab system
 

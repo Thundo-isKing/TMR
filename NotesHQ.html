@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotesHQ ~ Organize Your Thoughts</title>
+    <link rel="stylesheet" href="TMR.css?v=20251231z">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .notes-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        .notes-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .notes-header h1 {
+            margin: 0 0 8px 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .notes-header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .search-bar {
+            padding: 20px 24px;
+            background: rgba(255, 255, 255, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
+
+        .add-category-btn {
+            padding: 12px 20px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .add-category-btn:hover {
+            background: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .add-category-btn:active {
+            transform: translateY(0);
+        }
+
+        .notes-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .categories-panel {
+            flex: 0 0 240px;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .categories-panel h3 {
+            margin: 0 0 12px 0;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            padding: 0 8px;
+        }
+
+        .category-btn {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            word-break: break-word;
+        }
+
+        .category-btn:hover {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: #667eea;
+        }
+
+        .category-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .notes-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .notes-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .notes-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .note-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .note-card h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .note-card p {
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .note-card-date {
+            margin-top: auto;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .note-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .note-card-action {
+            flex: 1;
+            padding: 6px 8px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .note-card-action:hover {
+            background: #e8e8e8;
+        }
+
+        .note-card-action.delete {
+            color: #d32f2f;
+        }
+
+        .create-note-btn {
+            align-self: flex-start;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .create-note-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .create-note-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            background: white;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h2 {
+            margin: 0 0 16px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease;
+        }
+
+        .modal-content input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.cancel {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .modal-btn.cancel:hover {
+            background: #e8e8e8;
+        }
+
+        .modal-btn.submit {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn.submit:hover {
+            background: #5568d3;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #d32f2f;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .notes-container {
+                height: calc(100vh - 40px);
+            }
+
+            .notes-content {
+                flex-direction: column;
+            }
+
+            .categories-panel {
+                flex: 0 0 auto;
+                border-right: none;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                display: flex;
+                overflow-x: auto;
+                gap: 8px;
+                padding: 12px;
+                justify-content: flex-start;
+            }
+
+            .categories-panel h3 {
+                display: none;
+            }
+
+            .category-btn {
+                flex: 0 0 auto;
+                width: auto;
+                margin-bottom: 0;
+            }
+
+            .notes-header h1 {
+                font-size: 24px;
+            }
+
+            .back-btn {
+                top: 10px;
+                left: 10px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" id="back-btn">← Back to TMR</button>
+
+    <div class="notes-container">
+        <div class="notes-header">
+            <h1>📝 NotesHQ</h1>
+            <p>Organize your thoughts into categories and create rich documents</p>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" class="search-input" id="search-input" placeholder="Search your notes...">
+            <button class="add-category-btn" id="add-category-btn">+ Add Category</button>
+        </div>
+
+        <div class="notes-content">
+            <div class="categories-panel">
+                <h3>Categories</h3>
+                <div id="categories-container"></div>
+            </div>
+
+            <div class="notes-panel">
+                <div id="notes-content-area">
+                    <div class="notes-empty">
+                        <p>Select a category to see your notes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div class="modal" id="category-modal">
+        <div class="modal-content">
+            <h2>Create Category</h2>
+            <div id="category-error" class="error-message" style="display: none;"></div>
+            <input type="text" id="category-name-input" placeholder="Category name..." autofocus>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="category-cancel-btn">Cancel</button>
+                <button class="modal-btn submit" id="category-submit-btn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Note Modal -->
+    <div class="modal" id="note-modal">
+        <div class="modal-content">
+            <h2>Create Note</h2>
+            <div id="note-error" class="error-message" style="display: none;"></div>
+            <input type="text" id="note-title-input" placeholder="Note title..." autofocus>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="note-cancel-btn">Cancel</button>
+                <button class="modal-btn submit" id="note-submit-btn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentUser = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let currentCategoryId = null;
+        let categories = [];
+        let notes = [];
+
+        const backBtn = document.getElementById('back-btn');
+        const addCategoryBtn = document.getElementById('add-category-btn');
+        const categoryModal = document.getElementById('category-modal');
+        const noteModal = document.getElementById('note-modal');
+        const searchInput = document.getElementById('search-input');
+        const categoriesContainer = document.getElementById('categories-container');
+        const notesContentArea = document.getElementById('notes-content-area');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCategories();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            backBtn.addEventListener('click', () => window.location.href = 'TMR.html');
+            addCategoryBtn.addEventListener('click', openCategoryModal);
+            document.getElementById('category-cancel-btn').addEventListener('click', closeCategoryModal);
+            document.getElementById('category-submit-btn').addEventListener('click', submitCategory);
+            document.getElementById('note-cancel-btn').addEventListener('click', closeNoteModal);
+            document.getElementById('note-submit-btn').addEventListener('click', submitNote);
+            searchInput.addEventListener('input', debounce(handleSearch, 300));
+
+            // Close modals on backdrop click
+            categoryModal.addEventListener('click', (e) => {
+                if (e.target === categoryModal) closeCategoryModal();
+            });
+            noteModal.addEventListener('click', (e) => {
+                if (e.target === noteModal) closeNoteModal();
+            });
+
+            // Enter key support
+            document.getElementById('category-name-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submitCategory();
+            });
+            document.getElementById('note-title-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') submitNote();
+            });
+        }
+
+        function loadCategories() {
+            fetch(`/notes/categories?userId=${encodeURIComponent(currentUser)}`)
+                .then(res => res.json())
+                .then(data => {
+                    categories = data.categories || [];
+                    renderCategories();
+                })
+                .catch(err => console.error('[NotesHQ] Load categories error:', err));
+        }
+
+        function renderCategories() {
+            categoriesContainer.innerHTML = '';
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = 'category-btn';
+                if (currentCategoryId === cat.id) btn.classList.add('active');
+                btn.textContent = cat.categoryName;
+                btn.addEventListener('click', () => selectCategory(cat.id, cat.categoryName));
+                categoriesContainer.appendChild(btn);
+            });
+        }
+
+        function selectCategory(categoryId, categoryName) {
+            currentCategoryId = categoryId;
+            renderCategories();
+            loadNotes(categoryId);
+        }
+
+        function loadNotes(categoryId) {
+            fetch(`/notes/category/${categoryId}`)
+                .then(res => res.json())
+                .then(data => {
+                    notes = data.notes || [];
+                    renderNotes();
+                })
+                .catch(err => console.error('[NotesHQ] Load notes error:', err));
+        }
+
+        function renderNotes() {
+            if (notes.length === 0) {
+                notesContentArea.innerHTML = '<div class="notes-empty"><p>No notes in this category yet. Create one!</p></div>';
+                notesContentArea.appendChild(createNoteButton());
+                return;
+            }
+
+            notesContentArea.innerHTML = '';
+            const notesList = document.createElement('div');
+            notesList.className = 'notes-list';
+
+            notes.forEach(note => {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+                
+                const title = document.createElement('h3');
+                title.textContent = note.title;
+                
+                const content = document.createElement('p');
+                content.textContent = note.content.substring(0, 100) || 'No content yet...';
+                
+                const date = document.createElement('div');
+                date.className = 'note-card-date';
+                date.textContent = new Date(note.updatedAt).toLocaleDateString();
+
+                const actions = document.createElement('div');
+                actions.className = 'note-card-actions';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'note-card-action';
+                editBtn.textContent = 'Edit';
+                editBtn.addEventListener('click', () => openNote(note.id));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'note-card-action delete';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', () => deleteNote(note.id));
+
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+
+                card.appendChild(title);
+                card.appendChild(content);
+                card.appendChild(date);
+                card.appendChild(actions);
+                notesList.appendChild(card);
+            });
+
+            notesContentArea.appendChild(notesList);
+            notesContentArea.appendChild(createNoteButton());
+        }
+
+        function createNoteButton() {
+            const btn = document.createElement('button');
+            btn.className = 'create-note-btn';
+            btn.textContent = '+ Create New Note';
+            btn.disabled = !currentCategoryId;
+            btn.addEventListener('click', openNoteModal);
+            return btn;
+        }
+
+        function openNote(noteId) {
+            window.location.href = `Docs.html?noteId=${noteId}`;
+        }
+
+        function deleteNote(noteId) {
+            if (!confirm('Are you sure you want to delete this note?')) return;
+
+            fetch(`/notes/${noteId}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        loadNotes(currentCategoryId);
+                    } else {
+                        alert('Failed to delete note');
+                    }
+                })
+                .catch(err => {
+                    console.error('[NotesHQ] Delete note error:', err);
+                    alert('Error deleting note');
+                });
+        }
+
+        function openCategoryModal() {
+            categoryModal.classList.add('active');
+            document.getElementById('category-name-input').focus();
+        }
+
+        function closeCategoryModal() {
+            categoryModal.classList.remove('active');
+            document.getElementById('category-name-input').value = '';
+            document.getElementById('category-error').style.display = 'none';
+        }
+
+        function submitCategory() {
+            const name = document.getElementById('category-name-input').value.trim();
+            if (!name) {
+                showError('category-error', 'Category name is required');
+                return;
+            }
+
+            fetch('/notes/category/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser, categoryName: name })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        closeCategoryModal();
+                        loadCategories();
+                    } else if (data.error === 'Category already exists') {
+                        showError('category-error', 'This category already exists');
+                    } else {
+                        showError('category-error', data.error || 'Failed to create category');
+                    }
+                })
+                .catch(err => {
+                    console.error('[NotesHQ] Create category error:', err);
+                    showError('category-error', 'Server error');
+                });
+        }
+
+        function openNoteModal() {
+            if (!currentCategoryId) {
+                alert('Please select or create a category first');
+                return;
+            }
+            noteModal.classList.add('active');
+            document.getElementById('note-title-input').focus();
+        }
+
+        function closeNoteModal() {
+            noteModal.classList.remove('active');
+            document.getElementById('note-title-input').value = '';
+            document.getElementById('note-error').style.display = 'none';
+        }
+
+        function submitNote() {
+            const title = document.getElementById('note-title-input').value.trim();
+            if (!title) {
+                showError('note-error', 'Note title is required');
+                return;
+            }
+
+            fetch('/notes/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser, categoryId: currentCategoryId, title, content: '' })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        closeNoteModal();
+                        openNote(data.noteId);
+                    } else {
+                        showError('note-error', data.error || 'Failed to create note');
+                    }
+                })
+                .catch(err => {
+                    console.error('[NotesHQ] Create note error:', err);
+                    showError('note-error', 'Server error');
+                });
+        }
+
+        function handleSearch(e) {
+            const query = e.target.value.trim();
+            if (!query) {
+                if (currentCategoryId) {
+                    loadNotes(currentCategoryId);
+                } else {
+                    notesContentArea.innerHTML = '<div class="notes-empty"><p>Select a category to see your notes</p></div>';
+                }
+                return;
+            }
+
+            fetch('/notes/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser, query, categoryId: currentCategoryId || null })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    notes = data.notes || [];
+                    renderNotes();
+                })
+                .catch(err => console.error('[NotesHQ] Search error:', err));
+        }
+
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+
+        function debounce(fn, delay) {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn(...args), delay);
+            };
+        }
+    </script>
+</body>
+</html>

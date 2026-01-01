@@ -776,5 +776,249 @@ app.post('/theme/delete', (req, res) => {
   }
 });
 
+// Notes API endpoints
+app.post('/notes/category/create', (req, res) => {
+  try {
+    const { userId, categoryName } = req.body;
+    
+    if (!userId || !categoryName) {
+      return res.status(400).json({ error: 'userId and categoryName required' });
+    }
+    
+    db.createNoteCategory(userId, categoryName, (err, categoryId) => {
+      if (err) {
+        if (err.message.includes('UNIQUE constraint')) {
+          return res.status(409).json({ error: 'Category already exists' });
+        }
+        console.error('[Notes] Category creation error:', err);
+        return res.status(500).json({ error: 'Failed to create category' });
+      }
+      console.log('[Notes] Category created:', categoryId);
+      res.json({ success: true, categoryId });
+    });
+  } catch (err) {
+    console.error('[Notes] Category creation error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/notes/categories', (req, res) => {
+  try {
+    const userId = req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+    
+    db.getNoteCategories(userId, (err, categories) => {
+      if (err) {
+        console.error('[Notes] Get categories error:', err);
+        return res.status(500).json({ error: 'Failed to get categories' });
+      }
+      res.json({ categories });
+    });
+  } catch (err) {
+    console.error('[Notes] Get categories error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/notes/category/:categoryId', (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    
+    db.deleteNoteCategory(categoryId, (err, changes) => {
+      if (err) {
+        console.error('[Notes] Category delete error:', err);
+        return res.status(500).json({ error: 'Failed to delete category' });
+      }
+      console.log('[Notes] Category deleted:', categoryId);
+      res.json({ success: true });
+    });
+  } catch (err) {
+    console.error('[Notes] Category delete error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/notes/create', (req, res) => {
+  try {
+    const { userId, categoryId, title, content } = req.body;
+    
+    if (!userId || !categoryId || !title) {
+      return res.status(400).json({ error: 'userId, categoryId, and title required' });
+    }
+    
+    db.createNote(userId, categoryId, title, content || '', (err, noteId) => {
+      if (err) {
+        console.error('[Notes] Note creation error:', err);
+        return res.status(500).json({ error: 'Failed to create note' });
+      }
+      console.log('[Notes] Note created:', noteId);
+      res.json({ success: true, noteId });
+    });
+  } catch (err) {
+    console.error('[Notes] Note creation error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/notes/category/:categoryId', (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    
+    db.getNotesInCategory(categoryId, (err, notes) => {
+      if (err) {
+        console.error('[Notes] Get notes error:', err);
+        return res.status(500).json({ error: 'Failed to get notes' });
+      }
+      res.json({ notes });
+    });
+  } catch (err) {
+    console.error('[Notes] Get notes error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/notes/:noteId', (req, res) => {
+  try {
+    const { noteId } = req.params;
+    
+    db.getNote(noteId, (err, note) => {
+      if (err) {
+        console.error('[Notes] Get note error:', err);
+        return res.status(500).json({ error: 'Failed to get note' });
+      }
+      if (!note) {
+        return res.status(404).json({ error: 'Note not found' });
+      }
+      res.json({ note });
+    });
+  } catch (err) {
+    console.error('[Notes] Get note error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/notes/:noteId', (req, res) => {
+  try {
+    const { noteId } = req.params;
+    const { title, content } = req.body;
+    
+    if (!title) {
+      return res.status(400).json({ error: 'title required' });
+    }
+    
+    db.updateNote(noteId, title, content || '', (err) => {
+      if (err) {
+        console.error('[Notes] Note update error:', err);
+        return res.status(500).json({ error: 'Failed to update note' });
+      }
+      console.log('[Notes] Note updated:', noteId);
+      res.json({ success: true });
+    });
+  } catch (err) {
+    console.error('[Notes] Note update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/notes/:noteId', (req, res) => {
+  try {
+    const { noteId } = req.params;
+    
+    db.deleteNote(noteId, (err, changes) => {
+      if (err) {
+        console.error('[Notes] Note delete error:', err);
+        return res.status(500).json({ error: 'Failed to delete note' });
+      }
+      console.log('[Notes] Note deleted:', noteId);
+      res.json({ success: true });
+    });
+  } catch (err) {
+    console.error('[Notes] Note delete error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/notes/search', (req, res) => {
+  try {
+    const { userId, query, categoryId } = req.body;
+    
+    if (!userId || !query) {
+      return res.status(400).json({ error: 'userId and query required' });
+    }
+    
+    db.searchNotes(userId, query, categoryId || null, (err, notes) => {
+      if (err) {
+        console.error('[Notes] Search error:', err);
+        return res.status(500).json({ error: 'Failed to search notes' });
+      }
+      res.json({ notes });
+    });
+  } catch (err) {
+    console.error('[Notes] Search error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/notes/tasks/extract', (req, res) => {
+  try {
+    const { userId, noteId, content } = req.body;
+    
+    if (!userId || !noteId || !content) {
+      return res.status(400).json({ error: 'userId, noteId, and content required' });
+    }
+    
+    // Extract checkbox items from content
+    const checkboxPattern = /☐\s+(.+?)(?:\n|$)/g;
+    const matches = [];
+    let match;
+    
+    while ((match = checkboxPattern.exec(content)) !== null) {
+      matches.push(match[1].trim());
+    }
+    
+    res.json({ tasks: matches });
+  } catch (err) {
+    console.error('[Notes] Task extraction error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/notes/tasks/confirm', (req, res) => {
+  try {
+    const { userId, noteId, tasks } = req.body;
+    
+    if (!userId || !noteId || !Array.isArray(tasks)) {
+      return res.status(400).json({ error: 'userId, noteId, and tasks array required' });
+    }
+    
+    let completed = 0;
+    let errors = [];
+    
+    tasks.forEach((task, index) => {
+      db.addNoteTask(userId, noteId, task, (err) => {
+        if (err) {
+          errors.push({ index, error: err.message });
+        } else {
+          completed++;
+        }
+        
+        if (index === tasks.length - 1) {
+          res.json({ success: true, completed, errors: errors.length > 0 ? errors : null });
+        }
+      });
+    });
+    
+    if (tasks.length === 0) {
+      res.json({ success: true, completed: 0 });
+    }
+  } catch (err) {
+    console.error('[Notes] Task confirmation error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 const port = process.env.PORT || process.env.PUSH_SERVER_PORT || 3002;
 app.listen(port, () => console.log('[Server] TMR push server listening on port', port));

@@ -380,8 +380,8 @@ if (leaveBtn) {
 
     if(notesBtn){
         notesBtn.addEventListener('click', () => {
-            console.log('[Header] Notes button clicked - TODO: navigate to notes page');
-            // TODO: Navigate to notes.html
+            console.log('[Header] Notes button clicked - navigating to NotesHQ');
+            window.location.href = 'NotesHQ.html';
         });
     }
 })();
