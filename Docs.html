@@ -164,6 +164,8 @@
             background: white;
             color: var(--accent-color, #667eea);
             border-color: var(--accent-color, #667eea);
+            transform: scale(0.85);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
         }
 
         .toolbar-input {
@@ -198,10 +200,16 @@
             resize: none;
             font-family: 'Segoe UI', Roboto, sans-serif;
             outline: none;
+            padding: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
         }
 
-        .editor-text::placeholder {
+        .editor-text:empty:before {
+            content: attr(data-placeholder);
             color: #444;
+            pointer-events: none;
         }
 
         /* Toolbar Sidebar */
@@ -551,7 +559,7 @@
             </div>
             
             <div class="editor-content">
-                <textarea class="editor-text" id="editor-text" placeholder="Start typing..."></textarea>
+                <div class="editor-text" id="editor-text" contenteditable="true" data-placeholder="Start typing..."></div>
             </div>
         </div>
     </div>
@@ -665,6 +673,10 @@
             document.getElementById('checkbox-btn').addEventListener('click', insertCheckbox);
             document.getElementById('meibot-extract').addEventListener('click', extractTasks);
 
+            // Track formatting state changes
+            editorText.addEventListener('keyup', updateFormattingButtons);
+            editorText.addEventListener('mouseup', updateFormattingButtons);
+
             // Meibot
             meibotBtn.addEventListener('click', openMeibotModal);
             document.getElementById('meibot-send').addEventListener('click', sendMeibotMessage);
@@ -695,7 +707,7 @@
                 .then(data => {
                     if (data.note) {
                         noteTitle.value = data.note.title;
-                        editorText.value = data.note.content;
+                        editorText.innerHTML = data.note.content;
                         updateSaveStatus('saved');
                     }
                 })
@@ -724,7 +736,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: noteTitle.value || 'Untitled',
-                    content: editorText.value
+                    content: editorText.innerHTML
                 })
             })
                 .then(res => res.json())
@@ -772,86 +784,81 @@
         }
 
         function insertBold() {
-            const start = editorText.selectionStart;
-            const end = editorText.selectionEnd;
-            const selected = editorText.value.substring(start, end);
-            
-            if (selected) {
-                editorText.value = editorText.value.substring(0, start) + '**' + selected + '**' + editorText.value.substring(end);
-                editorText.selectionStart = start + 2;
-                editorText.selectionEnd = end + 2;
-            }
             editorText.focus();
+            document.execCommand('bold', false, null);
+            updateFormattingButtons();
             scheduleAutoSave();
         }
 
         function insertItalic() {
-            const start = editorText.selectionStart;
-            const end = editorText.selectionEnd;
-            const selected = editorText.value.substring(start, end);
-            
-            if (selected) {
-                editorText.value = editorText.value.substring(0, start) + '_' + selected + '_' + editorText.value.substring(end);
-                editorText.selectionStart = start + 1;
-                editorText.selectionEnd = end + 1;
-            }
             editorText.focus();
+            document.execCommand('italic', false, null);
+            updateFormattingButtons();
             scheduleAutoSave();
         }
 
-        function applyTextColor() {
-            // For textarea, we can add color codes or just document the intent
-            const color = document.getElementById('text-color').value;
-            const start = editorText.selectionStart;
-            const end = editorText.selectionEnd;
-            const selected = editorText.value.substring(start, end);
+        function updateFormattingButtons() {
+            const boldBtn = document.getElementById('bold-btn');
+            const italicBtn = document.getElementById('italic-btn');
             
-            if (selected) {
-                editorText.value = editorText.value.substring(0, start) + 
-                                 `[COLOR:${color}]${selected}[/COLOR]` + 
-                                 editorText.value.substring(end);
+            if (document.queryCommandState('bold')) {
+                boldBtn.classList.add('active');
+            } else {
+                boldBtn.classList.remove('active');
             }
+            
+            if (document.queryCommandState('italic')) {
+                italicBtn.classList.add('active');
+            } else {
+                italicBtn.classList.remove('active');
+            }
+        }
+
+        function applyTextColor() {
+            const color = document.getElementById('text-color').value;
             editorText.focus();
+            document.execCommand('foreColor', false, color);
             scheduleAutoSave();
         }
 
         function applyHighlight() {
             const color = document.getElementById('highlight-color').value;
-            const start = editorText.selectionStart;
-            const end = editorText.selectionEnd;
-            const selected = editorText.value.substring(start, end);
-            
-            if (selected) {
-                editorText.value = editorText.value.substring(0, start) + 
-                                 `[HIGHLIGHT:${color}]${selected}[/HIGHLIGHT]` + 
-                                 editorText.value.substring(end);
-            }
             editorText.focus();
+            document.execCommand('backColor', false, color);
             scheduleAutoSave();
         }
 
         function insertBullet() {
-            insertAtCursor('• ');
+            editorText.focus();
+            document.execCommand('insertUnorderedList', false, null);
+            scheduleAutoSave();
         }
 
         function insertNumber() {
-            insertAtCursor('1. ');
+            editorText.focus();
+            document.execCommand('insertOrderedList', false, null);
+            scheduleAutoSave();
         }
 
         function insertCheckbox() {
-            insertAtCursor('☐ ');
+            editorText.focus();
+            const span = document.createElement('span');
+            span.textContent = '☐ ';
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.insertNode(span);
+                range.setStartAfter(span);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+            scheduleAutoSave();
         }
 
         function insertAtCursor(text) {
-            const start = editorText.selectionStart;
-            const end = editorText.selectionEnd;
-            const before = editorText.value.substring(0, start);
-            const after = editorText.value.substring(end);
-            
-            editorText.value = before + text + after;
-            editorText.selectionStart = editorText.selectionEnd = start + text.length;
-            editorText.focus();
-            scheduleAutoSave();
+            // Deprecated - keeping for reference but not used anymore
+            console.log('insertAtCursor is deprecated, use execCommand instead');
         }
 
         function extractTasks() {
@@ -866,7 +873,7 @@
                 body: JSON.stringify({
                     userId: currentUser,
                     noteId: currentNoteId,
-                    content: editorText.value
+                    content: editorText.innerText
                 })
             })
                 .then(res => res.json())
