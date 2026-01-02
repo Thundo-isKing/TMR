@@ -9,8 +9,11 @@
         @import url('https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;500;700&display=swap');
 
         * {
-            font-weight: bold;
             font-family: 'Product Sans', Arial, Helvetica, sans-serif;
+        }
+
+        body, button, input, label, span, div, h1, h2, h3, h4, h5, h6, p {
+            font-weight: bold;
         }
 
         body {
@@ -20,7 +23,13 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             position: relative;
             overflow-x: hidden;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: white;
+            background-image: 
+                linear-gradient(60deg, transparent 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 55%, transparent 55%),
+                linear-gradient(-60deg, transparent 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 55%, transparent 55%),
+                linear-gradient(60deg, rgba(var(--accent-rgb, 0,157,255), 0.09) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 0,157,255), 0.09) 55%),
+                linear-gradient(-60deg, rgba(var(--accent-rgb, 0,157,255), 0.09) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 0,157,255), 0.09) 55%);
+            background-size: 300px 300px, 300px 300px, 300px 300px, 300px 300px;
         }
 
         .notes-container {
@@ -575,6 +584,10 @@
             const accentColor = localStorage.getItem('tmr_accent') || '#0089f1';
             document.documentElement.style.setProperty('--accent-color', accentColor);
             
+            // Convert hex to RGB for the triangle pattern
+            const rgb = hexToRgb(accentColor);
+            document.documentElement.style.setProperty('--accent-rgb', `${rgb.r},${rgb.g},${rgb.b}`);
+            
             // Load background image from TMR's localStorage key
             const bgImage = localStorage.getItem('tmr_bg_image');
             if (bgImage) {
@@ -584,7 +597,18 @@
                 document.body.style.backgroundAttachment = 'fixed';
                 document.body.style.backgroundRepeat = 'no-repeat';
             }
+            // Otherwise use the triangle background (already in CSS with CSS variables)
         }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 157, b: 255 };
+        }
+
 
         function setupEventListeners() {
             backBtn.addEventListener('click', () => window.location.href = 'TMR.html');
@@ -682,8 +706,11 @@
                 const title = document.createElement('h3');
                 title.textContent = note.title;
                 
+                // Extract plain text from HTML content and limit to 100 chars
+                const plainText = extractPlainText(note.content).substring(0, 100);
+                
                 const content = document.createElement('p');
-                content.textContent = note.content.substring(0, 100) || 'No content yet...';
+                content.textContent = plainText || 'No content yet...';
                 
                 const date = document.createElement('div');
                 date.className = 'note-card-date';
@@ -714,6 +741,12 @@
 
             notesContentArea.appendChild(notesList);
             notesContentArea.appendChild(createNoteButton());
+        }
+
+        function extractPlainText(html) {
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            return temp.textContent || temp.innerText || '';
         }
 
         function createNoteButton() {

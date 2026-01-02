@@ -10,8 +10,11 @@
 
         * {
             box-sizing: border-box;
-            font-weight: bold;
             font-family: 'Product Sans', Arial, Helvetica, sans-serif;
+        }
+
+        body, button, input, label, span, div, h1, h2, h3, h4, h5, h6, p {
+            font-weight: bold;
         }
 
         body {
@@ -21,13 +24,21 @@
             height: 100vh;
             overflow: hidden;
             position: relative;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: white;
+            background-image: 
+                linear-gradient(60deg, transparent 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 55%, transparent 55%),
+                linear-gradient(-60deg, transparent 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 45%, rgba(var(--accent-rgb, 0,157,255), 0.18) 55%, transparent 55%),
+                linear-gradient(60deg, rgba(var(--accent-rgb, 0,157,255), 0.09) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 0,157,255), 0.09) 55%),
+                linear-gradient(-60deg, rgba(var(--accent-rgb, 0,157,255), 0.09) 45%, transparent 45%, transparent 55%, rgba(var(--accent-rgb, 0,157,255), 0.09) 55%);
+            background-size: 300px 300px, 300px 300px, 300px 300px, 300px 300px;
         }
 
         .docs-container {
             display: flex;
             height: 100vh;
             gap: 12px;
+            width: 65%;
+            margin: 0 auto;
         }
 
         /* Editor Area */
@@ -199,6 +210,7 @@
             line-height: 1.6;
             resize: none;
             font-family: 'Segoe UI', Roboto, sans-serif;
+            font-weight: normal;
             outline: none;
             padding: 0;
             word-wrap: break-word;
@@ -538,13 +550,11 @@
                 </div>
                 
                 <div class="toolbar-group">
-                    <button class="toolbar-btn" id="bold-btn" title="Bold">B</button>
                     <button class="toolbar-btn" id="italic-btn" title="Italic">I</button>
                 </div>
                 
                 <div class="toolbar-group">
                     <input type="color" class="toolbar-input" id="text-color" title="Text color" value="#333333">
-                    <input type="color" class="toolbar-input" id="highlight-color" title="Highlight color" value="#FFFF00">
                 </div>
                 
                 <div class="toolbar-group">
@@ -616,6 +626,7 @@
         let currentFontSize = 14;
         let autoSaveTimeout;
         let selectedTasks = new Set();
+        let italicEnabled = false;
 
         // DOM Elements
         const noteTitle = document.getElementById('note-title');
@@ -640,12 +651,17 @@
             }
 
             setupEventListeners();
+            resetFormattingButtons();
         });
 
         function loadTheme() {
             // Load accent color from TMR's localStorage key
             const accentColor = localStorage.getItem('tmr_accent') || '#0089f1';
             document.documentElement.style.setProperty('--accent-color', accentColor);
+            
+            // Convert hex to RGB for the triangle pattern
+            const rgb = hexToRgb(accentColor);
+            document.documentElement.style.setProperty('--accent-rgb', `${rgb.r},${rgb.g},${rgb.b}`);
             
             // Load background image from TMR's localStorage key
             const bgImage = localStorage.getItem('tmr_bg_image');
@@ -656,7 +672,18 @@
                 document.body.style.backgroundAttachment = 'fixed';
                 document.body.style.backgroundRepeat = 'no-repeat';
             }
+            // Otherwise use the triangle background (already in CSS with CSS variables)
         }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 157, b: 255 };
+        }
+
 
         function setupEventListeners() {
             backBtn.addEventListener('click', () => window.location.href = 'NotesHQ.html');
@@ -664,18 +691,15 @@
             // Toolbar buttons
             document.getElementById('font-decrease').addEventListener('click', () => changeFontSize(-1));
             document.getElementById('font-increase').addEventListener('click', () => changeFontSize(1));
-            document.getElementById('bold-btn').addEventListener('click', insertBold);
             document.getElementById('italic-btn').addEventListener('click', insertItalic);
             document.getElementById('text-color').addEventListener('change', applyTextColor);
-            document.getElementById('highlight-color').addEventListener('change', applyHighlight);
             document.getElementById('bullet-btn').addEventListener('click', insertBullet);
             document.getElementById('number-btn').addEventListener('click', insertNumber);
             document.getElementById('checkbox-btn').addEventListener('click', insertCheckbox);
             document.getElementById('meibot-extract').addEventListener('click', extractTasks);
 
             // Track formatting state changes
-            editorText.addEventListener('keyup', updateFormattingButtons);
-            editorText.addEventListener('mouseup', updateFormattingButtons);
+            // (No longer needed - button state is tracked with boldEnabled/italicEnabled flags)
 
             // Meibot
             meibotBtn.addEventListener('click', openMeibotModal);
@@ -708,6 +732,13 @@
                     if (data.note) {
                         noteTitle.value = data.note.title;
                         editorText.innerHTML = data.note.content;
+                        
+                        // Remove all background colors (highlighting)
+                        const allElements = editorText.querySelectorAll('[style*="background"]');
+                        allElements.forEach(el => {
+                            el.style.backgroundColor = 'transparent';
+                        });
+                        
                         updateSaveStatus('saved');
                     }
                 })
@@ -783,35 +814,44 @@
             editorText.style.fontSize = currentFontSize + 'px';
         }
 
-        function insertBold() {
-            editorText.focus();
-            document.execCommand('bold', false, null);
-            updateFormattingButtons();
-            scheduleAutoSave();
-        }
-
         function insertItalic() {
+            italicEnabled = !italicEnabled;
             editorText.focus();
             document.execCommand('italic', false, null);
-            updateFormattingButtons();
+            updateButtonAppearance();
             scheduleAutoSave();
         }
 
-        function updateFormattingButtons() {
-            const boldBtn = document.getElementById('bold-btn');
+        function updateButtonAppearance() {
             const italicBtn = document.getElementById('italic-btn');
             
-            if (document.queryCommandState('bold')) {
-                boldBtn.classList.add('active');
-            } else {
-                boldBtn.classList.remove('active');
-            }
-            
-            if (document.queryCommandState('italic')) {
+            if (italicEnabled) {
                 italicBtn.classList.add('active');
             } else {
                 italicBtn.classList.remove('active');
             }
+        }
+
+        // Old function - no longer used, button state tracked with boldEnabled/italicEnabled flags
+        // function updateFormattingButtons() {
+        //     const boldBtn = document.getElementById('bold-btn');
+        //     const italicBtn = document.getElementById('italic-btn');
+        //     if (document.queryCommandState('bold')) {
+        //         boldBtn.classList.add('active');
+        //     } else {
+        //         boldBtn.classList.remove('active');
+        //     }
+        //     if (document.queryCommandState('italic')) {
+        //         italicBtn.classList.add('active');
+        //     } else {
+        //         italicBtn.classList.remove('active');
+        //     }
+        // }
+
+        function resetFormattingButtons() {
+            // Reset buttons on page load - no formatting applied yet
+            italicEnabled = false;
+            document.getElementById('italic-btn').classList.remove('active');
         }
 
         function applyTextColor() {
@@ -821,12 +861,7 @@
             scheduleAutoSave();
         }
 
-        function applyHighlight() {
-            const color = document.getElementById('highlight-color').value;
-            editorText.focus();
-            document.execCommand('backColor', false, color);
-            scheduleAutoSave();
-        }
+
 
         function insertBullet() {
             editorText.focus();
