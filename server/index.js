@@ -802,6 +802,32 @@ app.post('/notes/category/create', (req, res) => {
   }
 });
 
+app.put('/notes/category/:categoryId', (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { categoryName } = req.body;
+    
+    if (!categoryName) {
+      return res.status(400).json({ error: 'categoryName required' });
+    }
+    
+    db.updateNoteCategory(categoryId, categoryName, (err) => {
+      if (err) {
+        if (err.message.includes('UNIQUE constraint')) {
+          return res.status(409).json({ error: 'Category name already exists' });
+        }
+        console.error('[Notes] Category update error:', err);
+        return res.status(500).json({ error: 'Failed to update category' });
+      }
+      console.log('[Notes] Category updated:', categoryId);
+      res.json({ success: true });
+    });
+  } catch (err) {
+    console.error('[Notes] Category update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/notes/categories', (req, res) => {
   try {
     const userId = req.query.userId;

@@ -189,6 +189,9 @@
             transition: all 0.2s ease;
             text-align: left;
             word-break: break-word;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .category-btn:hover {
@@ -200,6 +203,29 @@
             background: var(--accent-color, #667eea);
             color: white;
             border-color: var(--accent-color, #667eea);
+        }
+
+        .category-edit-btn {
+            background: white;
+            color: var(--accent-color, #667eea);
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: none;
+            white-space: nowrap;
+        }
+
+        .category-edit-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: scale(1.05);
+        }
+
+        .category-btn.active .category-edit-btn {
+            display: block;
         }
 
         .notes-panel {
@@ -430,6 +456,16 @@
             box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
+        .modal-btn.delete {
+            background: #ff4757;
+            color: white;
+        }
+
+        .modal-btn.delete:hover {
+            opacity: 0.9;
+            box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+        }
+
         .loading {
             display: flex;
             align-items: center;
@@ -533,6 +569,20 @@
         </div>
     </div>
 
+    <!-- Edit Category Modal -->
+    <div class="modal" id="edit-category-modal">
+        <div class="modal-content">
+            <h2>Edit Category</h2>
+            <div id="edit-category-error" class="error-message" style="display: none;"></div>
+            <input type="text" id="edit-category-name-input" placeholder="Category name..." autofocus>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="edit-category-cancel-btn">Cancel</button>
+                <button class="modal-btn submit" id="edit-category-save-btn">Save</button>
+                <button class="modal-btn delete" id="edit-category-delete-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Note Modal -->
     <div class="modal" id="note-modal">
         <div class="modal-content">
@@ -559,6 +609,7 @@
 
         let currentUser = getOrCreateDeviceId();
         let currentCategoryId = null;
+        let editingCategoryId = null;
         let categories = [];
         let notes = [];
         let isSearchActive = false;
@@ -566,6 +617,7 @@
         const backBtn = document.getElementById('back-btn');
         const addCategoryBtn = document.getElementById('add-category-btn');
         const categoryModal = document.getElementById('category-modal');
+        const editCategoryModal = document.getElementById('edit-category-modal');
         const noteModal = document.getElementById('note-modal');
         const searchInput = document.getElementById('search-input');
         const searchClearBtn = document.getElementById('search-clear-btn');
@@ -615,6 +667,9 @@
             addCategoryBtn.addEventListener('click', openCategoryModal);
             document.getElementById('category-cancel-btn').addEventListener('click', closeCategoryModal);
             document.getElementById('category-submit-btn').addEventListener('click', submitCategory);
+            document.getElementById('edit-category-cancel-btn').addEventListener('click', closeEditCategoryModal);
+            document.getElementById('edit-category-save-btn').addEventListener('click', saveEditedCategory);
+            document.getElementById('edit-category-delete-btn').addEventListener('click', confirmDeleteCategory);
             document.getElementById('note-cancel-btn').addEventListener('click', closeNoteModal);
             document.getElementById('note-submit-btn').addEventListener('click', submitNote);
             searchInput.addEventListener('input', debounce(handleSearch, 300));
@@ -630,6 +685,9 @@
             categoryModal.addEventListener('click', (e) => {
                 if (e.target === categoryModal) closeCategoryModal();
             });
+            editCategoryModal.addEventListener('click', (e) => {
+                if (e.target === editCategoryModal) closeEditCategoryModal();
+            });
             noteModal.addEventListener('click', (e) => {
                 if (e.target === noteModal) closeNoteModal();
             });
@@ -637,6 +695,9 @@
             // Enter key support
             document.getElementById('category-name-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') submitCategory();
+            });
+            document.getElementById('edit-category-name-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') saveEditedCategory();
             });
             document.getElementById('note-title-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') submitNote();
@@ -659,7 +720,20 @@
                 const btn = document.createElement('button');
                 btn.className = 'category-btn';
                 if (currentCategoryId === cat.id) btn.classList.add('active');
-                btn.textContent = cat.categoryName;
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = cat.categoryName;
+                btn.appendChild(titleSpan);
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'category-edit-btn';
+                editBtn.textContent = 'Edit';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditCategoryModal(cat.id, cat.categoryName);
+                });
+                btn.appendChild(editBtn);
+                
                 btn.addEventListener('click', () => selectCategory(cat.id, cat.categoryName));
                 categoriesContainer.appendChild(btn);
             });
@@ -667,11 +741,21 @@
 
         function selectCategory(categoryId, categoryName) {
             console.log('[NotesHQ] Selecting category:', categoryId, categoryName);
-            currentCategoryId = categoryId;
+            // Toggle: if already selected, deselect it
+            if (currentCategoryId === categoryId) {
+                currentCategoryId = null;
+            } else {
+                currentCategoryId = categoryId;
+            }
             isSearchActive = false;
             searchInput.value = '';  // Clear search when changing category
             renderCategories();
-            loadNotes(categoryId);
+            if (currentCategoryId) {
+                loadNotes(categoryId);
+            } else {
+                // Show empty state when deselected
+                notesContentArea.innerHTML = '<div class="notes-empty"><p>Select a category to view notes</p></div>';
+            }
         }
 
         function loadNotes(categoryId) {
@@ -817,6 +901,93 @@
                 .catch(err => {
                     console.error('[NotesHQ] Create category error:', err);
                     showError('category-error', 'Server error');
+                });
+        }
+
+        function openEditCategoryModal(categoryId, categoryName) {
+            editingCategoryId = categoryId;
+            document.getElementById('edit-category-name-input').value = categoryName;
+            document.getElementById('edit-category-error').style.display = 'none';
+            editCategoryModal.classList.add('active');
+            document.getElementById('edit-category-name-input').focus();
+        }
+
+        function closeEditCategoryModal() {
+            editCategoryModal.classList.remove('active');
+            editingCategoryId = null;
+            document.getElementById('edit-category-name-input').value = '';
+            document.getElementById('edit-category-error').style.display = 'none';
+        }
+
+        function saveEditedCategory() {
+            const name = document.getElementById('edit-category-name-input').value.trim();
+            if (!name) {
+                showError('edit-category-error', 'Category name is required');
+                return;
+            }
+
+            fetch(`/notes/category/${editingCategoryId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ categoryName: name })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        closeEditCategoryModal();
+                        loadCategories();
+                    } else if (data.error && data.error.includes('already exists')) {
+                        showError('edit-category-error', 'This category name already exists');
+                    } else {
+                        showError('edit-category-error', data.error || 'Failed to update category');
+                    }
+                })
+                .catch(err => {
+                    console.error('[NotesHQ] Update category error:', err);
+                    showError('edit-category-error', 'Server error');
+                });
+        }
+
+        function confirmDeleteCategory() {
+            // Check if category has notes
+            fetch(`/notes/category/${editingCategoryId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const notesInCategory = data.notes || [];
+                    if (notesInCategory.length > 0) {
+                        showError('edit-category-error', `You cannot delete this category while there are ${notesInCategory.length} note(s) inside`);
+                    } else {
+                        // No notes, ask for confirmation
+                        if (confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+                            deleteCategory();
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('[NotesHQ] Check category notes error:', err);
+                    showError('edit-category-error', 'Failed to check category contents');
+                });
+        }
+
+        function deleteCategory() {
+            fetch(`/notes/category/${editingCategoryId}`, {
+                method: 'DELETE'
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        closeEditCategoryModal();
+                        if (currentCategoryId === editingCategoryId) {
+                            currentCategoryId = null;
+                        }
+                        loadCategories();
+                    } else {
+                        showError('edit-category-error', data.error || 'Failed to delete category');
+                    }
+                })
+                .catch(err => {
+                    console.error('[NotesHQ] Delete category error:', err);
+                    showError('edit-category-error', 'Server error');
                 });
         }
 

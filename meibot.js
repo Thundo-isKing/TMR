@@ -96,10 +96,10 @@
     if (isConfirmation(userMsg)) {
       if (lastSuggestedAction === 'createTodo' && lastActionData && window.meibotCreateTodo) {
         window.meibotCreateTodo(lastActionData.text, lastActionData.reminder);
-        appendMessage('meibot', 'Task created! ≡ƒô¥', chatEl);
+        appendMessage('meibot', 'Task created! ✅', chatEl);
       } else if (lastSuggestedAction === 'createEvent' && lastActionData && window.meibotCreateEvent) {
         window.meibotCreateEvent(lastActionData);
-        appendMessage('meibot', 'Event scheduled! ≡ƒôà', chatEl);
+        appendMessage('meibot', 'Event scheduled! 📅', chatEl);
       }
       lastSuggestedAction = null;
       lastActionData = null;
@@ -146,23 +146,21 @@
           const action = data.allActions[0];
           if (action.type === 'createTodo' && action.data) {
             const btn = createActionButton(
-              `Γ£ô Create: "${action.data.text}"`,
+              `✅ Create: "${action.data.text}"`,
               '#4caf50',
               () => {
                 if (window.calendarAddTodo) {
                   window.calendarAddTodo(action.data.text, action.data.reminder);
-                  appendMessage('meibot', 'Task created! ≡ƒô¥', chatEl);
+                  appendMessage('meibot', 'Task created! ✅', chatEl);
                   btn.disabled = true;
-                  lastSuggestedAction = null;
-                  lastActionData = null;
                 }
               }
             );
             chatEl.appendChild(btn);
           } else if (action.type === 'createEvent' && action.data) {
             const btn = createActionButton(
-              `Γ£ô Schedule: "${action.data.title || 'Event'}"`,
-              '#2196f3',
+              `📅 Schedule: "${action.data.title || 'Event'}"`,
+              '#4caf50',
               () => {
                 if (window.calendarAddOrUpdateEvent) {
                   const event = {
@@ -174,20 +172,55 @@
                     notes: ''
                   };
                   window.calendarAddOrUpdateEvent(event);
-                  appendMessage('meibot', 'Event scheduled! ≡ƒôà', chatEl);
+                  appendMessage('meibot', 'Event scheduled! 📅', chatEl);
                   btn.disabled = true;
-                  lastSuggestedAction = null;
-                  lastActionData = null;
+                }
+              }
+            );
+            chatEl.appendChild(btn);
+          } else if (action.type === 'deleteTodo' && action.data) {
+            const btn = createActionButton(
+              `🗑️ Delete: "${action.data.text}"`,
+              '#f44336',
+              () => {
+                console.log('[Meibot] Delete todo clicked:', action.data.text);
+                if (window.calendarDeleteTodo) {
+                  console.log('[Meibot] Calling calendarDeleteTodo');
+                  window.calendarDeleteTodo(action.data.text);
+                  appendMessage('meibot', `Deleted task: "${action.data.text}" ✓`, chatEl);
+                  btn.disabled = true;
+                } else {
+                  console.error('[Meibot] calendarDeleteTodo not found!');
+                  appendMessage('meibot', 'Error: Delete function not found', chatEl);
+                }
+              }
+            );
+            chatEl.appendChild(btn);
+          } else if (action.type === 'deleteEvent' && action.data) {
+            const btn = createActionButton(
+              `🗑️ Delete: "${action.data.title || 'Event'}"`,
+              '#f44336',
+              () => {
+                console.log('[Meibot] Delete event clicked:', action.data.title);
+                if (window.calendarDeleteEvent) {
+                  console.log('[Meibot] Calling calendarDeleteEvent');
+                  window.calendarDeleteEvent(action.data.title);
+                  appendMessage('meibot', `Deleted event: "${action.data.title}" ✓`, chatEl);
+                  btn.disabled = true;
+                } else {
+                  console.error('[Meibot] calendarDeleteEvent not found!');
+                  appendMessage('meibot', 'Error: Delete function not found', chatEl);
                 }
               }
             );
             chatEl.appendChild(btn);
           }
         } else {
-          // Multiple actions - show "Create All" button
-          const todosCount = data.allActions.filter(a => a.type === 'createTodo').length;
-          const eventsCount = data.allActions.filter(a => a.type === 'createEvent').length;
-          let label = 'Γ£ô Create All';
+          // Multiple actions - show "Create All" or "Delete All" button
+          const todosCount = data.allActions.filter(a => a.type === 'createTodo' || a.type === 'deleteTodo').length;
+          const eventsCount = data.allActions.filter(a => a.type === 'createEvent' || a.type === 'deleteEvent').length;
+          const isDelete = data.allActions.some(a => a.type === 'deleteEvent' || a.type === 'deleteTodo');
+          let label = isDelete ? '🗑️ Delete All' : '✨ Create All';
           if (todosCount > 0 && eventsCount > 0) {
             label += ` (${todosCount} todos, ${eventsCount} events)`;
           } else if (todosCount > 0) {
@@ -196,12 +229,13 @@
             label += ` (${eventsCount} events)`;
           }
           
-          const btn = createActionButton(label, '#ff9800', () => {
-            let created = 0;
+          const btnColor = isDelete ? '#f44336' : '#4caf50';
+          const btn = createActionButton(label, btnColor, () => {
+            let processed = 0;
             for (const action of data.allActions) {
               if (action.type === 'createTodo' && action.data && window.calendarAddTodo) {
                 window.calendarAddTodo(action.data.text, action.data.reminder);
-                created++;
+                processed++;
               } else if (action.type === 'createEvent' && action.data && window.calendarAddOrUpdateEvent) {
                 const event = {
                   id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -212,10 +246,17 @@
                   notes: ''
                 };
                 window.calendarAddOrUpdateEvent(event);
-                created++;
+                processed++;
+              } else if (action.type === 'deleteTodo' && action.data && window.calendarDeleteTodo) {
+                window.calendarDeleteTodo(action.data.text);
+                processed++;
+              } else if (action.type === 'deleteEvent' && action.data && window.calendarDeleteEvent) {
+                window.calendarDeleteEvent(action.data.title);
+                processed++;
               }
             }
-            appendMessage('meibot', `All done! Created ${created} items. Γ£à`, chatEl);
+            const msg = isDelete ? `Deleted ${processed} item(s). ✓` : `All done! Created ${processed} items. 🎉`;
+            appendMessage('meibot', msg, chatEl);
             btn.disabled = true;
             lastSuggestedAction = null;
             lastActionData = null;
@@ -444,5 +485,5 @@
     appendMessage('meibot', "Hi! I'm Meibot, your scheduling assistant. I can help you create tasks, schedule events, and manage your calendar. What can I do for you?", mobileChat);
   }
 
-  console.log('[Meibot] Initialized - Desktop:', hasDesktop ? 'Γ£ô' : 'Γ£ù', 'Mobile:', hasMobile ? 'Γ£ô' : 'Γ£ù');
+  console.log('[Meibot] Initialized - Desktop:', hasDesktop ? '✅' : '❌', 'Mobile:', hasMobile ? '✅' : '❌');
 })();

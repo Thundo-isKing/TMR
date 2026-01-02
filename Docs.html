@@ -1027,21 +1027,157 @@
             input.value = '';
 
             // Call Meibot AI
-            callMeibot(message, (response) => {
-                const aiMsg = document.createElement('div');
-                aiMsg.style.marginBottom = '12px';
-                aiMsg.style.textAlign = 'left';
-                aiMsg.innerHTML = `<div style="background: #f0f0f0; color: #333; padding: 10px 14px; border-radius: 8px; display: inline-block; max-width: 80%;">${escapeHtml(response)}</div>`;
-                chat.appendChild(aiMsg);
-                chat.scrollTop = chat.scrollHeight;
-            });
+            callMeibot(message, chat);
         }
 
-        function callMeibot(message, callback) {
-            // This would call your Meibot API
-            // For now, we'll use a placeholder
-            console.log('[Docs] Meibot message:', message);
-            callback('I\'m analyzing your note. This is a placeholder response. Connect to real Meibot API.');
+        function callMeibot(message, chat) {
+            // Get current note content as context
+            const noteContent = editorText.innerText;
+            
+            fetch('/api/meibot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    context: noteContent,
+                    userId: currentUser
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.reply) {
+                        // Display AI response
+                        const aiMsg = document.createElement('div');
+                        aiMsg.style.marginBottom = '12px';
+                        aiMsg.style.textAlign = 'left';
+                        aiMsg.innerHTML = `<div style="background: #f0f0f0; color: #333; padding: 10px 14px; border-radius: 8px; display: inline-block; max-width: 80%;">${escapeHtml(data.reply)}</div>`;
+                        chat.appendChild(aiMsg);
+                        
+                        // Handle suggested actions
+                        if (data.allActions && data.allActions.length > 0) {
+                            handleMeibotActions(data.allActions, chat);
+                        }
+                        
+                        chat.scrollTop = chat.scrollHeight;
+                    } else if (data.error) {
+                        const errMsg = document.createElement('div');
+                        errMsg.style.marginBottom = '12px';
+                        errMsg.style.textAlign = 'left';
+                        errMsg.innerHTML = `<div style="background: #ffebee; color: #c62828; padding: 10px 14px; border-radius: 8px; display: inline-block;">${escapeHtml(`Error: ${data.error}`)}</div>`;
+                        chat.appendChild(errMsg);
+                        chat.scrollTop = chat.scrollHeight;
+                    } else {
+                        console.log('[Docs] Unexpected Meibot response:', data);
+                        const errMsg = document.createElement('div');
+                        errMsg.style.marginBottom = '12px';
+                        errMsg.style.textAlign = 'left';
+                        errMsg.innerHTML = `<div style="background: #ffebee; color: #c62828; padding: 10px 14px; border-radius: 8px; display: inline-block;">Unexpected response from Meibot</div>`;
+                        chat.appendChild(errMsg);
+                        chat.scrollTop = chat.scrollHeight;
+                    }
+                })
+                .catch(err => {
+                    console.error('[Docs] Meibot error:', err);
+                    const errMsg = document.createElement('div');
+                    errMsg.style.marginBottom = '12px';
+                    errMsg.style.textAlign = 'left';
+                    errMsg.innerHTML = `<div style="background: #ffebee; color: #c62828; padding: 10px 14px; border-radius: 8px; display: inline-block;">${escapeHtml(`Connection error: ${err.message}`)}</div>`;
+                    chat.appendChild(errMsg);
+                    chat.scrollTop = chat.scrollHeight;
+                });
+        }
+
+        function handleMeibotActions(actions, chat) {
+            if (actions.length === 1) {
+                const action = actions[0];
+                if (action.type === 'createTodo' && action.data) {
+                    createActionButton(
+                        `✅ Create: "${action.data.text}"`,
+                        '#4caf50',
+                        () => {
+                            storeMeibotAction('todo', action.data);
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.textContent = '✅ Created! (check TMR)';
+                        },
+                        chat
+                    );
+                } else if (action.type === 'createEvent' && action.data) {
+                    createActionButton(
+                        `📅 Schedule: "${action.data.title || 'Event'}"`,
+                        '#2196f3',
+                        () => {
+                            storeMeibotAction('event', action.data);
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.textContent = '📅 Scheduled! (check TMR)';
+                        },
+                        chat
+                    );
+                }
+            } else if (actions.length > 1) {
+                // Multiple actions - show "Create All" button
+                const todosCount = actions.filter(a => a.type === 'createTodo').length;
+                const eventsCount = actions.filter(a => a.type === 'createEvent').length;
+                let label = '✨ Create All';
+                if (todosCount > 0 && eventsCount > 0) {
+                    label += ` (${todosCount} todos, ${eventsCount} events)`;
+                } else if (todosCount > 0) {
+                    label += ` (${todosCount} todos)`;
+                } else if (eventsCount > 0) {
+                    label += ` (${eventsCount} events)`;
+                }
+                
+                createActionButton(label, '#ff9800', () => {
+                    let created = 0;
+                    for (const action of actions) {
+                        if (action.type === 'createTodo' && action.data) {
+                            storeMeibotAction('todo', action.data);
+                            created++;
+                        } else if (action.type === 'createEvent' && action.data) {
+                            storeMeibotAction('event', action.data);
+                            created++;
+                        }
+                    }
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.textContent = `✅ Created ${created} items! (check TMR)`;
+                }, chat);
+            }
+        }
+
+        function createActionButton(label, color, onClick, chat) {
+            const btn = document.createElement('button');
+            btn.textContent = label;
+            btn.style.marginTop = '8px';
+            btn.style.padding = '10px 14px';
+            btn.style.background = color;
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '6px';
+            btn.style.cursor = 'pointer';
+            btn.style.fontSize = '13px';
+            btn.style.fontWeight = '500';
+            btn.style.marginBottom = '12px';
+            btn.addEventListener('click', onClick);
+            chat.appendChild(btn);
+            return btn;
+        }
+
+        function storeMeibotAction(type, actionData) {
+            // Store action in localStorage for TMR.html to retrieve
+            let pendingActions = JSON.parse(localStorage.getItem('meibot_pending_actions') || '[]');
+            pendingActions.push({
+                type: type,
+                data: actionData,
+                timestamp: Date.now(),
+                source: 'docs'
+            });
+            localStorage.setItem('meibot_pending_actions', JSON.stringify(pendingActions));
+            
+            // Show notification and open TMR.html
+            alert(`Action stored! Opening TMR.html to complete...`);
+            window.open('/TMR.html', '_blank');
         }
 
         function escapeHtml(text) {

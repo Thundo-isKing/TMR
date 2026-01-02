@@ -20,38 +20,63 @@ class GroqAssistant {
    */
   getSystemPrompt() {
     const now = new Date();
-    // Use local date formatting for both date and time
-    const todayStr = now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
-    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-    const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
     
-    return `You are a helpful scheduling and task management AI assistant called Meibot. 
-Your primary responsibilities are:
-1. Help users create, manage, and organize calendar events and to-do items
-2. Parse natural language requests to extract event/task details (title, date, time)
-3. Provide scheduling advice and help with time management
-4. When a user wants to create an event or task, respond with structured JSON at the end of your response
+    // Generate next 31 days of dates in YYYY-MM-DD format
+    const nextDays = [];
+    for (let i = 0; i < 31; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() + i);
+      // Format as YYYY-MM-DD
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      nextDays.push(`${year}-${month}-${day}`);
+    }
+    
+    const allDatesStr = nextDays.join(', ');
+    
+    return `You are Meibot, an AI scheduling assistant for TMR.
 
-When suggesting to create an event or task, include this JSON at the end of your response:
+INSTRUCTIONS:
+1. Help users create calendar events and tasks
+2. When user asks for RECURRING events (multiple days), generate MULTIPLE JSON objects
+3. Each JSON object must be on a separate line
+4. **ALWAYS generate JSON when user asks to create or delete events/tasks - NEVER skip JSON generation**
+5. Do NOT provide explanations about whether items are already deleted - just generate the JSON action
+
+CRITICAL RULES:
+- When user asks to create: ALWAYS generate createEvent or createTodo JSON
+- When user asks to delete: ALWAYS generate deleteEvent or deleteTodo JSON
+- For recurring delete requests: generate separate JSON for EACH occurrence
+- Never refuse to generate JSON - always provide it even if uncertain
+
+When suggesting to create an event, include JSON at end of response:
 {"action": "createEvent", "title": "Event Title", "date": "YYYY-MM-DD", "time": "HH:MM"}
 or
-{"action": "createTodo", "text": "Task description", "reminder": "in 1 hour"}
+{"action": "createTodo", "text": "Task description", "reminder": "optional"}
 
-For todos with reminders, include the "reminder" field with a natural language description of WHEN to remind:
-- "in 30 minutes" → browser will set reminder 30 minutes from now
-- "in 1 hour" → browser will set reminder 1 hour from now
-- "in 2 hours" → browser will set reminder 2 hours from now
-- "tomorrow at 9am" → browser will set reminder for tomorrow at 9am
-- "at 3pm today" → browser will set reminder for 3pm today
-- etc.
+When user asks to delete an event or task, ALWAYS include JSON at end of response:
+{"action": "deleteEvent", "title": "Event Title"}
+or
+{"action": "deleteTodo", "text": "Task description"}
 
-The browser will parse these descriptions and convert to Unix timestamps automatically.
-IMPORTANT: Only include "reminder" field if the user explicitly asks for a reminder time.
+Example: If user says "delete all morning run events for the week", respond with:
+Here are the morning run events I'll delete for you:
+{"action": "deleteEvent", "title": "Morning Run"}
+{"action": "deleteEvent", "title": "Morning Run"}
+{"action": "deleteEvent", "title": "Morning Run"}
+{"action": "deleteEvent", "title": "Morning Run"}
+{"action": "deleteEvent", "title": "Morning Run"}
 
-Be conversational but concise. Ask clarifying questions if needed (date, time, priority, etc.).
+AVAILABLE DATES (next 31 days): ${allDatesStr}
 
-CURRENT DATE/TIME: ${todayStr} (${dayOfWeek}) at ${timeStr}
-Use this current date/time as a reference when the user mentions relative times like "tomorrow", "next week", "in 2 hours", etc.`;
+EXAMPLE - User: "Morning run at 6am for 3 days"
+Your response should END WITH these three separate lines:
+{"action": "createEvent", "title": "Morning Run", "date": "${nextDays[0]}", "time": "06:00"}
+{"action": "createEvent", "title": "Morning Run", "date": "${nextDays[1]}", "time": "06:00"}
+{"action": "createEvent", "title": "Morning Run", "date": "${nextDays[2]}", "time": "06:00"}
+
+Be helpful and conversational. Always generate multiple JSONs for recurring requests.`;
   }
 
   /**
@@ -118,32 +143,54 @@ Use this current date/time as a reference when the user mentions relative times 
         history.splice(1, 2); // Remove oldest user/assistant pair but keep system
       }
 
-      // Parse action from response if present
-      const actionMatch = assistantMessage.match(/\{"action":\s*"(create[^"]+)"[^}]*\}/);
+      // Parse ALL actions from response (support create/delete for events and todos)
+      const actionMatches = assistantMessage.match(/\{"action":\s*"(create|delete)[^"]+\"[^}]*\}/g) || [];
       let suggestedAction = null;
       let actionData = null;
+      let allActions = [];
 
-      if (actionMatch) {
+      console.log('[Groq] Found action matches:', actionMatches.length);
+
+      if (actionMatches.length > 0) {
         try {
-          const actionJson = JSON.parse(actionMatch[0]);
-          suggestedAction = actionJson.action;
-          actionData = {
-            title: actionJson.title,
-            date: actionJson.date,
-            time: actionJson.time,
-            text: actionJson.text,
-            reminder: actionJson.reminder
-          };
+          // Parse all actions
+          for (const match of actionMatches) {
+            try {
+              const actionJson = JSON.parse(match);
+              allActions.push({
+                type: actionJson.action,
+                data: {
+                  title: actionJson.title,
+                  date: actionJson.date,
+                  time: actionJson.time,
+                  text: actionJson.text,
+                  reminder: actionJson.reminder
+                }
+              });
+            } catch (parseErr) {
+              console.warn('[Groq] Failed to parse individual action:', match, parseErr.message);
+            }
+          }
+          
+          console.log('[Groq] Successfully parsed', allActions.length, 'actions');
+          
+          // Set primary action (first one) for backward compatibility
+          if (allActions.length > 0) {
+            const firstAction = allActions[0];
+            suggestedAction = firstAction.type;
+            actionData = firstAction.data;
+          }
         } catch (e) {
-          console.debug('[Groq] Failed to parse action JSON:', actionMatch[0]);
+          console.debug('[Groq] Failed to parse action JSON:', actionMatches[0]);
         }
       }
 
-      // Return response and any suggested action
+      // Return response and any suggested actions
       return {
-        reply: assistantMessage.replace(/\{"action":[^}]+\}/, '').trim(),
+        reply: assistantMessage.replace(/\{"action":[^}]+\}/g, '').trim(),
         suggestedAction,
-        actionData
+        actionData,
+        allActions: allActions.length > 0 ? allActions : undefined
       };
     } catch (error) {
       console.error('[Groq] API Error:', error);

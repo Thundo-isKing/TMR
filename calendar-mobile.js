@@ -16,7 +16,7 @@
                 const res = await fetch(path, opts);
                 if (res.ok) return res;
             } catch (e) { }
-            const fallbackUrl = 'http://localhost:3003' + path;
+            const fallbackUrl = 'http://localhost:3002' + path;
             return await fetch(fallbackUrl, opts);
         } catch (e) {
             console.warn('[calendar-mobile] fetch failed', e);

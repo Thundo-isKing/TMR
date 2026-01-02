@@ -1676,6 +1676,40 @@ if (leaveBtn) {
             // Auto-initialize push on page load: register SW, request permission, subscribe silently
             window.addEventListener('load', async ()=>{
                 try{
+                    // Check for pending actions from Docs.html or other pages
+                    const pendingActions = JSON.parse(localStorage.getItem('meibot_pending_actions') || '[]');
+                    if (pendingActions.length > 0) {
+                        console.log('[TMR] Processing pending actions from Meibot:', pendingActions);
+                        for (const action of pendingActions) {
+                            if (action.type === 'todo' && action.data) {
+                                try {
+                                    window.calendarAddTodo(action.data.text, action.data.reminder);
+                                    console.log('[TMR] Created todo from pending action:', action.data.text);
+                                } catch (e) {
+                                    console.error('[TMR] Failed to create todo:', e);
+                                }
+                            } else if (action.type === 'event' && action.data) {
+                                try {
+                                    const event = {
+                                        id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+                                        title: action.data.title,
+                                        date: action.data.date,
+                                        time: action.data.time || '09:00',
+                                        duration: action.data.duration || 60,
+                                        notes: action.data.text || ''
+                                    };
+                                    window.calendarAddOrUpdateEvent(event);
+                                    console.log('[TMR] Created event from pending action:', action.data.title);
+                                } catch (e) {
+                                    console.error('[TMR] Failed to create event:', e);
+                                }
+                            }
+                        }
+                        // Clear pending actions after processing
+                        localStorage.removeItem('meibot_pending_actions');
+                        console.log('[TMR] Cleared pending actions');
+                    }
+
                     // Step 1: Register Service Worker (always, in background)
                     await registerServiceWorkerIfNeeded();
                     

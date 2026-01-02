@@ -407,6 +407,12 @@ module.exports = {
            function(err){ cb && cb(err, this && this.changes); });
   },
 
+  updateNoteCategory: function(categoryId, categoryName, cb){
+    db.run(`UPDATE note_categories SET categoryName = ? WHERE id = ?`,
+           [categoryName, categoryId],
+           function(err){ cb && cb(err, this && this.changes); });
+  },
+
   // Notes - Documents
   createNote: function(userId, categoryId, title, content, cb){
     const now = Date.now();

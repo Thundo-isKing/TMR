@@ -147,6 +147,84 @@
     }
   };
 
+  // Delete a todo by matching text
+  window.calendarDeleteTodo = function(todoText) {
+    console.log('[Calendar] calendarDeleteTodo called with:', todoText);
+    try {
+      const todos = JSON.parse(localStorage.getItem('tmr_todos') || '[]');
+      const initialCount = todos.length;
+      console.log('[Calendar] Current todos:', initialCount);
+      console.log('[Calendar] All todos:', todos);
+      
+      // Remove all todos that match the text (case-insensitive)
+      const filtered = todos.filter(t => {
+        const todoStr = t.text || t.title || '';
+        const matches = todoStr.toLowerCase().includes(todoText.toLowerCase());
+        if (matches) console.log('[Calendar] Removing todo:', t);
+        return !matches;
+      });
+      
+      console.log('[Calendar] Filtered to', filtered.length, 'todos (removed', initialCount - filtered.length, ')');
+      
+      if (filtered.length < initialCount) {
+        localStorage.setItem('tmr_todos', JSON.stringify(filtered));
+        console.log('[Calendar] Saved filtered todos to localStorage');
+        
+        // Force re-render
+        try { window.dispatchEvent(new CustomEvent('tmr:todos:changed', { detail: { count: filtered.length } })); } catch(e) { console.error('Event dispatch error:', e); }
+        
+        // Additional force render if available
+        if (window.renderTodos) {
+          console.log('[Calendar] Calling renderTodos()');
+          window.renderTodos();
+        }
+      } else {
+        console.warn('[Calendar] No todos matched:', todoText);
+      }
+    } catch (err) {
+      console.error('[Calendar] Error deleting todo:', err);
+    }
+  };
+
+  // Delete an event by matching title
+  window.calendarDeleteEvent = function(eventTitle) {
+    console.log('[Calendar] calendarDeleteEvent called with:', eventTitle);
+    try {
+      const events = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+      const initialCount = events.length;
+      console.log('[Calendar] Current events:', initialCount);
+      console.log('[Calendar] All events:', events);
+      
+      // Remove all events that match the title (case-insensitive)
+      const filtered = events.filter(e => {
+        const eventStr = e.title || '';
+        const matches = eventStr.toLowerCase().includes(eventTitle.toLowerCase());
+        if (matches) console.log('[Calendar] Removing event:', e);
+        return !matches;
+      });
+      
+      console.log('[Calendar] Filtered to', filtered.length, 'events (removed', initialCount - filtered.length, ')');
+      
+      if (filtered.length < initialCount) {
+        localStorage.setItem('tmr_events', JSON.stringify(filtered));
+        console.log('[Calendar] Saved filtered events to localStorage');
+        
+        // Force re-render
+        try { window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { deleted: initialCount - filtered.length } })); } catch(e) { console.error('Event dispatch error:', e); }
+        
+        // Additional force render if available
+        if (window.renderCalendar) {
+          console.log('[Calendar] Calling renderCalendar()');
+          window.renderCalendar();
+        }
+      } else {
+        console.warn('[Calendar] No events matched:', eventTitle);
+      }
+    } catch (err) {
+      console.error('[Calendar] Error deleting event:', err);
+    }
+  };
+
   // Parse reminder description (e.g., "in 1 hour", "tomorrow at 9am", "at 3pm today") to Unix timestamp
   function parseReminderDescription(desc) {
     if (!desc || typeof desc !== 'string') return undefined;
