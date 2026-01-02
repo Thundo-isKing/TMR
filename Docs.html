@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Docs ~ Write & Edit</title>
@@ -1105,7 +1106,7 @@
                 } else if (action.type === 'createEvent' && action.data) {
                     createActionButton(
                         `📅 Schedule: "${action.data.title || 'Event'}"`,
-                        '#2196f3',
+                        '#4caf50',
                         () => {
                             storeMeibotAction('event', action.data);
                             btn.disabled = true;
@@ -1114,12 +1115,37 @@
                         },
                         chat
                     );
+                } else if (action.type === 'deleteTodo' && action.data) {
+                    createActionButton(
+                        `🗑️ Delete: "${action.data.text}"`,
+                        '#f44336',
+                        () => {
+                            storeMeibotAction('deleteTodo', action.data);
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.textContent = `✓ Deleted: "${action.data.text}"`;
+                        },
+                        chat
+                    );
+                } else if (action.type === 'deleteEvent' && action.data) {
+                    createActionButton(
+                        `🗑️ Delete: "${action.data.title || 'Event'}"`,
+                        '#f44336',
+                        () => {
+                            storeMeibotAction('deleteEvent', action.data);
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.textContent = `✓ Deleted: "${action.data.title || 'Event'}"`;
+                        },
+                        chat
+                    );
                 }
             } else if (actions.length > 1) {
-                // Multiple actions - show "Create All" button
-                const todosCount = actions.filter(a => a.type === 'createTodo').length;
-                const eventsCount = actions.filter(a => a.type === 'createEvent').length;
-                let label = '✨ Create All';
+                // Multiple actions - show "Create All" or "Delete All" button
+                const todosCount = actions.filter(a => a.type === 'createTodo' || a.type === 'deleteTodo').length;
+                const eventsCount = actions.filter(a => a.type === 'createEvent' || a.type === 'deleteEvent').length;
+                const isDelete = actions.some(a => a.type === 'deleteEvent' || a.type === 'deleteTodo');
+                let label = isDelete ? '🗑️ Delete All' : '✨ Create All';
                 if (todosCount > 0 && eventsCount > 0) {
                     label += ` (${todosCount} todos, ${eventsCount} events)`;
                 } else if (todosCount > 0) {
@@ -1128,20 +1154,28 @@
                     label += ` (${eventsCount} events)`;
                 }
                 
-                createActionButton(label, '#ff9800', () => {
-                    let created = 0;
+                const btnColor = isDelete ? '#f44336' : '#4caf50';
+                createActionButton(label, btnColor, () => {
+                    let processed = 0;
                     for (const action of actions) {
                         if (action.type === 'createTodo' && action.data) {
                             storeMeibotAction('todo', action.data);
-                            created++;
+                            processed++;
                         } else if (action.type === 'createEvent' && action.data) {
                             storeMeibotAction('event', action.data);
-                            created++;
+                            processed++;
+                        } else if (action.type === 'deleteTodo' && action.data) {
+                            storeMeibotAction('deleteTodo', action.data);
+                            processed++;
+                        } else if (action.type === 'deleteEvent' && action.data) {
+                            storeMeibotAction('deleteEvent', action.data);
+                            processed++;
                         }
                     }
+                    const msg = isDelete ? `Deleted ${processed} item(s). ✓` : `All done! Created ${processed} items. 🎉`;
                     btn.disabled = true;
                     btn.style.opacity = '0.5';
-                    btn.textContent = `✅ Created ${created} items! (check TMR)`;
+                    btn.textContent = msg;
                 }, chat);
             }
         }

@@ -1,8 +1,11 @@
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const webpush = require('web-push');
+const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
+const rateLimit = require('express-rate-limit');
 const db = require('./db');
 
 // ADD: Import security modules
@@ -74,6 +77,7 @@ require('./scheduler')({ db, webpush });
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // Serve the static client from the project root so the push API and the
 // web app share the same origin (helps when exposing via a single ngrok
@@ -87,9 +91,194 @@ app.use(express.static(staticRoot));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
+});
+
+// Middleware to extract and verify auth token from cookies
+function verifyAuthToken(req, res, next) {
+  const token = req.cookies?.auth_token;
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  db.getSessionByToken(token, (err, session) => {
+    if (err || !session) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    req.userId = session.userId;
+    req.token = token;
+    next();
+  });
+}
+
+// AUTHENTICATION ROUTES
+
+// Register new user
+app.post('/auth/register', authLimiter, (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username must be at least 3 characters' });
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    
+    // Hash password with bcrypt
+    bcrypt.hash(password, 12, (err, passwordHash) => {
+      if (err) {
+        console.error('[Auth] Hash error:', err);
+        return res.status(500).json({ error: 'Registration failed' });
+      }
+      
+      db.createUser(username, passwordHash, (err, userId) => {
+        if (err) {
+          if (err.message.includes('UNIQUE constraint')) {
+            return res.status(409).json({ error: 'Username already exists' });
+          }
+          console.error('[Auth] Register error:', err);
+          return res.status(500).json({ error: 'Registration failed' });
+        }
+        
+        // Create session token
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
+        
+        db.createSession(userId, token, expiresAt, (err) => {
+          if (err) {
+            console.error('[Auth] Session creation error:', err);
+            return res.status(500).json({ error: 'Session creation failed' });
+          }
+          
+          // Set httpOnly cookie with token
+          res.cookie('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: expiresAt - Date.now()
+        });
+        
+        res.json({ 
+          ok: true, 
+          userId: userId,
+          username: username
+        });
+      });
+    });
+  } catch (err) {
+    console.error('[Auth] Register error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Login user
+app.post('/auth/login', authLimiter, (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    db.getUserByUsername(username, (err, user) => {
+      if (err || !user) {
+        return res.status(401).json({ error: 'Invalid username or password' });
+      }
+      
+      // Compare password using bcrypt
+      bcrypt.compare(password, user.passwordHash, (err, isValid) => {
+        if (err || !isValid) {
+          return res.status(401).json({ error: 'Invalid username or password' });
+        }
+        
+        // Create session token
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
+        
+        db.createSession(user.id, token, expiresAt, (err) => {
+          if (err) {
+            console.error('[Auth] Session creation error:', err);
+            return res.status(500).json({ error: 'Login failed' });
+          }
+          
+          // Set httpOnly cookie with token
+          res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: expiresAt - Date.now()
+          });
+        
+        res.json({ 
+          ok: true,
+          userId: user.id,
+          username: user.username
+        });
+        });
+      });
+    });
+  } catch (err) {
+    console.error('[Auth] Login error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Verify token (from cookie)
+app.get('/auth/verify', (req, res) => {
+  const token = req.cookies?.auth_token;
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  db.getSessionByToken(token, (err, session) => {
+    if (err || !session) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    db.getUserById(session.userId, (err, user) => {
+      if (err || !user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      
+      res.json({ 
+        ok: true,
+        userId: user.id,
+        username: user.username
+      });
+    });
+  });
+});
+
+// Logout user
+app.post('/auth/logout', (req, res) => {
+  const token = req.cookies?.auth_token;
+  if (!token) {
+    return res.status(400).json({ error: 'Not logged in' });
+  }
+  
+  db.deleteSession(token, (err) => {
+    if (err) {
+      console.error('[Auth] Logout error:', err);
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    
+    // Clear cookie
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+    
+    res.json({ ok: true });
+  });
 });
 
 app.get('/vapidPublicKey', (req, res) => {

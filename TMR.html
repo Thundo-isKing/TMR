@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="auth-check.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMR ~ Create Your Future</title>
@@ -557,7 +558,7 @@
                 padding: 8px 14px !important;
                 border-radius: 8px !important;
                 box-shadow: none !important;
-                transition: background 0.15s ease !important;\
+                transition: background 0.15s ease !important;
                 transform: none !important;
                 transform: none !important;
             }
@@ -1036,8 +1037,11 @@
         
         <!-- Right: Notes & Themes Buttons -->
         <div class="header-right">
+            <div id="header-clock" style="padding: 0 16px; display: flex; align-items: center; font-size: 18px; font-weight: 500; color: var(--accent-color, #0089f1); font-family: 'Product Sans', Arial, Helvetica, sans-serif; letter-spacing: 0.5px;">--:--:-- --</div>
             <button id="header-notes-btn" class="header-text-btn" tabindex="0">📝 Notes</button>
             <button id="header-themes-btn" class="header-text-btn" tabindex="0">🎨 Themes</button>
+            <span id="header-username" style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; color: var(--accent-color, #0089f1);">Loading...</span>
+            <button id="header-logout-btn" class="header-text-btn" tabindex="0" title="Logout">🚪 Logout</button>
         </div>
     </header>
 

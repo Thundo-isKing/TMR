@@ -45,6 +45,24 @@ const runTransaction = (callback) => {
 
 // Initialize tables
 db.serialize(() => {
+  // User accounts
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    passwordHash TEXT NOT NULL,
+    createdAt INTEGER NOT NULL
+  )`);
+
+  // User sessions
+  db.run(`CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expiresAt INTEGER NOT NULL,
+    createdAt INTEGER NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId TEXT,
@@ -517,6 +535,81 @@ module.exports = {
            (err, rows) => {
              if(err) return cb && cb(err);
              cb && cb(null, rows || []);
+           });
+  },
+
+  // Debug: Get all categories from all users
+  getAllCategoriesDebug: function(cb) {
+    db.all(`SELECT id, userId, categoryName FROM note_categories ORDER BY userId, id`, [], (err, rows) => {
+      if (err) return cb && cb(err);
+      cb && cb(null, rows || []);
+    });
+  },
+
+  // Authentication - Users
+  createUser: function(username, passwordHash, cb) {
+    const now = Date.now();
+    db.run(`INSERT INTO users (username, passwordHash, createdAt) VALUES (?, ?, ?)`,
+           [username, passwordHash, now],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  getUserByUsername: function(username, cb) {
+    db.get(`SELECT id, username, passwordHash FROM users WHERE username = ?`,
+           [username],
+           (err, row) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, row);
+           });
+  },
+
+  getUserById: function(userId, cb) {
+    db.get(`SELECT id, username FROM users WHERE id = ?`,
+           [userId],
+           (err, row) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, row);
+           });
+  },
+
+  // Sessions
+  createSession: function(userId, token, expiresAt, cb) {
+    const now = Date.now();
+    db.run(`INSERT INTO sessions (userId, token, expiresAt, createdAt) VALUES (?, ?, ?, ?)`,
+           [userId, token, expiresAt, now],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  getSessionByToken: function(token, cb) {
+    db.get(`SELECT id, userId, token, expiresAt FROM sessions WHERE token = ? AND expiresAt > ?`,
+           [token, Date.now()],
+           (err, row) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, row);
+           });
+  },
+
+  deleteSession: function(token, cb) {
+    db.run(`DELETE FROM sessions WHERE token = ?`,
+           [token],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null);
+           });
+  },
+
+  deleteExpiredSessions: function(cb) {
+    db.run(`DELETE FROM sessions WHERE expiresAt <= ?`,
+           [Date.now()],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.changes);
            });
   }
 };

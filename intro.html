@@ -8,6 +8,45 @@
     <link rel="stylesheet" href="backgrounds.css">
     <!-- Comprehensive mobile layout override (v3) -->
     <style>
+    /* Auth buttons: no transform, no shadow, darker on hover */
+    .auth-login-btn,
+    .auth-register-btn,
+    .auth-guest-btn {
+        box-shadow: none !important;
+        transition: background-color 0.08s ease-out !important;
+        transform: none !important;
+    }
+    
+    .auth-login-btn {
+        background: #4caf50 !important;
+    }
+    
+    .auth-register-btn {
+        background: #2196f3 !important;
+    }
+    
+    .auth-guest-btn {
+        background: #ff9800 !important;
+    }
+    
+    .auth-login-btn:hover {
+        background: #45a049 !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    .auth-register-btn:hover {
+        background: #1976d2 !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    .auth-guest-btn:hover {
+        background: #e68900 !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
     @media (max-width:600px){
       /* Reset body and main layout - add bottom padding for modal space */
       body { padding-top:160px !important; padding-bottom:10px !important; margin:0; overflow-x:hidden}
@@ -89,48 +128,222 @@
     <!-- Tutorial Overlay (full page) -->
     <div id="tutorial-overlay" class="tutorial-overlay" style="display: flex;">
         <div class="tutorial-container">
-            <div class="tutorial-content">
-                <h1>Welcome to TMR</h1>
-                <p>TMR helps you manage your time, schedule events, and get AI-powered assistance.</p>
-                
-                <h2>Key Features:</h2>
-                <ul>
-                    <li><strong>📅 Calendar:</strong> View and manage events</li>
-                    <li><strong>📋 Todo List:</strong> Track your daily tasks</li>
-                    <li><strong>🤖 Meibot:</strong> AI assistant to help schedule events and create todos</li>
-                    <li><strong>🔔 Notifications:</strong> Get reminded about upcoming events</li>
-                </ul>
+            <!-- Login/Register Panel -->
+            <div id="auth-panel" style="display: none;">
+                <h1>Welcome Back to TMR</h1>
+                <p style="color: #666; margin-bottom: 30px;">Sign in to access your calendar, todos, and notes from any device.</p>
 
-                <h2>Getting Started:</h2>
-                <ol>
-                    <li>Click "Start Using TMR" below to go to your calendar</li>
-                    <li>Use the buttons to create events, todos, or chat with Meibot</li>
-                    <li>Come back to this tutorial anytime from the menu</li>
-                </ol>
+                <div id="auth-forms">
+                    <!-- Login Form -->
+                    <form id="login-form" style="display: block;">
+                        <h2>Login</h2>
+                        <div id="login-error" style="color: #d32f2f; margin-bottom: 12px; display: none;"></div>
+                        <input type="text" id="login-username" placeholder="Username" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
+                        <input type="password" id="login-password" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
+                        <button type="submit" class="tmr-btn auth-login-btn" style="width: 100%; margin-bottom: 12px;">Login</button>
+                        <p style="text-align: center; color: #666; font-size: 14px;">
+                            Don't have an account? <button type="button" id="switch-to-register" class="tmr-btn" style="background: #f0f0f0; color: #333; width: auto; padding: 6px 12px; font-size: 14px;">Register</button>
+                        </p>
+                    </form>
 
-                <button id="start-tmr-btn" class="tmr-btn" style="margin-top: 30px;">Start Using TMR</button>
+                    <!-- Register Form -->
+                    <form id="register-form" style="display: none;">
+                        <h2>Create Account</h2>
+                        <div id="register-error" style="color: #d32f2f; margin-bottom: 12px; display: none;"></div>
+                        <input type="text" id="register-username" placeholder="Username (3+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
+                        <input type="password" id="register-password" placeholder="Password (6+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
+                        <button type="submit" class="tmr-btn auth-register-btn" style="width: 100%; margin-bottom: 12px;">Register</button>
+                        <p style="text-align: center; color: #666; font-size: 14px;">
+                            Have an account? <button type="button" id="switch-to-login" class="tmr-btn" style="background: #f0f0f0; color: #333; width: auto; padding: 6px 12px; font-size: 14px;">Login</button>
+                        </p>
+                    </form>
+                </div>
+
+                <hr style="margin: 24px 0; border: none; border-top: 1px solid #ddd;">
+                <button id="guest-mode-btn" class="tmr-btn auth-guest-btn" style="width: 100%; margin-bottom: 12px;">Continue as Guest</button>
+                <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.6;">
+                    <strong>⚠️ Guest Mode Warning:</strong> Your data will not be saved across different devices or browsers. Data loss is a risk. Please consider creating an account for data persistence.
+                </div>
+            </div>
+
+            <!-- Tutorial Content -->
+            <div id="tutorial-content" style="display: block;">
+                <div class="tutorial-content">
+                    <h1>Welcome to TMR</h1>
+                    <p>TMR helps you manage your time, schedule events, and get AI-powered assistance.</p>
+                    
+                    <h2>Key Features:</h2>
+                    <ul>
+                        <li><strong>📅 Calendar:</strong> View and manage events</li>
+                        <li><strong>📋 Todo List:</strong> Track your daily tasks</li>
+                        <li><strong>🤖 Meibot:</strong> AI assistant to help schedule events and create todos</li>
+                        <li><strong>🔔 Notifications:</strong> Get reminded about upcoming events</li>
+                    </ul>
+
+                    <h2>Getting Started:</h2>
+                    <ol>
+                        <li>Click "Sign In" below to create an account or login</li>
+                        <li>Use the buttons to create events, todos, or chat with Meibot</li>
+                        <li>Come back to this tutorial anytime from the menu</li>
+                    </ol>
+
+                    <button id="signin-btn" class="tmr-btn auth-login-btn" style="margin-top: 30px;">Sign In / Register</button>
+                    <button id="guest-start-btn" class="tmr-btn auth-guest-btn" style="margin-top: 12px;">Continue as Guest</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="TMR.js"></script>
     <script>
-        // Tutorial overlay logic
+        // Authentication and Tutorial logic
         (function() {
-            const overlay = document.getElementById('tutorial-overlay');
-            const startBtn = document.getElementById('start-tmr-btn');
-            const skipBtn = document.getElementById('skip-tutorial-btn');
+            const authPanel = document.getElementById('auth-panel');
+            const tutorialContent = document.getElementById('tutorial-content');
+            const signInBtn = document.getElementById('signin-btn');
+            const guestStartBtn = document.getElementById('guest-start-btn');
+            const guestModeBtn = document.getElementById('guest-mode-btn');
+            
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const switchToRegisterBtn = document.getElementById('switch-to-register');
+            const switchToLoginBtn = document.getElementById('switch-to-login');
 
-            // Mark tutorial as seen when user clicks start
-            if (startBtn) {
-                startBtn.addEventListener('click', () => {
-                    localStorage.setItem('tmr_tutorial_seen', '1');
-                    window.location.href = 'TMR.html';
+            // Check if user is already logged in by verifying cookie auth
+            fetch('/auth/verify')
+                .then(res => {
+                    if (res.ok) return res.json();
+                    throw new Error('Not authenticated');
+                })
+                .then(data => {
+                    if (data.ok) {
+                        // User is logged in, go to TMR.html
+                        localStorage.setItem('user_id', data.userId);
+                        localStorage.setItem('tmr_tutorial_seen', '1');
+                        localStorage.removeItem('guest_mode');
+                        window.location.href = 'TMR.html';
+                    }
+                })
+                .catch(() => {
+                    // Not authenticated, show tutorial by default
+                    const guestMode = localStorage.getItem('guest_mode');
+                    if (guestMode) {
+                        // User chose guest mode previously, show tutorial
+                        showTutorial();
+                    } else {
+                        // New user: show tutorial first, auth panel hidden
+                        showTutorial();
+                    }
                 });
+
+            function showAuthPanel() {
+                authPanel.style.display = 'block';
+                tutorialContent.style.display = 'none';
             }
 
+            function showTutorial() {
+                authPanel.style.display = 'none';
+                tutorialContent.style.display = 'block';
+            }
+
+            // Tutorial buttons
+            signInBtn.addEventListener('click', showAuthPanel);
+            guestStartBtn.addEventListener('click', () => {
+                localStorage.setItem('guest_mode', '1');
+                localStorage.removeItem('user_id');
+                localStorage.setItem('tmr_tutorial_seen', '1');
+                window.location.href = 'TMR.html';
+            });
+
+            // Auth form switching
+            switchToRegisterBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+            });
+
+            switchToLoginBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+            });
+
+            // Login form submission
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('login-username').value;
+                const password = document.getElementById('login-password').value;
+                const errorDiv = document.getElementById('login-error');
+
+                try {
+                    const res = await fetch('/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await res.json();
+
+                    if (data.ok) {
+                        localStorage.setItem('user_id', data.userId);
+                        localStorage.removeItem('guest_mode');
+                        localStorage.setItem('tmr_tutorial_seen', '1');
+                        window.location.href = 'TMR.html';
+                    } else {
+                        errorDiv.textContent = data.error || 'Login failed';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (err) {
+                    errorDiv.textContent = 'Connection error: ' + err.message;
+                    errorDiv.style.display = 'block';
+                }
+            });
+
+            // Register form submission
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('register-username').value;
+                const password = document.getElementById('register-password').value;
+                const errorDiv = document.getElementById('register-error');
+
+                try {
+                    const res = await fetch('/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await res.json();
+
+                    if (data.ok) {
+                        localStorage.setItem('user_id', data.userId);
+                        localStorage.removeItem('guest_mode');
+                        localStorage.setItem('tmr_tutorial_seen', '1');
+                        window.location.href = 'TMR.html';
+                    } else {
+                        errorDiv.textContent = data.error || 'Registration failed';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (err) {
+                    errorDiv.textContent = 'Connection error: ' + err.message;
+                    errorDiv.style.display = 'block';
+                }
+            });
+
+            // Guest mode button
+            guestModeBtn.addEventListener('click', () => {
+                localStorage.setItem('guest_mode', '1');
+                localStorage.removeItem('user_id');
+                localStorage.setItem('tmr_tutorial_seen', '1');
+                window.location.href = 'TMR.html';
+            });
+
+            // Skip tutorial from menu (guest mode)
+            const skipBtn = document.getElementById('skip-tutorial-btn');
             if (skipBtn) {
                 skipBtn.addEventListener('click', () => {
+                    localStorage.setItem('guest_mode', '1');
+                    localStorage.removeItem('user_id');
                     localStorage.setItem('tmr_tutorial_seen', '1');
                     window.location.href = 'TMR.html';
                 });

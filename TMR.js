@@ -8,6 +8,12 @@ const displayClock = () => {
     const min = String(now.getMinutes()).padStart(2, '0');
     const sec = String(now.getSeconds()).padStart(2, '0');
     
+    // Update header clock
+    const headerClock = document.getElementById('header-clock');
+    if (headerClock) {
+        headerClock.textContent = `${hrs}:${min}:${sec} ${ampm}`;
+    }
+    
     // Update portrait clock (if present)
     const portraitClock = document.getElementById('clock');
     if (portraitClock) {
@@ -382,6 +388,82 @@ if (leaveBtn) {
         notesBtn.addEventListener('click', () => {
             console.log('[Header] Notes button clicked - navigating to NotesHQ');
             window.location.href = 'NotesHQ.html';
+        });
+    }
+})();
+
+// Header button: Logout / Create Account
+(function(){
+    const logoutBtn = document.getElementById('header-logout-btn');
+
+    if(logoutBtn){
+        // Check if guest mode
+        const guestMode = localStorage.getItem('guest_mode');
+        
+        if (guestMode) {
+            // Guest mode: change button to "Create Account"
+            logoutBtn.textContent = '➕ Create Account';
+            logoutBtn.addEventListener('click', () => {
+                console.log('[Header] Create Account button clicked (guest mode)');
+                window.location.href = 'intro.html';
+            });
+        } else {
+            // Logged in: normal logout button
+            logoutBtn.addEventListener('click', async () => {
+                console.log('[Header] Logout button clicked');
+                
+                try {
+                    const res = await fetch('/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                    
+                    if (res.ok) {
+                        // Clear local user data
+                        localStorage.removeItem('user_id');
+                        localStorage.removeItem('guest_mode');
+                        console.log('[Header] Logout successful');
+                        // Redirect to intro
+                        window.location.href = 'intro.html';
+                    } else {
+                        console.error('[Header] Logout failed:', res.status);
+                        alert('Logout failed');
+                    }
+                } catch (err) {
+                    console.error('[Header] Logout error:', err);
+                    alert('Logout error: ' + err.message);
+                }
+            });
+        }
+    }
+})();
+
+// Header: Display username
+(function(){
+    const usernameSpan = document.getElementById('header-username');
+    if (!usernameSpan) return; // Element doesn't exist on this page
+    
+    const guestMode = localStorage.getItem('guest_mode');
+    
+    if (guestMode) {
+        // Guest mode
+        usernameSpan.textContent = '👤 Guest';
+    } else {
+        // Fetch username from server
+        fetch('/auth/verify', {
+            credentials: 'include'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok && data.username) {
+                usernameSpan.textContent = `👤 ${data.username}`;
+            } else {
+                usernameSpan.textContent = '👤 User';
+            }
+        })
+        .catch(err => {
+            console.error('[Header] Failed to fetch username:', err);
+            usernameSpan.textContent = '👤 User';
         });
     }
 })();
