@@ -599,16 +599,7 @@
 
     <script>
         // Global state
-        function getOrCreateDeviceId() {
-            let deviceId = localStorage.getItem('tmr_device_id');
-            if (!deviceId) {
-                deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-                localStorage.setItem('tmr_device_id', deviceId);
-            }
-            return deviceId;
-        }
-
-        let currentUser = getOrCreateDeviceId();
+        let currentUser = null;
         let currentCategoryId = null;
         let editingCategoryId = null;
         let categories = [];
@@ -628,21 +619,44 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadTheme();
-            loadCategories();
-            setupEventListeners();
+            initializeUser();
         });
 
+        // Get current authenticated user
+        async function initializeUser() {
+            try {
+                const res = await fetch('/auth/verify');
+                if (res.ok) {
+                    const data = await res.json();
+                    currentUser = data.userId;
+                    console.log('[NotesHQ] User loaded:', currentUser);
+                } else {
+                    // Not authenticated, shouldn't happen because auth-check.js protects this page
+                    console.error('[NotesHQ] Not authenticated');
+                    window.location.href = 'intro.html';
+                    return;
+                }
+            } catch (err) {
+                console.error('[NotesHQ] Auth check error:', err);
+                window.location.href = 'intro.html';
+                return;
+            }
+            
+            loadCategories();
+            setupEventListeners();
+        }
+
         function loadTheme() {
-            // Load accent color from TMR's localStorage key
-            const accentColor = localStorage.getItem('tmr_accent') || '#0089f1';
+            // Load accent color from user-specific localStorage key
+            const accentColor = localStorage.getItem(`tmr_accent_user${currentUser}`) || localStorage.getItem('tmr_accent') || '#0089f1';
             document.documentElement.style.setProperty('--accent-color', accentColor);
             
             // Convert hex to RGB for the triangle pattern
             const rgb = hexToRgb(accentColor);
             document.documentElement.style.setProperty('--accent-rgb', `${rgb.r},${rgb.g},${rgb.b}`);
             
-            // Load background image from TMR's localStorage key
-            const bgImage = localStorage.getItem('tmr_bg_image');
+            // Load background image from user-specific localStorage key
+            const bgImage = localStorage.getItem(`tmr_bg_image_user${currentUser}`) || localStorage.getItem('tmr_bg_image');
             if (bgImage) {
                 document.body.style.backgroundImage = `url('${bgImage}')`;
                 document.body.style.backgroundSize = 'cover';
@@ -706,9 +720,11 @@
         }
 
         function loadCategories() {
+            console.log('[NotesHQ] Loading categories for user:', currentUser);
             fetch(`/notes/categories?userId=${encodeURIComponent(currentUser)}`)
                 .then(res => res.json())
                 .then(data => {
+                    console.log('[NotesHQ] Categories loaded:', data);
                     categories = data.categories || [];
                     renderCategories();
                 })

@@ -44,6 +44,142 @@ if (refreshBtn) {
     });
 }
 
+// Get current user ID for user-specific localStorage
+let currentUserId = null;
+async function initializeUserId() {
+    try {
+        const res = await fetch('/auth/verify');
+        if (res.ok) {
+            const data = await res.json();
+            currentUserId = data.userId;
+            console.log('[TMR] User ID loaded:', currentUserId);
+        }
+    } catch (err) {
+        console.error('[TMR] Failed to load user ID:', err);
+    }
+}
+
+// Make localStorage keys user-specific
+function getStorageKey(baseKey) {
+    if (!currentUserId) return baseKey;
+    return `${baseKey}_user${currentUserId}`;
+}
+
+// ========== Server-side data management ==========
+
+// Events API
+async function fetchEvents() {
+    try {
+        const res = await fetch('/events');
+        if (res.ok) {
+            const data = await res.json();
+            return data.events || [];
+        }
+    } catch (err) {
+        console.error('[TMR] Fetch events error:', err);
+    }
+    return [];
+}
+
+async function createEvent(event) {
+    try {
+        const res = await fetch('/events/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return data.eventId;
+        }
+    } catch (err) {
+        console.error('[TMR] Create event error:', err);
+    }
+    return null;
+}
+
+async function updateEvent(eventId, event) {
+    try {
+        const res = await fetch(`/events/${eventId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event })
+        });
+        return res.ok;
+    } catch (err) {
+        console.error('[TMR] Update event error:', err);
+    }
+    return false;
+}
+
+async function deleteEvent(eventId) {
+    try {
+        const res = await fetch(`/events/${eventId}`, { method: 'DELETE' });
+        return res.ok;
+    } catch (err) {
+        console.error('[TMR] Delete event error:', err);
+    }
+    return false;
+}
+
+// Todos API
+async function fetchTodos() {
+    try {
+        const res = await fetch('/todos');
+        if (res.ok) {
+            const data = await res.json();
+            return data.todos || [];
+        }
+    } catch (err) {
+        console.error('[TMR] Fetch todos error:', err);
+    }
+    return [];
+}
+
+async function createTodo(todo) {
+    try {
+        const res = await fetch('/todos/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ todo })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return data.todoId;
+        }
+    } catch (err) {
+        console.error('[TMR] Create todo error:', err);
+    }
+    return null;
+}
+
+async function updateTodo(todoId, todo) {
+    try {
+        const res = await fetch(`/todos/${todoId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ todo })
+        });
+        return res.ok;
+    } catch (err) {
+        console.error('[TMR] Update todo error:', err);
+    }
+    return false;
+}
+
+async function deleteTodo(todoId) {
+    try {
+        const res = await fetch(`/todos/${todoId}`, { method: 'DELETE' });
+        return res.ok;
+    } catch (err) {
+        console.error('[TMR] Delete todo error:', err);
+    }
+    return false;
+}
+
+// Initialize user ID immediately
+initializeUserId().catch(err => console.error('[TMR] Init error:', err));
+
 // Add refresh button to menu (CurrentSchedules)
 const refreshMenuBtn = document.getElementById('refresh-btn-menu');
 if (refreshMenuBtn) {
@@ -110,7 +246,7 @@ if (leaveBtn) {
     function initAccentPicker() {
         const picker = document.getElementById('accent-picker');
         const preview = document.getElementById('accent-preview');
-        const saved = localStorage.getItem(ACCENT_KEY) || '#0089f1';
+        const saved = localStorage.getItem(getStorageKey(ACCENT_KEY)) || '#0089f1';
         
         console.log('[Accent] Init. Picker:', !!picker, 'Preview:', !!preview, 'Saved:', saved);
         
@@ -163,7 +299,7 @@ if (leaveBtn) {
         // Update on input (while dragging) and on change
         function updateColor(hex) {
             console.log('[Accent] updateColor called with:', hex);
-            localStorage.setItem(ACCENT_KEY, hex);
+            localStorage.setItem(getStorageKey(ACCENT_KEY), hex);
             applyAccent(hex);
             if(preview) {
                 console.log('[Accent] Updating preview to:', hex);
@@ -259,7 +395,7 @@ if (leaveBtn) {
         }
         
         // Load and display stored image on init
-        const stored = localStorage.getItem(BG_IMAGE_KEY);
+        const stored = localStorage.getItem(getStorageKey(BG_IMAGE_KEY));
         if(stored) {
             console.log('[BgImage] Found stored image');
             previewImg.src = stored;
@@ -292,7 +428,7 @@ if (leaveBtn) {
         
         function clearBackgroundImage() {
             console.log('[BgImage] Clearing image');
-            localStorage.removeItem(BG_IMAGE_KEY);
+            localStorage.removeItem(getStorageKey(BG_IMAGE_KEY));
             fileInput.value = '';
             previewContainer.style.display = 'none';
             noneText.style.display = 'block';
@@ -310,7 +446,7 @@ if (leaveBtn) {
             reader.onload = (event) => {
                 const dataUrl = event.target.result;
                 console.log('[BgImage] File read, storing and applying');
-                localStorage.setItem(BG_IMAGE_KEY, dataUrl);
+                localStorage.setItem(getStorageKey(BG_IMAGE_KEY), dataUrl);
                 previewImg.src = dataUrl;
                 previewContainer.style.display = 'flex';
                 noneText.style.display = 'none';

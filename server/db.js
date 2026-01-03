@@ -150,6 +150,34 @@ db.serialize(() => {
     createdAt INTEGER NOT NULL,
     FOREIGN KEY(noteId) REFERENCES notes(id)
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS user_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    date TEXT NOT NULL,
+    startTime TEXT,
+    endTime TEXT,
+    description TEXT DEFAULT '',
+    reminderMinutes INTEGER DEFAULT 0,
+    reminderAt INTEGER,
+    syncId TEXT,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS user_todos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    reminderMinutes INTEGER DEFAULT 0,
+    reminderAt INTEGER,
+    createdAt INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )`);
 });
 
 module.exports = {
@@ -607,6 +635,104 @@ module.exports = {
   deleteExpiredSessions: function(cb) {
     db.run(`DELETE FROM sessions WHERE expiresAt <= ?`,
            [Date.now()],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.changes);
+           });
+  },
+
+  // User Events
+  createEvent: function(userId, event, cb) {
+    const now = Date.now();
+    db.run(`INSERT INTO user_events (userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           [userId, event.title, event.date, event.startTime || null, event.endTime || null, event.description || '', event.reminderMinutes || 0, event.reminderAt || null, event.syncId || null, now, now],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  getEventsByUserId: function(userId, cb) {
+    db.all(`SELECT id, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt FROM user_events WHERE userId = ? ORDER BY date DESC, startTime DESC`,
+           [userId],
+           (err, rows) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, rows || []);
+           });
+  },
+
+  getEventById: function(eventId, cb) {
+    db.get(`SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt FROM user_events WHERE id = ?`,
+           [eventId],
+           (err, row) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, row);
+           });
+  },
+
+  updateEvent: function(eventId, event, cb) {
+    const now = Date.now();
+    db.run(`UPDATE user_events SET title=?, date=?, startTime=?, endTime=?, description=?, reminderMinutes=?, reminderAt=?, syncId=?, updatedAt=? WHERE id=?`,
+           [event.title, event.date, event.startTime || null, event.endTime || null, event.description || '', event.reminderMinutes || 0, event.reminderAt || null, event.syncId || null, now, eventId],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.changes);
+           });
+  },
+
+  deleteEvent: function(eventId, cb) {
+    db.run(`DELETE FROM user_events WHERE id = ?`,
+           [eventId],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.changes);
+           });
+  },
+
+  // User Todos
+  createTodo: function(userId, todo, cb) {
+    const now = Date.now();
+    db.run(`INSERT INTO user_todos (userId, text, completed, reminderMinutes, reminderAt, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           [userId, todo.text, todo.completed ? 1 : 0, todo.reminderMinutes || 0, todo.reminderAt || null, now, now],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.lastID);
+           });
+  },
+
+  getTodosByUserId: function(userId, cb) {
+    db.all(`SELECT id, text, completed, reminderMinutes, reminderAt, createdAt, updatedAt FROM user_todos WHERE userId = ? ORDER BY createdAt DESC`,
+           [userId],
+           (err, rows) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, rows || []);
+           });
+  },
+
+  getTodoById: function(todoId, cb) {
+    db.get(`SELECT id, userId, text, completed, reminderMinutes, reminderAt, createdAt, updatedAt FROM user_todos WHERE id = ?`,
+           [todoId],
+           (err, row) => {
+             if (err) return cb && cb(err);
+             cb && cb(null, row);
+           });
+  },
+
+  updateTodo: function(todoId, todo, cb) {
+    const now = Date.now();
+    db.run(`UPDATE user_todos SET text=?, completed=?, reminderMinutes=?, reminderAt=?, updatedAt=? WHERE id=?`,
+           [todo.text, todo.completed ? 1 : 0, todo.reminderMinutes || 0, todo.reminderAt || null, now, todoId],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.changes);
+           });
+  },
+
+  deleteTodo: function(todoId, cb) {
+    db.run(`DELETE FROM user_todos WHERE id = ?`,
+           [todoId],
            function(err) {
              if (err) return cb && cb(err);
              cb && cb(null, this.changes);

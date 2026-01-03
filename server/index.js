@@ -116,7 +116,7 @@ function verifyAuthToken(req, res, next) {
 // AUTHENTICATION ROUTES
 
 // Register new user
-app.post('/auth/register', authLimiter, (req, res) => {
+app.post('/auth/register', (req, res) => {
   try {
     const { username, password } = req.body;
     
@@ -132,34 +132,30 @@ app.post('/auth/register', authLimiter, (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
     
-    // Hash password with bcrypt
-    bcrypt.hash(password, 12, (err, passwordHash) => {
+    // Hash password with SHA256
+    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    
+    db.createUser(username, passwordHash, (err, userId) => {
       if (err) {
-        console.error('[Auth] Hash error:', err);
+        if (err.message.includes('UNIQUE constraint')) {
+          return res.status(409).json({ error: 'Username already exists' });
+        }
+        console.error('[Auth] Register error:', err);
         return res.status(500).json({ error: 'Registration failed' });
       }
       
-      db.createUser(username, passwordHash, (err, userId) => {
+      // Create session token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
+      
+      db.createSession(userId, token, expiresAt, (err) => {
         if (err) {
-          if (err.message.includes('UNIQUE constraint')) {
-            return res.status(409).json({ error: 'Username already exists' });
-          }
-          console.error('[Auth] Register error:', err);
-          return res.status(500).json({ error: 'Registration failed' });
+          console.error('[Auth] Session creation error:', err);
+          return res.status(500).json({ error: 'Session creation failed' });
         }
         
-        // Create session token
-        const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
-        
-        db.createSession(userId, token, expiresAt, (err) => {
-          if (err) {
-            console.error('[Auth] Session creation error:', err);
-            return res.status(500).json({ error: 'Session creation failed' });
-          }
-          
-          // Set httpOnly cookie with token
-          res.cookie('auth_token', token, {
+        // Set httpOnly cookie with token
+        res.cookie('auth_token', token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
@@ -180,7 +176,7 @@ app.post('/auth/register', authLimiter, (req, res) => {
 });
 
 // Login user
-app.post('/auth/login', authLimiter, (req, res) => {
+app.post('/auth/login', (req, res) => {
   try {
     const { username, password } = req.body;
     
@@ -193,36 +189,35 @@ app.post('/auth/login', authLimiter, (req, res) => {
         return res.status(401).json({ error: 'Invalid username or password' });
       }
       
-      // Compare password using bcrypt
-      bcrypt.compare(password, user.passwordHash, (err, isValid) => {
-        if (err || !isValid) {
-          return res.status(401).json({ error: 'Invalid username or password' });
+      // Compare password using SHA256 (to match existing database)
+      const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+      if (passwordHash !== user.passwordHash) {
+        return res.status(401).json({ error: 'Invalid username or password' });
+      }
+      
+      // Create session token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
+      
+      db.createSession(user.id, token, expiresAt, (err) => {
+        if (err) {
+          console.error('[Auth] Session creation error:', err);
+          return res.status(500).json({ error: 'Login failed' });
         }
         
-        // Create session token
-        const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
-        
-        db.createSession(user.id, token, expiresAt, (err) => {
-          if (err) {
-            console.error('[Auth] Session creation error:', err);
-            return res.status(500).json({ error: 'Login failed' });
-          }
-          
-          // Set httpOnly cookie with token
-          res.cookie('auth_token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: expiresAt - Date.now()
-          });
-        
-        res.json({ 
-          ok: true,
-          userId: user.id,
-          username: user.username
+        // Set httpOnly cookie with token
+        res.cookie('auth_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: expiresAt - Date.now()
         });
-        });
+      
+      res.json({ 
+        ok: true,
+        userId: user.id,
+        username: user.username
+      });
       });
     });
   } catch (err) {
@@ -1231,6 +1226,206 @@ app.post('/notes/tasks/confirm', (req, res) => {
     }
   } catch (err) {
     console.error('[Notes] Task confirmation error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ========== EVENTS ENDPOINTS ==========
+
+app.post('/events/create', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { event } = req.body;
+    if (!event || !event.title || !event.date) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.createEvent(session.userId, event, (err, eventId) => {
+        if (err) {
+          console.error('[Events] Create error:', err);
+          return res.status(500).json({ error: 'Failed to create event' });
+        }
+        res.json({ ok: true, eventId });
+      });
+    });
+  } catch (err) {
+    console.error('[Events] Create error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/events', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.getEventsByUserId(session.userId, (err, events) => {
+        if (err) {
+          console.error('[Events] Get error:', err);
+          return res.status(500).json({ error: 'Failed to get events' });
+        }
+        res.json({ events });
+      });
+    });
+  } catch (err) {
+    console.error('[Events] Get error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/events/:eventId', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { eventId } = req.params;
+    const { event } = req.body;
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.updateEvent(eventId, event, (err, changes) => {
+        if (err) {
+          console.error('[Events] Update error:', err);
+          return res.status(500).json({ error: 'Failed to update event' });
+        }
+        res.json({ ok: true, changes });
+      });
+    });
+  } catch (err) {
+    console.error('[Events] Update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/events/:eventId', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { eventId } = req.params;
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.deleteEvent(eventId, (err, changes) => {
+        if (err) {
+          console.error('[Events] Delete error:', err);
+          return res.status(500).json({ error: 'Failed to delete event' });
+        }
+        res.json({ ok: true, changes });
+      });
+    });
+  } catch (err) {
+    console.error('[Events] Delete error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ========== TODOS ENDPOINTS ==========
+
+app.post('/todos/create', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { todo } = req.body;
+    if (!todo || !todo.text) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.createTodo(session.userId, todo, (err, todoId) => {
+        if (err) {
+          console.error('[Todos] Create error:', err);
+          return res.status(500).json({ error: 'Failed to create todo' });
+        }
+        res.json({ ok: true, todoId });
+      });
+    });
+  } catch (err) {
+    console.error('[Todos] Create error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/todos', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.getTodosByUserId(session.userId, (err, todos) => {
+        if (err) {
+          console.error('[Todos] Get error:', err);
+          return res.status(500).json({ error: 'Failed to get todos' });
+        }
+        res.json({ todos });
+      });
+    });
+  } catch (err) {
+    console.error('[Todos] Get error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/todos/:todoId', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { todoId } = req.params;
+    const { todo } = req.body;
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.updateTodo(todoId, todo, (err, changes) => {
+        if (err) {
+          console.error('[Todos] Update error:', err);
+          return res.status(500).json({ error: 'Failed to update todo' });
+        }
+        res.json({ ok: true, changes });
+      });
+    });
+  } catch (err) {
+    console.error('[Todos] Update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/todos/:todoId', (req, res) => {
+  try {
+    const token = req.cookies?.auth_token;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { todoId } = req.params;
+
+    db.getSessionByToken(token, (err, session) => {
+      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+
+      db.deleteTodo(todoId, (err, changes) => {
+        if (err) {
+          console.error('[Todos] Delete error:', err);
+          return res.status(500).json({ error: 'Failed to delete todo' });
+        }
+        res.json({ ok: true, changes });
+      });
+    });
+  } catch (err) {
+    console.error('[Todos] Delete error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
