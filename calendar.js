@@ -4,24 +4,26 @@
 */
 /* eslint-disable no-undef */
 (function(){
+  const __tmrCalendarInit = () => {
   const STORAGE_KEY = 'tmr_events';
 
   // Helper: serverFetch with fallbacks (mirrors TMR.js logic)
   async function serverFetch(path, opts={}){
     try{
+      const finalOpts = Object.assign({ credentials: 'include' }, opts);
       if(location.hostname.includes('ngrok')){
         const url = location.origin + path;
         try{
-          const res = await fetch(url, opts);
+          const res = await fetch(url, finalOpts);
           if(res.ok) return res;
         }catch(e){ console.debug('[calendar.serverFetch] ngrok fetch failed', e); }
       }
       try{
-        const res = await fetch(path, opts);
+        const res = await fetch(path, finalOpts);
         if(res.ok) return res;
       }catch(e){ /* try fallback */ }
       const url = 'http://localhost:3002' + path;
-      const res = await fetch(url, opts);
+      const res = await fetch(url, finalOpts);
       return res;
     }catch(e){
       console.warn('[calendar.serverFetch] all attempts failed', e);
@@ -31,8 +33,36 @@
 
   // Helpers
   function loadEvents(){
-    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-    catch(e){ return []; }
+    let events;
+    try{ events = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+    catch(e){ events = []; }
+
+    // Ownership tagging and filtering.
+    // - If we're logged in, ensure events in this user's namespace are tagged with ownerUserId.
+    // - Never show events explicitly tagged to a different user.
+    try {
+      const uid = (window.AuthClient && typeof window.AuthClient.getUserId === 'function') ? window.AuthClient.getUserId() : null;
+      if (!uid) return Array.isArray(events) ? events : [];
+      if (!Array.isArray(events)) events = [];
+
+      let changed = false;
+      const filtered = [];
+      for (const ev of events) {
+        if (!ev || typeof ev !== 'object') continue;
+        if (ev.ownerUserId && String(ev.ownerUserId) !== String(uid)) continue;
+        if (!ev.ownerUserId) {
+          ev.ownerUserId = uid;
+          changed = true;
+        }
+        filtered.push(ev);
+      }
+      if (changed) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered)); } catch (e) {}
+      }
+      return filtered;
+    } catch (e) {
+      return Array.isArray(events) ? events : [];
+    }
   }
   function saveEvents(events){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
@@ -71,6 +101,12 @@
     
     // Add/update modification timestamp
     event.lastModified = Date.now();
+
+    // Stamp ownership when authenticated
+    try {
+      const uid = (window.AuthClient && typeof window.AuthClient.getUserId === 'function') ? window.AuthClient.getUserId() : null;
+      if (uid) event.ownerUserId = uid;
+    } catch (e) {}
     
     if(idx >= 0) events[idx] = event; else events.push(event);
     saveEvents(events);
@@ -85,21 +121,13 @@
     // If event has a googleEventId, sync deletion to Google Calendar
     if (eventToDelete && eventToDelete.googleEventId) {
       try {
-        // Get userId - try from window.GoogleCalendarClient first, then from localStorage
-        let userId = 'default';
-        if (window.GoogleCalendarClient && typeof window.GoogleCalendarClient.getGoogleCalendarUserId === 'function') {
-          userId = window.GoogleCalendarClient.getGoogleCalendarUserId();
-        } else {
-          userId = localStorage.getItem('tmr_gcal_user_id') || 'default';
-        }
-        
-        console.log('[calendar] Syncing deletion with userId:', userId);
+        console.log('[calendar] Syncing deletion to Google Calendar');
         
         // Send delete request to server (don't wait for response)
         serverFetch('/sync/google-calendar/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, googleEventId: eventToDelete.googleEventId, tmrEventId: id })
+          body: JSON.stringify({ googleEventId: eventToDelete.googleEventId, tmrEventId: id })
         }).catch(err => console.warn('[calendar] Failed to sync deletion to Google Calendar:', err));
       } catch (err) {
         console.warn('[calendar] Error syncing deletion:', err);
@@ -441,18 +469,88 @@
       return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
     }
   }
-  function applyAccent(hex){
-    if(!hex) return;
-    const root = document.documentElement;
-    root.style.setProperty('--accent-color', hex);
-    root.style.setProperty('--accent-hover', darkenHex(hex,18));
-    // Also set --accent-rgb for backgrounds.css
-    const rgb = hexToRgbArr(hex);
-    root.style.setProperty('--accent-rgb', rgb.join(','));
+  function isValidHexAccent(value) {
+    if (typeof value !== 'string') return false;
+    const v = value.trim();
+    return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v);
   }
-  // apply saved accent on load
-  const savedAccent = localStorage.getItem(ACCENT_KEY) || '#0089f1';
-  applyAccent(savedAccent);
+  function normalizeHex(value) {
+    const v = String(value || '').trim();
+    if (!isValidHexAccent(v)) return '';
+    if (v.length === 4) {
+      return '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+    }
+    return v;
+  }
+  function tryComputeRgbFromCssColor(color) {
+    try {
+      const probe = document.createElement('span');
+      probe.style.color = color;
+      probe.style.display = 'none';
+      document.documentElement.appendChild(probe);
+      const computed = getComputedStyle(probe).color;
+      probe.remove();
+      const m = computed && computed.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+      return m ? (m[1] + ',' + m[2] + ',' + m[3]) : '';
+    } catch (_) {
+      return '';
+    }
+  }
+  function applyAccent(color){
+    if(!color) return;
+    const root = document.documentElement;
+
+    // Respect existing pre-paint accent; only set when we have an explicit value.
+    root.style.setProperty('--accent-color', color);
+
+    // Derived vars are only computed for hex accents.
+    const hex = normalizeHex(color);
+    if (hex) {
+      root.style.setProperty('--accent-hover', darkenHex(hex,18));
+      const rgb = hexToRgbArr(hex);
+      root.style.setProperty('--accent-rgb', rgb.join(','));
+    } else {
+      // If accent-rgb is missing, try to compute it from the CSS color.
+      const existingRgb = (root.style.getPropertyValue('--accent-rgb') || '').trim();
+      if (!existingRgb && typeof getComputedStyle === 'function') {
+        const rgbStr = tryComputeRgbFromCssColor(color);
+        if (rgbStr) root.style.setProperty('--accent-rgb', rgbStr);
+      }
+    }
+  }
+  function getInitialAccent() {
+    const root = document.documentElement;
+    const inline = (root && root.style ? root.style.getPropertyValue('--accent-color') : '') || '';
+    if (inline.trim()) return inline.trim();
+
+    // Try the global boot snapshot (unscoped).
+    try {
+      const raw = localStorage.getItem('tmr_boot_theme');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.accentColor === 'string' && parsed.accentColor.trim()) {
+          return parsed.accentColor.trim();
+        }
+      }
+    } catch (_) {}
+
+    // Prefer the theme system key, then legacy accent key.
+    try {
+      const themeAccent = localStorage.getItem('theme_accent_color');
+      if (themeAccent && String(themeAccent).trim()) return String(themeAccent).trim();
+    } catch (_) {}
+
+    try {
+      const legacy = localStorage.getItem(ACCENT_KEY);
+      if (legacy && String(legacy).trim()) return String(legacy).trim();
+    } catch (_) {}
+
+    return '';
+  }
+
+  // Apply accent only if we have one (avoid forcing default blue during startup).
+  const initialAccent = getInitialAccent();
+  if (initialAccent) applyAccent(initialAccent);
 
   // State
   let viewDate = new Date(); // current month view (uses local timezone for month/year)
@@ -695,6 +793,27 @@
     renderCalendar();
   });
 
+  // When auth changes/restores, re-render from the correct user-scoped storage.
+  window.addEventListener('tmr:auth-changed', () => {
+    renderCalendar();
+  });
+
+  };
+
+  const __tmrStart = () => {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', __tmrCalendarInit, { once: true });
+    } else {
+      __tmrCalendarInit();
+    }
+  };
+
+  if (typeof window !== 'undefined' && window.AuthClient && window.AuthClient.ready && typeof window.AuthClient.ready.then === 'function') {
+    window.AuthClient.ready.then(__tmrStart).catch(__tmrStart);
+  } else {
+    __tmrStart();
+  }
+
 })();
 
 /* To-do app: saves to localStorage (key: tmr_todos)
@@ -702,6 +821,7 @@
    Modal editor for viewing/editing todo details
 */
 (function(){
+  const __tmrTodoInit = () => {
   const TODO_KEY = 'tmr_todos';
   const createBtn = document.getElementById('create-todo-btn');
   const listEl = document.getElementById('todo-list');
@@ -1062,8 +1182,7 @@
       titleSpan.addEventListener('click', () => openTodoModal(t.id));
       txt.appendChild(titleSpan);
       const actions = document.createElement('div'); actions.className = 'todo-actions';
-      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all.splice(idx,1); saveTodos(all); render(); renderMenu(); }
-      });
+      const delBtn = document.createElement('button'); delBtn.className='small-tmr-btn'; delBtn.textContent='Delete'; delBtn.addEventListener('click', ()=>{ if(!confirm('Delete this todo?')) return; const all = loadTodos(); const idx = all.findIndex(x=>x.id===t.id); if(idx>=0){ all.splice(idx,1); saveTodos(all); render(); renderMenu(); } });
       actions.appendChild(delBtn);
       li.appendChild(cb);
       li.appendChild(txt);
@@ -1093,5 +1212,21 @@
   setInterval(() => {
     renderCalendar();
   }, 3600000); // 1 hour in milliseconds
+
+  };
+
+  const __tmrStart = () => {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', __tmrTodoInit, { once: true });
+    } else {
+      __tmrTodoInit();
+    }
+  };
+
+  if (typeof window !== 'undefined' && window.AuthClient && window.AuthClient.ready && typeof window.AuthClient.ready.then === 'function') {
+    window.AuthClient.ready.then(__tmrStart).catch(__tmrStart);
+  } else {
+    __tmrStart();
+  }
 
 })();

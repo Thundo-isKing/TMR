@@ -1,6 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const webpush = require('web-push');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
@@ -75,8 +79,52 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
 // start scheduler
 require('./scheduler')({ db, webpush });
 
+const SESSION_COOKIE = 'tmr_session';
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const secureCookie = process.env.NODE_ENV === 'production';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const dbAsync = (fn, ...args) => new Promise((resolve, reject) => {
+  try {
+    fn(...args, (err, result) => err ? reject(err) : resolve(result));
+  } catch (err) {
+    reject(err);
+  }
+});
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: secureCookie,
+  maxAge: SESSION_TTL_MS
+};
+
+const setSessionCookie = (res, token) => {
+  res.cookie(SESSION_COOKIE, token, cookieOptions);
+};
+
+const clearSessionCookie = (res) => {
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', secure: secureCookie });
+};
+
+const requireAuth = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'auth_required' });
+  }
+  next();
+};
+
 const app = express();
-app.use(express.json());
+// Needed for correct client IP handling behind proxies (ngrok/vercel/reverse proxies)
+// and to satisfy express-rate-limit validation when X-Forwarded-For is present.
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 // Serve the static client from the project root so the push API and the
@@ -89,192 +137,54 @@ app.use(express.static(staticRoot));
 // Simple CORS middleware to allow the client (served on a different port
 // during development) to call this API. In production restrict origins.
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  const origin = req.get('origin');
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
-// Middleware to extract and verify auth token from cookies
-function verifyAuthToken(req, res, next) {
-  const token = req.cookies?.auth_token;
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-  
-  db.getSessionByToken(token, (err, session) => {
-    if (err || !session) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-    req.userId = session.userId;
-    req.token = token;
-    next();
-  });
-}
-
-// AUTHENTICATION ROUTES
-
-// Register new user
-app.post('/auth/register', (req, res) => {
+// Attach authenticated user from session cookie if present
+const attachUser = async (req, res, next) => {
+  const token = req.cookies ? req.cookies[SESSION_COOKIE] : null;
+  if (!token) return next();
   try {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    const session = await dbAsync(db.getSession, token);
+    if (!session) return next();
+    if (session.expiresAt <= Date.now()) {
+      db.deleteSession(token, () => {});
+      return next();
     }
-    
-    if (username.length < 3) {
-      return res.status(400).json({ error: 'Username must be at least 3 characters' });
+
+    const user = await dbAsync(db.getUserById, session.userId);
+    if (!user) {
+      db.deleteSession(token, () => {});
+      return next();
     }
-    
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-    
-    // Hash password with SHA256
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-    
-    db.createUser(username, passwordHash, (err, userId) => {
-      if (err) {
-        if (err.message.includes('UNIQUE constraint')) {
-          return res.status(409).json({ error: 'Username already exists' });
-        }
-        console.error('[Auth] Register error:', err);
-        return res.status(500).json({ error: 'Registration failed' });
-      }
-      
-      // Create session token
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
-      
-      db.createSession(userId, token, expiresAt, (err) => {
-        if (err) {
-          console.error('[Auth] Session creation error:', err);
-          return res.status(500).json({ error: 'Session creation failed' });
-        }
-        
-        // Set httpOnly cookie with token
-        res.cookie('auth_token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: expiresAt - Date.now()
-        });
-        
-        res.json({ 
-          ok: true, 
-          userId: userId,
-          username: username
-        });
-      });
-    });
+
+    req.user = { id: user.id, username: user.username };
+    req.sessionToken = token;
   } catch (err) {
-    console.error('[Auth] Register error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('[Auth] Failed to attach user:', err.message);
   }
-});
+  return next();
+};
 
-// Login user
-app.post('/auth/login', (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
-    }
-    
-    db.getUserByUsername(username, (err, user) => {
-      if (err || !user) {
-        return res.status(401).json({ error: 'Invalid username or password' });
-      }
-      
-      // Compare password using SHA256 (to match existing database)
-      const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-      if (passwordHash !== user.passwordHash) {
-        return res.status(401).json({ error: 'Invalid username or password' });
-      }
-      
-      // Create session token
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
-      
-      db.createSession(user.id, token, expiresAt, (err) => {
-        if (err) {
-          console.error('[Auth] Session creation error:', err);
-          return res.status(500).json({ error: 'Login failed' });
-        }
-        
-        // Set httpOnly cookie with token
-        res.cookie('auth_token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: expiresAt - Date.now()
-        });
-      
-      res.json({ 
-        ok: true,
-        userId: user.id,
-        username: user.username
-      });
-      });
-    });
-  } catch (err) {
-    console.error('[Auth] Login error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+app.use(attachUser);
 
-// Verify token (from cookie)
-app.get('/auth/verify', (req, res) => {
-  const token = req.cookies?.auth_token;
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-  
-  db.getSessionByToken(token, (err, session) => {
-    if (err || !session) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-    
-    db.getUserById(session.userId, (err, user) => {
-      if (err || !user) {
-        return res.status(401).json({ error: 'User not found' });
-      }
-      
-      res.json({ 
-        ok: true,
-        userId: user.id,
-        username: user.username
-      });
-    });
-  });
-});
-
-// Logout user
-app.post('/auth/logout', (req, res) => {
-  const token = req.cookies?.auth_token;
-  if (!token) {
-    return res.status(400).json({ error: 'Not logged in' });
-  }
-  
-  db.deleteSession(token, (err) => {
-    if (err) {
-      console.error('[Auth] Logout error:', err);
-      return res.status(500).json({ error: 'Logout failed' });
-    }
-    
-    // Clear cookie
-    res.clearCookie('auth_token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    });
-    
-    res.json({ ok: true });
-  });
-});
+const createSessionForUser = async (userId) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + SESSION_TTL_MS;
+  await dbAsync(db.createSession, userId, token, expiresAt);
+  return { token, expiresAt };
+};
 
 app.get('/vapidPublicKey', (req, res) => {
   res.json({ publicKey: VAPID_PUBLIC_KEY });
@@ -388,17 +298,102 @@ app.post('/reminder', (req, res) => {
   });
 });
 
+// ========== AUTHENTICATION ==========
+
+app.get('/auth/session', (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'not_authenticated' });
+  }
+  res.json({ user: req.user });
+});
+
+app.post('/auth/register', authLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'username and password required' });
+    }
+
+    if (typeof username !== 'string' || username.trim().length < 3 || username.trim().length > 40) {
+      return res.status(400).json({ error: 'username must be 3-40 characters' });
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ error: 'password must be at least 8 characters' });
+    }
+
+    const normalizedUsername = username.trim();
+    const existing = await dbAsync(db.getUserByUsername, normalizedUsername);
+    if (existing) {
+      return res.status(409).json({ error: 'username_taken' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const userId = await dbAsync(db.createUser, normalizedUsername, hash);
+    const { token } = await createSessionForUser(userId);
+    setSessionCookie(res, token);
+
+    res.json({ user: { id: userId, username: normalizedUsername } });
+  } catch (err) {
+    console.error('[Auth] Register error:', err.message);
+    res.status(500).json({ error: 'register_failed' });
+  }
+});
+
+app.post('/auth/login', authLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'username and password required' });
+    }
+
+    const user = await dbAsync(db.getUserByUsername, username.trim());
+    if (!user) {
+      return res.status(401).json({ error: 'invalid_credentials' });
+    }
+
+    const matches = await bcrypt.compare(password, user.passwordHash);
+    if (!matches) {
+      return res.status(401).json({ error: 'invalid_credentials' });
+    }
+
+    const { token } = await createSessionForUser(user.id);
+    setSessionCookie(res, token);
+    res.json({ user: { id: user.id, username: user.username } });
+  } catch (err) {
+    console.error('[Auth] Login error:', err.message);
+    res.status(500).json({ error: 'login_failed' });
+  }
+});
+
+app.post('/auth/logout', (req, res) => {
+  const token = req.cookies ? req.cookies[SESSION_COOKIE] : null;
+  if (token) {
+    db.deleteSession(token, () => {});
+  }
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+app.post('/auth/logout-all', requireAuth, (req, res) => {
+  db.deleteSessionsByUser(req.user.id, () => {});
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
 // ========== GOOGLE CALENDAR ENDPOINTS ==========
 
 // Get OAuth authorization URL (with CSRF protection)
-app.get('/auth/google', (req, res) => {
+app.get('/auth/google', requireAuth, (req, res) => {
   if (!googleCalendarManager || !sessionStore) {
     console.error('[GoogleCalendar] Manager not initialized');
     return res.status(503).json({ error: 'Google Calendar not configured' });
   }
 
   try {
-    const userId = req.query.userId || 'default';
+    const userId = String(req.user.id);
     
     // Validate userId
     if (typeof userId !== 'string' || userId.length === 0 || userId.length > 255) {
@@ -496,7 +491,7 @@ app.get('/auth/google/callback', async (req, res) => {
       // Clean up session
       sessionStore.getAndDelete(state);
 
-      res.redirect(`/TMR.html?gcal_auth=success&userId=${encodeURIComponent(userId)}`);
+      res.redirect(`/TMR.html?gcal_auth=success`);
     });
 
   } catch (err) {
@@ -506,13 +501,13 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 // Check if user has Google Calendar connected
-app.get('/auth/google/status', (req, res) => {
+app.get('/auth/google/status', requireAuth, (req, res) => {
   if (!googleCalendarManager) {
     console.debug('[GoogleCalendar] Status check: googleCalendarManager not initialized');
     return res.json({ connected: false });
   }
   
-  const userId = req.query.userId || 'default';
+  const userId = String(req.user.id);
   db.getGoogleCalendarToken(userId, (err, token) => {
     if (err) {
       console.error('[GoogleCalendar] Status check error for user', userId, ':', err.message);
@@ -525,7 +520,7 @@ app.get('/auth/google/status', (req, res) => {
     
     // Check if token is still valid (not expired)
     const now = Date.now();
-    const isExpired = token.expiry_date && token.expiry_date < now;
+    const isExpired = token.expiresAt && token.expiresAt < now;
     if (isExpired) {
       console.warn('[GoogleCalendar] Token expired for user', userId, '- requires refresh');
       return res.json({ connected: false, reason: 'token_expired' });
@@ -537,14 +532,9 @@ app.get('/auth/google/status', (req, res) => {
 });
 
 // Logout: disconnect user from Google Calendar
-app.post('/auth/google/logout', (req, res) => {
+app.post('/auth/google/logout', requireAuth, (req, res) => {
   console.log('[GoogleCalendar] Logout request received:', req.body);
-  const userId = req.body.userId || 'default';
-  
-  if (!userId) {
-    console.error('[GoogleCalendar] No userId provided');
-    return res.status(400).json({ error: 'No userId provided' });
-  }
+  const userId = String(req.user.id);
   
   try {
     let tokenDeleted = false;
@@ -582,12 +572,12 @@ app.post('/auth/google/logout', (req, res) => {
 });
 
 // Manual sync endpoint: sync TMR events with Google Calendar
-app.post('/sync/google-calendar', async (req, res) => {
+app.post('/sync/google-calendar', requireAuth, async (req, res) => {
   if (!googleCalendarManager) {
     return res.status(503).json({ error: 'Google Calendar not configured' });
   }
   
-  const userId = req.body.userId || 'default';
+  const userId = String(req.user.id);
   const events = req.body.events || []; // TMR events to sync
   
   console.log('[GoogleCalendar] Sync requested for user:', userId, 'Events to sync:', events.length);
@@ -688,7 +678,7 @@ app.post('/sync/google-calendar', async (req, res) => {
 });
 
 // Delete synced event from Google Calendar
-app.post('/sync/google-calendar/delete', async (req, res) => {
+app.post('/sync/google-calendar/delete', requireAuth, async (req, res) => {
   console.log('[GoogleCalendar] Delete request received:', req.body);
   
   if (!googleCalendarManager) {
@@ -696,7 +686,7 @@ app.post('/sync/google-calendar/delete', async (req, res) => {
     return res.status(503).json({ error: 'Google Calendar not configured' });
   }
   
-  const userId = req.body.userId || 'default';
+  const userId = String(req.user.id);
   const googleEventId = req.body.googleEventId;
   const tmrEventId = req.body.tmrEventId;
   
@@ -737,12 +727,12 @@ app.post('/sync/google-calendar/delete', async (req, res) => {
 });
 
 // Fetch Google Calendar events
-app.get('/sync/google-calendar/fetch', async (req, res) => {
+app.get('/sync/google-calendar/fetch', requireAuth, async (req, res) => {
   if (!googleCalendarManager) {
     return res.status(503).json({ error: 'Google Calendar not configured' });
   }
   
-  const userId = req.query.userId || 'default';
+  const userId = String(req.user.id);
   const daysBack = parseInt(req.query.daysBack) || 365; // Get past events
   const daysForward = parseInt(req.query.daysForward) || 365; // Get future events
   
@@ -893,9 +883,9 @@ app.post('/api/meibot', async (req, res) => {
 });
 
 // Theme endpoints
-app.post('/theme/save', (req, res) => {
+app.post('/theme/save', requireAuth, (req, res) => {
   try {
-    const userId = req.body.userId || 'default';
+    const userId = req.user.id;
     const theme = req.body.theme || {};
     
     if (!userId) {
@@ -916,9 +906,9 @@ app.post('/theme/save', (req, res) => {
   }
 });
 
-app.get('/theme/load', (req, res) => {
+app.get('/theme/load', requireAuth, (req, res) => {
   try {
-    const userId = req.query.userId || 'default';
+    const userId = req.user.id;
     
     db.getUserTheme(userId, (err, theme) => {
       if (err) {
@@ -942,9 +932,9 @@ app.get('/theme/load', (req, res) => {
   }
 });
 
-app.post('/theme/delete', (req, res) => {
+app.post('/theme/delete', requireAuth, (req, res) => {
   try {
-    const userId = req.body.userId || 'default';
+    const userId = req.user.id;
     
     db.deleteUserTheme(userId, (err) => {
       if (err) {
@@ -961,15 +951,15 @@ app.post('/theme/delete', (req, res) => {
 });
 
 // Notes API endpoints
-app.post('/notes/category/create', (req, res) => {
+app.post('/notes/category/create', requireAuth, (req, res) => {
   try {
-    const { userId, categoryName } = req.body;
+    const { categoryName } = req.body;
     
-    if (!userId || !categoryName) {
-      return res.status(400).json({ error: 'userId and categoryName required' });
+    if (!categoryName) {
+      return res.status(400).json({ error: 'categoryName required' });
     }
     
-    db.createNoteCategory(userId, categoryName, (err, categoryId) => {
+    db.createNoteCategory(req.user.id, categoryName, (err, categoryId) => {
       if (err) {
         if (err.message.includes('UNIQUE constraint')) {
           return res.status(409).json({ error: 'Category already exists' });
@@ -986,7 +976,7 @@ app.post('/notes/category/create', (req, res) => {
   }
 });
 
-app.put('/notes/category/:categoryId', (req, res) => {
+app.put('/notes/category/:categoryId', requireAuth, (req, res) => {
   try {
     const { categoryId } = req.params;
     const { categoryName } = req.body;
@@ -995,7 +985,7 @@ app.put('/notes/category/:categoryId', (req, res) => {
       return res.status(400).json({ error: 'categoryName required' });
     }
     
-    db.updateNoteCategory(categoryId, categoryName, (err) => {
+    db.updateNoteCategory(categoryId, req.user.id, categoryName, (err) => {
       if (err) {
         if (err.message.includes('UNIQUE constraint')) {
           return res.status(409).json({ error: 'Category name already exists' });
@@ -1012,15 +1002,9 @@ app.put('/notes/category/:categoryId', (req, res) => {
   }
 });
 
-app.get('/notes/categories', (req, res) => {
+app.get('/notes/categories', requireAuth, (req, res) => {
   try {
-    const userId = req.query.userId;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'userId required' });
-    }
-    
-    db.getNoteCategories(userId, (err, categories) => {
+    db.getNoteCategories(req.user.id, (err, categories) => {
       if (err) {
         console.error('[Notes] Get categories error:', err);
         return res.status(500).json({ error: 'Failed to get categories' });
@@ -1033,11 +1017,11 @@ app.get('/notes/categories', (req, res) => {
   }
 });
 
-app.delete('/notes/category/:categoryId', (req, res) => {
+app.delete('/notes/category/:categoryId', requireAuth, (req, res) => {
   try {
     const { categoryId } = req.params;
     
-    db.deleteNoteCategory(categoryId, (err, changes) => {
+    db.deleteNoteCategory(categoryId, req.user.id, (err, changes) => {
       if (err) {
         console.error('[Notes] Category delete error:', err);
         return res.status(500).json({ error: 'Failed to delete category' });
@@ -1051,15 +1035,15 @@ app.delete('/notes/category/:categoryId', (req, res) => {
   }
 });
 
-app.post('/notes/create', (req, res) => {
+app.post('/notes/create', requireAuth, (req, res) => {
   try {
-    const { userId, categoryId, title, content } = req.body;
+    const { categoryId, title, content } = req.body;
     
-    if (!userId || !categoryId || !title) {
-      return res.status(400).json({ error: 'userId, categoryId, and title required' });
+    if (!categoryId || !title) {
+      return res.status(400).json({ error: 'categoryId and title required' });
     }
     
-    db.createNote(userId, categoryId, title, content || '', (err, noteId) => {
+    db.createNote(req.user.id, categoryId, title, content || '', (err, noteId) => {
       if (err) {
         console.error('[Notes] Note creation error:', err);
         return res.status(500).json({ error: 'Failed to create note' });
@@ -1073,11 +1057,11 @@ app.post('/notes/create', (req, res) => {
   }
 });
 
-app.get('/notes/category/:categoryId', (req, res) => {
+app.get('/notes/category/:categoryId', requireAuth, (req, res) => {
   try {
     const { categoryId } = req.params;
     
-    db.getNotesInCategory(categoryId, (err, notes) => {
+    db.getNotesInCategory(categoryId, req.user.id, (err, notes) => {
       if (err) {
         console.error('[Notes] Get notes error:', err);
         return res.status(500).json({ error: 'Failed to get notes' });
@@ -1090,11 +1074,11 @@ app.get('/notes/category/:categoryId', (req, res) => {
   }
 });
 
-app.get('/notes/:noteId', (req, res) => {
+app.get('/notes/:noteId', requireAuth, (req, res) => {
   try {
     const { noteId } = req.params;
     
-    db.getNote(noteId, (err, note) => {
+    db.getNote(noteId, req.user.id, (err, note) => {
       if (err) {
         console.error('[Notes] Get note error:', err);
         return res.status(500).json({ error: 'Failed to get note' });
@@ -1110,7 +1094,7 @@ app.get('/notes/:noteId', (req, res) => {
   }
 });
 
-app.put('/notes/:noteId', (req, res) => {
+app.put('/notes/:noteId', requireAuth, (req, res) => {
   try {
     const { noteId } = req.params;
     const { title, content } = req.body;
@@ -1119,7 +1103,7 @@ app.put('/notes/:noteId', (req, res) => {
       return res.status(400).json({ error: 'title required' });
     }
     
-    db.updateNote(noteId, title, content || '', (err) => {
+    db.updateNote(noteId, req.user.id, title, content || '', (err) => {
       if (err) {
         console.error('[Notes] Note update error:', err);
         return res.status(500).json({ error: 'Failed to update note' });
@@ -1133,11 +1117,11 @@ app.put('/notes/:noteId', (req, res) => {
   }
 });
 
-app.delete('/notes/:noteId', (req, res) => {
+app.delete('/notes/:noteId', requireAuth, (req, res) => {
   try {
     const { noteId } = req.params;
     
-    db.deleteNote(noteId, (err, changes) => {
+    db.deleteNote(noteId, req.user.id, (err, changes) => {
       if (err) {
         console.error('[Notes] Note delete error:', err);
         return res.status(500).json({ error: 'Failed to delete note' });
@@ -1151,15 +1135,15 @@ app.delete('/notes/:noteId', (req, res) => {
   }
 });
 
-app.post('/notes/search', (req, res) => {
+app.post('/notes/search', requireAuth, (req, res) => {
   try {
-    const { userId, query, categoryId } = req.body;
+    const { query, categoryId } = req.body;
     
-    if (!userId || !query) {
-      return res.status(400).json({ error: 'userId and query required' });
+    if (!query) {
+      return res.status(400).json({ error: 'query required' });
     }
     
-    db.searchNotes(userId, query, categoryId || null, (err, notes) => {
+    db.searchNotes(req.user.id, query, categoryId || null, (err, notes) => {
       if (err) {
         console.error('[Notes] Search error:', err);
         return res.status(500).json({ error: 'Failed to search notes' });
@@ -1172,12 +1156,12 @@ app.post('/notes/search', (req, res) => {
   }
 });
 
-app.post('/notes/tasks/extract', (req, res) => {
+app.post('/notes/tasks/extract', requireAuth, (req, res) => {
   try {
-    const { userId, noteId, content } = req.body;
+    const { noteId, content } = req.body;
     
-    if (!userId || !noteId || !content) {
-      return res.status(400).json({ error: 'userId, noteId, and content required' });
+    if (!noteId || !content) {
+      return res.status(400).json({ error: 'noteId and content required' });
     }
     
     // Extract checkbox items from content
@@ -1196,19 +1180,19 @@ app.post('/notes/tasks/extract', (req, res) => {
   }
 });
 
-app.post('/notes/tasks/confirm', (req, res) => {
+app.post('/notes/tasks/confirm', requireAuth, (req, res) => {
   try {
-    const { userId, noteId, tasks } = req.body;
+    const { noteId, tasks } = req.body;
     
-    if (!userId || !noteId || !Array.isArray(tasks)) {
-      return res.status(400).json({ error: 'userId, noteId, and tasks array required' });
+    if (!noteId || !Array.isArray(tasks)) {
+      return res.status(400).json({ error: 'noteId and tasks array required' });
     }
     
     let completed = 0;
     let errors = [];
     
     tasks.forEach((task, index) => {
-      db.addNoteTask(userId, noteId, task, (err) => {
+      db.addNoteTask(req.user.id, noteId, task, (err) => {
         if (err) {
           errors.push({ index, error: err.message });
         } else {

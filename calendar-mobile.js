@@ -1,6 +1,8 @@
 /* Mobile Calendar - Separate implementation for phones (max-width: 600px) */
 (function() {
     'use strict';
+
+    const __tmrMobileInit = () => {
     
     const STORAGE_KEY = 'tmr_events';
     
@@ -499,4 +501,20 @@
         renderMobileCalendar();
     }, 3600000); // 1 hour in milliseconds
     
+    };
+
+    const __tmrStart = () => {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', __tmrMobileInit, { once: true });
+        } else {
+            __tmrMobileInit();
+        }
+    };
+
+    if (typeof window !== 'undefined' && window.AuthClient && window.AuthClient.ready && typeof window.AuthClient.ready.then === 'function') {
+        window.AuthClient.ready.then(__tmrStart).catch(__tmrStart);
+    } else {
+        __tmrStart();
+    }
+
 })();

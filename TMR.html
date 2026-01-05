@@ -5,6 +5,125 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMR ~ Create Your Future</title>
+    <script>
+        (function () {
+            try {
+                var raw = localStorage.getItem('tmr_boot_theme');
+                if (!raw) {
+                    try {
+                        var lastUid = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('tmr_last_user_id') : null;
+                        if (lastUid) {
+                            raw = localStorage.getItem('tmr_user_' + lastUid + '_tmr_boot_theme');
+                        }
+                        if (!raw) raw = localStorage.getItem('tmr_anon_tmr_boot_theme');
+
+                        // If still missing, build a snapshot from the current user's scoped theme keys.
+                        if (!raw && lastUid) {
+                            var accent2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_accent_color') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_accent') || null;
+                            var bg2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_bg_image') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_bg_image') || null;
+                            var anim2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_animation') || null;
+                            if (accent2 || bg2 || anim2) {
+                                raw = JSON.stringify({
+                                    accentColor: accent2,
+                                    backgroundImage: bg2,
+                                    animation: anim2,
+                                    updatedAt: Date.now()
+                                });
+                                try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
+                            }
+                        }
+
+                        // Anonymous fallback if we have no last user.
+                        if (!raw && !lastUid) {
+                            var aAccent = localStorage.getItem('tmr_anon_theme_accent_color') || localStorage.getItem('tmr_anon_tmr_accent') || null;
+                            var aBg = localStorage.getItem('tmr_anon_theme_bg_image') || localStorage.getItem('tmr_anon_tmr_bg_image') || null;
+                            var aAnim = localStorage.getItem('tmr_anon_theme_animation') || null;
+                            if (aAccent || aBg || aAnim) {
+                                raw = JSON.stringify({
+                                    accentColor: aAccent,
+                                    backgroundImage: aBg,
+                                    animation: aAnim,
+                                    updatedAt: Date.now()
+                                });
+                                try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
+                            }
+                        }
+                    } catch (_) {}
+                }
+                if (!raw) return;
+                var theme = JSON.parse(raw);
+                if (!theme || typeof theme !== 'object') return;
+
+                var accent = (typeof theme.accentColor === 'string') ? theme.accentColor.trim() : '';
+                var accentRgb = (typeof theme.accentRgb === 'string') ? theme.accentRgb.trim() : '';
+                var bg = (typeof theme.backgroundImage === 'string') ? theme.backgroundImage : '';
+
+                if (!accent || accent === 'null' || accent === 'undefined') accent = '';
+                if (!accentRgb || accentRgb === 'null' || accentRgb === 'undefined') accentRgb = '';
+                if (!bg || bg === 'null' || bg === 'undefined') bg = '';
+
+                // Resolve --accent-rgb even for non-hex colors (rgb(), hsl(), named colors, etc.)
+                if (accent && !accentRgb) {
+                    if (accent[0] === '#') {
+                        var hex = accent.slice(1);
+                        if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                        if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+                            accentRgb = parseInt(hex.slice(0, 2), 16) + ',' +
+                                parseInt(hex.slice(2, 4), 16) + ',' +
+                                parseInt(hex.slice(4, 6), 16);
+                        }
+                    }
+
+                    if (!accentRgb && typeof getComputedStyle === 'function') {
+                        try {
+                            var probe = document.createElement('span');
+                            probe.style.color = accent;
+                            probe.style.display = 'none';
+                            document.documentElement.appendChild(probe);
+                            var computed = getComputedStyle(probe).color;
+                            probe.remove();
+                            var m = computed && computed.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+                            if (m) accentRgb = m[1] + ',' + m[2] + ',' + m[3];
+                        } catch (_) {}
+                    }
+                }
+
+                var root = document.documentElement;
+                if (accent) root.style.setProperty('--accent-color', accent);
+                if (accentRgb) root.style.setProperty('--accent-rgb', accentRgb);
+
+                if (bg) {
+                    // Avoid injecting a huge CSS rule when bg is a data URL.
+                    var safe = bg.replace(/'/g, "\\'");
+                    root.style.setProperty('--tmr-boot-bg-image', "url('" + safe + "')");
+
+                    // Optional: hint the browser to fetch the image ASAP (only for normal URLs).
+                    if (!/^data:/i.test(bg)) {
+                        try {
+                            var preload = document.createElement('link');
+                            preload.rel = 'preload';
+                            preload.as = 'image';
+                            preload.href = bg;
+                            document.head.appendChild(preload);
+                        } catch (_) {}
+                    }
+
+                    var style = document.createElement('style');
+                    style.id = 'tmr-boot-theme-style';
+                    style.textContent = 'html,body{' +
+                        'background-image:var(--tmr-boot-bg-image) !important;' +
+                        'background-size:cover !important;' +
+                        'background-position:center !important;' +
+                        'background-repeat:no-repeat !important;' +
+                        'background-attachment:fixed !important;' +
+                    '}';
+                    document.head.appendChild(style);
+                }
+            } catch (e) {
+                // ignore
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="TMR.css?v=20251231z">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
     <link rel="stylesheet" href="calendar-mobile.css?v=20251208b">
@@ -560,7 +679,6 @@
                 box-shadow: none !important;
                 transition: background 0.15s ease !important;
                 transform: none !important;
-                transform: none !important;
             }
 
             /* MEIBOT MODAL - full screen in landscape */
@@ -972,6 +1090,7 @@
     <header class="page-header">
         <!-- Left: TMR Button + Settings Menu -->
         <div class="header-left">
+            <button id="header-login-btn" class="header-text-btn" title="Login or create account">👤 Account</button>
             <button id="tmr-header-btn" class="header-text-btn" aria-haspopup="true" aria-expanded="false" tabindex="0">
                 TMR
                 <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1022,6 +1141,10 @@
             </div>
             <div class="tmr-menu-item">
                 <button id="fullscreen-btn-tmr" type="button" class="small-tmr-btn">Fullscreen</button>
+            </div>
+            <div class="tmr-menu-item" style="border-top:1px solid #ccc; padding-top:8px; margin-top:8px;">
+                <button id="header-logout-btn" class="small-tmr-btn" type="button" style="background-color: #ff6b6b; color: white;">Logout</button>
+                <button id="header-logout-all-btn" class="small-tmr-btn" type="button" style="background-color: #ff4444; color: white; margin-top:6px;">Logout All Devices</button>
             </div>
         </div>
         </div>
@@ -1319,11 +1442,12 @@
     </div>
 
     <!-- Scripts -->
-    <script src="TMR.js"></script>
-    <script src="calendar.js"></script>
-    <script src="calendar-mobile.js"></script>
-    <script src="google-calendar-client.js"></script>
-    <script src="meibot.js"></script>
+    <script src="auth-client.js?v=20260105c"></script>
+    <script src="TMR.js?v=20260105c"></script>
+    <script src="calendar.js?v=20260105c"></script>
+    <script src="calendar-mobile.js?v=20260105c"></script>
+    <script src="google-calendar-client.js?v=20260105c"></script>
+    <script src="meibot.js?v=20260105c"></script>
 
     <!-- New Layout Logic Script -->
     <script>
@@ -1449,11 +1573,256 @@
                         <img id="bg-image-preview" src="" alt="Background preview" />
                     </div>
                     <div id="bg-image-none-text" class="bg-none-text">No image uploaded</div>
+                </div>
+
             </div>
             <div class="themes-modal-footer">
                 <button id="themes-close-btn" type="button" class="themes-btn-secondary">Close</button>
             </div>
         </div>
     </div>
+
+    <!-- AUTH MODAL (LOGIN/REGISTER) -->
+    <div id="auth-modal-backdrop" class="auth-modal-backdrop" style="display: none;">
+        <div class="auth-modal">
+            <!-- LOGIN FORM -->
+            <form id="auth-login-form" class="auth-form">
+                <h2>Welcome Back</h2>
+                <p>Sign in to your TMR account</p>
+                
+                <div class="auth-form-group">
+                    <label for="auth-login-username">Username</label>
+                    <input id="auth-login-username" type="text" placeholder="Enter your username" required />
+                </div>
+                
+                <div class="auth-form-group">
+                    <label for="auth-login-password">Password</label>
+                    <input id="auth-login-password" type="password" placeholder="Enter your password" required />
+                </div>
+                
+                <div id="auth-login-error" class="auth-error"></div>
+                
+                <button type="submit" class="auth-submit-btn">Sign In</button>
+                
+                <div class="auth-divider">or</div>
+                
+                <p class="auth-toggle-text">
+                    Don't have an account? 
+                    <a id="auth-to-register-link" href="#">Create one</a>
+                </p>
+            </form>
+
+            <!-- REGISTER FORM -->
+            <form id="auth-register-form" class="auth-form" style="display: none;">
+                <h2>Create Account</h2>
+                <p>Join TMR to manage your schedule</p>
+                
+                <div class="auth-form-group">
+                    <label for="auth-register-username">Username</label>
+                    <input id="auth-register-username" type="text" placeholder="Choose a username" required />
+                    <small>3-40 characters</small>
+                </div>
+                
+                <div class="auth-form-group">
+                    <label for="auth-register-password">Password</label>
+                    <input id="auth-register-password" type="password" placeholder="Enter a password" required />
+                    <small>At least 8 characters</small>
+                </div>
+                
+                <div class="auth-form-group">
+                    <label for="auth-register-confirm-password">Confirm Password</label>
+                    <input id="auth-register-confirm-password" type="password" placeholder="Confirm your password" required />
+                </div>
+                
+                <div id="auth-register-error" class="auth-error"></div>
+                
+                <button type="submit" class="auth-submit-btn">Create Account</button>
+                
+                <div class="auth-divider">or</div>
+                
+                <p class="auth-toggle-text">
+                    Already have an account? 
+                    <a id="auth-to-login-link" href="#">Sign in</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- AUTH STYLES -->
+    <style>
+        /* Base styles for auth flow */
+        .calendar-page {
+            display: flex !important;
+        }
+
+        .page-header {
+            display: flex !important;
+        }
+
+        .auth-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+
+        .auth-modal {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-form h2 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .auth-form > p {
+            margin: 0 0 24px 0;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .auth-form-group {
+            margin-bottom: 20px;
+        }
+
+        .auth-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .auth-form-group small {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .auth-form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+
+        .auth-form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f7fafc;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .auth-form-group input::placeholder {
+            color: #cbd5e0;
+        }
+
+        .auth-error {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #fed7d7;
+            color: #c53030;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .auth-error:not(:empty) {
+            display: block;
+        }
+
+        .auth-submit-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 16px;
+        }
+
+        .auth-submit-btn:hover {
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .auth-submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .auth-divider {
+            text-align: center;
+            margin: 16px 0;
+            color: #cbd5e0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .auth-toggle-text {
+            text-align: center;
+            font-size: 13px;
+            color: #718096;
+            margin: 0;
+        }
+
+        .auth-toggle-text a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .auth-toggle-text a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .auth-modal {
+                margin: 16px;
+                padding: 32px 24px;
+            }
+
+            .auth-form h2 {
+                font-size: 24px;
+            }
+        }
+    </style>
+
 </body>
 </html>

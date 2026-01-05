@@ -1,4 +1,36 @@
 ﻿
+// Wrap localStorage to use per-user keys via AuthClient.
+// Important: do NOT call AuthClient.storage from inside this proxy (would recurse).
+const originalLocalStorage = window.localStorage;
+window.__tmrOriginalLocalStorage = originalLocalStorage;
+
+// NOTE: auth-client.js installs a robust key-scoping patch for localStorage.
+// Avoid installing a Proxy (some browsers disallow replacing window.localStorage,
+// and if it does work it can double-scope keys).
+try {
+    if (!window.__tmrScopedLocalStorageInstalled && typeof AuthClient !== 'undefined' && AuthClient && typeof AuthClient.getCacheKey === 'function') {
+        const toUserKey = (key) => AuthClient.getCacheKey(String(key));
+
+        window.localStorage = new Proxy(originalLocalStorage, {
+            get(target, prop) {
+                if (prop === 'getItem') return (key) => target.getItem(toUserKey(key));
+                if (prop === 'setItem') return (key, val) => target.setItem(toUserKey(key), val);
+                if (prop === 'removeItem') return (key) => target.removeItem(toUserKey(key));
+                if (prop === 'clear') return () => target.clear();
+                if (prop === 'length') return target.length;
+                if (prop === 'key') return (idx) => target.key(idx);
+                return target[prop];
+            },
+            set(target, prop, val) {
+                target[prop] = val;
+                return true;
+            }
+        });
+    }
+} catch (e) {
+    // Ignore: safest fallback is to use native localStorage (auth-client will patch methods).
+}
+
 const displayClock = () => {
     const now = new Date();
     let hrs = now.getHours();
@@ -242,11 +274,56 @@ if (leaveBtn) {
 // Accent picker (global site accent)
 (function(){
     const ACCENT_KEY = 'tmr_accent';
+
+    function isValidHexAccent(value) {
+        if (typeof value !== 'string') return false;
+        const v = value.trim();
+        return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v);
+    }
+    function normalizeHex(value) {
+        const v = String(value || '').trim();
+        if (!isValidHexAccent(v)) return '';
+        if (v.length === 4) return '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+        return v;
+    }
+    function getBootAccent() {
+        try {
+            const raw = localStorage.getItem('tmr_boot_theme');
+            if (!raw) return '';
+            const parsed = JSON.parse(raw);
+            const a = parsed && typeof parsed.accentColor === 'string' ? parsed.accentColor.trim() : '';
+            return a || '';
+        } catch (_) {
+            return '';
+        }
+    }
+    function getInitialAccent() {
+        const root = document.documentElement;
+        const inline = (root && root.style ? root.style.getPropertyValue('--accent-color') : '') || '';
+        if (inline.trim()) return inline.trim();
+
+        const boot = getBootAccent();
+        if (boot) return boot;
+
+        // Prefer theme system key first, then legacy key.
+        try {
+            const themeAccent = localStorage.getItem('theme_accent_color');
+            if (themeAccent && String(themeAccent).trim()) return String(themeAccent).trim();
+        } catch (_) {}
+        try {
+            const legacy = localStorage.getItem(ACCENT_KEY);
+            if (legacy && String(legacy).trim()) return String(legacy).trim();
+        } catch (_) {}
+
+        return '';
+    }
     
     function initAccentPicker() {
         const picker = document.getElementById('accent-picker');
         const preview = document.getElementById('accent-preview');
-        const saved = localStorage.getItem(getStorageKey(ACCENT_KEY)) || '#0089f1';
+        const saved = getInitialAccent();
+        const savedHex = normalizeHex(saved);
+        const fallbackHex = '#0089f1';
         
         console.log('[Accent] Init. Picker:', !!picker, 'Preview:', !!preview, 'Saved:', saved);
         
@@ -289,17 +366,28 @@ if (leaveBtn) {
             root.style.setProperty('--accent-rgb', rgb.join(','));
         }
         
-        // Apply on load
-        applyAccent(saved);
-        if(preview) preview.style.backgroundColor = saved;
-        
-        picker.value = saved;
+        // Apply on load only when we have an explicit saved accent.
+        // (Avoid forcing default blue and causing a visible flash.)
+        if (savedHex) {
+            applyAccent(savedHex);
+            if(preview) preview.style.backgroundColor = savedHex;
+            picker.value = savedHex;
+        } else {
+            // Keep the existing (pre-paint) accent if present; otherwise the CSS fallback will apply.
+            picker.value = fallbackHex;
+            if(preview) {
+                const existing = (document.documentElement.style.getPropertyValue('--accent-color') || '').trim();
+                preview.style.backgroundColor = existing || fallbackHex;
+            }
+        }
         console.log('[Accent] Picker found, value set to:', picker.value);
         
         // Update on input (while dragging) and on change
         function updateColor(hex) {
             console.log('[Accent] updateColor called with:', hex);
-            localStorage.setItem(getStorageKey(ACCENT_KEY), hex);
+            localStorage.setItem(ACCENT_KEY, hex);
+            // Keep theme system key in sync so other pages (and boot snapshot synthesis) see it.
+            try { localStorage.setItem('theme_accent_color', hex); } catch (_) {}
             applyAccent(hex);
             if(preview) {
                 console.log('[Accent] Updating preview to:', hex);
@@ -320,12 +408,21 @@ if (leaveBtn) {
         return true;
     }
     
-    // Try to init immediately
-    if(!initAccentPicker()) {
-        // If it fails, wait for DOM to be ready
-        if(document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initAccentPicker);
+    function start(){
+        // Try to init immediately
+        if(!initAccentPicker()) {
+            // If it fails, wait for DOM to be ready
+            if(document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initAccentPicker);
+            }
         }
+    }
+
+    // Wait for auth session restore to finish so localStorage is correctly namespaced.
+    if (typeof AuthClient !== 'undefined' && AuthClient && AuthClient.ready && typeof AuthClient.ready.then === 'function') {
+        AuthClient.ready.then(start).catch(start);
+    } else {
+        start();
     }
 })();
 
@@ -467,12 +564,21 @@ if (leaveBtn) {
         return true;
     }
     
-    // Try to init immediately
-    if(!initBackgroundImage()) {
-        // If it fails, wait for DOM to be ready
-        if(document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initBackgroundImage);
+    function start(){
+        // Try to init immediately
+        if(!initBackgroundImage()) {
+            // If it fails, wait for DOM to be ready
+            if(document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initBackgroundImage);
+            }
         }
+    }
+
+    // Wait for auth session restore to finish so localStorage is correctly namespaced.
+    if (typeof AuthClient !== 'undefined' && AuthClient && AuthClient.ready && typeof AuthClient.ready.then === 'function') {
+        AuthClient.ready.then(start).catch(start);
+    } else {
+        start();
     }
 })();
 
@@ -1052,6 +1158,9 @@ if (leaveBtn) {
 
 /* To-do modal for TMR page (uses same localStorage key 'tmr_todos') */
 (function(){
+    // Delay todo init until auth session restore completes so we don't touch the anon namespace
+    // while an authenticated session is still loading.
+    const run = () => {
     const TODO_KEY = 'tmr_todos';
     const NOTIFY_KEY = 'tmr_notify_enabled';
     const TODO_DEFAULT_KEY = 'tmr_todo_default_reminder';
@@ -1479,6 +1588,13 @@ if (leaveBtn) {
             renderTodos(); // Re-render the todo list to show new todo
         });
 
+        // When account changes/restores, re-render from the correct per-user storage.
+        window.addEventListener('tmr:auth-changed', () => {
+            try { renderTodos(); } catch (e) {}
+            try { updateBadge(); } catch (e) {}
+            try { rescheduleAll(); } catch (e) {}
+        });
+
 // Desktop "+ Create Todo" button
         if(desktopCreateBtn){
             desktopCreateBtn.addEventListener('click', ()=>{
@@ -1759,13 +1875,16 @@ if (leaveBtn) {
             // In development the client may be served from a different port than the push server.
             // On HTTPS (ngrok), use same origin. On HTTP (local), try local first, then fall back to ngrok public URL.
             async function serverFetch(path, opts){
+                        // Ensure credentials are included for session-based auth
+                        const finalOpts = { ...opts, credentials: 'include' };
+
                         // If accessing from ngrok public domain, use ngrok push server for HTTPS support
                         if(location.hostname.includes('ngrok')){
                             try{
                                 // Use the same ngrok base URL but keep it as-is for push server (port 3001 forwarding)
                                 const url = location.origin + path;
                                 console.debug('[serverFetch] using ngrok origin', url);
-                                const res = await fetch(url, opts);
+                                const res = await fetch(url, finalOpts);
                                 console.debug('[serverFetch] ngrok response', url, res && res.status);
                                 return res;
                             }catch(e){ console.debug('[serverFetch] ngrok fetch failed', e); throw e; }
@@ -1774,7 +1893,7 @@ if (leaveBtn) {
                         // try same-origin first; log attempts to help debugging
                         try{
                             console.debug('[serverFetch] trying same-origin', path);
-                            const res = await fetch(path, opts);
+                            const res = await fetch(path, finalOpts);
                             if(res){ console.debug('[serverFetch] same-origin response', path, res.status); }
                             // only accept successful responses here ΓÇö allow fallback to the push server
                             if(res && res.ok) return res;
@@ -1785,7 +1904,7 @@ if (leaveBtn) {
                     const base = location && location.hostname ? `${location.protocol}//${location.hostname}:3001` : 'http://localhost:3001';
                     const url = base + (path.startsWith('/') ? path : '/' + path);
                     console.debug('[serverFetch] trying fallback', url);
-                    const res2 = await fetch(url, opts);
+                    const res2 = await fetch(url, finalOpts);
                     console.debug('[serverFetch] fallback response', url, res2 && res2.status);
                     if(res2 && res2.ok) return res2;
                 }catch(e){ console.debug('[serverFetch] fallback fetch failed', e); /* ignore and try ngrok public */ }
@@ -1794,7 +1913,7 @@ if (leaveBtn) {
                 try{
                     const url = 'https://sensationistic-taunya-palingenesian.ngrok-free.dev' + (path.startsWith('/') ? path : '/' + path);
                     console.debug('[serverFetch] trying ngrok public fallback', url);
-                    const res3 = await fetch(url, opts);
+                    const res3 = await fetch(url, finalOpts);
                     console.debug('[serverFetch] ngrok public response', url, res3 && res3.status);
                     return res3;
                 }catch(e){ console.debug('[serverFetch] ngrok public fetch failed', e); throw e; }
@@ -2011,6 +2130,14 @@ if (leaveBtn) {
     } else {
         initTodoModal();
         initMobileTabs();
+    }
+
+    };
+
+    if (typeof AuthClient !== 'undefined' && AuthClient && AuthClient.ready && typeof AuthClient.ready.then === 'function') {
+        AuthClient.ready.then(run).catch(run);
+    } else {
+        run();
     }
 
 })();

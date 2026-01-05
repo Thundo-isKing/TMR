@@ -80,11 +80,34 @@
 
         console.log('[Themes] Current theme loaded:', currentTheme);
 
+        function refreshThemeFromLocalStorage() {
+            let animation = localStorage.getItem(STORAGE_KEY_ANIMATION) || 'none';
+            if (!['none', 'particles', 'gradient-flow', 'wave-pulse', 'triangles'].includes(animation)) {
+                animation = 'none';
+            }
+
+            currentTheme = {
+                accent: localStorage.getItem(STORAGE_KEY_ACCENT) || '#0089f1',
+                bgColor: localStorage.getItem(STORAGE_KEY_BG_COLOR) || '#ffffff',
+                bgImage: localStorage.getItem(STORAGE_KEY_BG_IMAGE) || null,
+                animation: animation
+            };
+
+            const hasCustomTheme =
+                localStorage.getItem(STORAGE_KEY_ACCENT) !== null ||
+                localStorage.getItem(STORAGE_KEY_BG_COLOR) !== null ||
+                localStorage.getItem(STORAGE_KEY_ANIMATION) !== null ||
+                localStorage.getItem(STORAGE_KEY_BG_IMAGE) !== null;
+
+            if (hasCustomTheme) {
+                applyTheme(currentTheme);
+            }
+        }
+
         // Load theme from server on startup
         async function loadThemeFromServer() {
             try {
-                const userId = localStorage.getItem('tmr_device_id') || localStorage.getItem('user_id') || 'default';
-                const response = await fetch(`/theme/load?userId=${encodeURIComponent(userId)}`);
+                const response = await fetch(`/theme/load`, { credentials: 'include' });
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -120,15 +143,14 @@
         // Load theme from server
         loadThemeFromServer();
 
-        // Apply stored theme on init - but only if there's actually a custom theme saved
-        const hasCustomTheme = localStorage.getItem(STORAGE_KEY_ANIMATION) !== null || 
-                               localStorage.getItem(STORAGE_KEY_BG_IMAGE) !== null;
-        if (hasCustomTheme) {
-            console.log('[Themes] Custom theme found, applying...');
-            applyTheme(currentTheme);
-        } else {
-            console.log('[Themes] No custom theme found, using default background');
-        }
+        // Apply stored theme on init (per-user via localStorage proxy)
+        refreshThemeFromLocalStorage();
+
+        // When account changes/restores, reload theme from server and re-apply from local storage.
+        window.addEventListener('tmr:auth-changed', () => {
+            refreshThemeFromLocalStorage();
+            loadThemeFromServer();
+        });
 
         // Modal control
         function openModal() {
@@ -201,14 +223,13 @@
 
             // Save to server
             try {
-                const userId = localStorage.getItem('tmr_device_id') || localStorage.getItem('user_id') || 'default';
                 const response = await fetch('/theme/save', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        userId: userId,
                         theme: {
                             accentColor: currentTheme.accent,
                             backgroundImage: currentTheme.bgImage,
@@ -232,6 +253,30 @@
         // Apply theme to page
         function applyTheme(theme) {
             console.log('[Themes] Applying theme:', theme);
+
+            // Persist a small unscoped snapshot used by other pages to avoid
+            // flashing the default theme before JS finishes loading.
+            try {
+                let accentRgb = null;
+                if (typeof theme.accent === 'string') {
+                    let hex = theme.accent.trim();
+                    if (hex.startsWith('#')) hex = hex.slice(1);
+                    if (/^[0-9a-fA-F]{3}$/.test(hex)) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+                        const r = parseInt(hex.slice(0, 2), 16);
+                        const g = parseInt(hex.slice(2, 4), 16);
+                        const b = parseInt(hex.slice(4, 6), 16);
+                        accentRgb = `${r},${g},${b}`;
+                    }
+                }
+                localStorage.setItem('tmr_boot_theme', JSON.stringify({
+                    accentColor: theme.accent || null,
+                    accentRgb,
+                    backgroundImage: theme.bgImage || null,
+                    animation: theme.animation || null,
+                    updatedAt: Date.now()
+                }));
+            } catch (_) {}
             
             // Apply accent color
             const root = document.documentElement;

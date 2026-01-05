@@ -4,6 +4,120 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NotesHQ ~ Organize Your Thoughts</title>
+    <script>
+        (function () {
+            try {
+                var raw = localStorage.getItem('tmr_boot_theme');
+                if (!raw) {
+                    try {
+                        var lastUid = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('tmr_last_user_id') : null;
+                        if (lastUid) {
+                            raw = localStorage.getItem('tmr_user_' + lastUid + '_tmr_boot_theme');
+                        }
+                        if (!raw) raw = localStorage.getItem('tmr_anon_tmr_boot_theme');
+
+                        if (!raw && lastUid) {
+                            var accent2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_accent_color') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_accent') || null;
+                            var bg2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_bg_image') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_bg_image') || null;
+                            var anim2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_animation') || null;
+                            if (accent2 || bg2 || anim2) {
+                                raw = JSON.stringify({
+                                    accentColor: accent2,
+                                    backgroundImage: bg2,
+                                    animation: anim2,
+                                    updatedAt: Date.now()
+                                });
+                                try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
+                            }
+                        }
+
+                        if (!raw && !lastUid) {
+                            var aAccent = localStorage.getItem('tmr_anon_theme_accent_color') || localStorage.getItem('tmr_anon_tmr_accent') || null;
+                            var aBg = localStorage.getItem('tmr_anon_theme_bg_image') || localStorage.getItem('tmr_anon_tmr_bg_image') || null;
+                            var aAnim = localStorage.getItem('tmr_anon_theme_animation') || null;
+                            if (aAccent || aBg || aAnim) {
+                                raw = JSON.stringify({
+                                    accentColor: aAccent,
+                                    backgroundImage: aBg,
+                                    animation: aAnim,
+                                    updatedAt: Date.now()
+                                });
+                                try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
+                            }
+                        }
+                    } catch (_) {}
+                }
+                if (!raw) return;
+                var theme = JSON.parse(raw);
+                if (!theme || typeof theme !== 'object') return;
+
+                var accent = (typeof theme.accentColor === 'string') ? theme.accentColor.trim() : '';
+                var accentRgb = (typeof theme.accentRgb === 'string') ? theme.accentRgb.trim() : '';
+                var bg = (typeof theme.backgroundImage === 'string') ? theme.backgroundImage : '';
+
+                if (!accent || accent === 'null' || accent === 'undefined') accent = '';
+                if (!accentRgb || accentRgb === 'null' || accentRgb === 'undefined') accentRgb = '';
+                if (!bg || bg === 'null' || bg === 'undefined') bg = '';
+
+                if (accent && !accentRgb) {
+                    if (accent[0] === '#') {
+                        var hex = accent.slice(1);
+                        if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                        if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+                            accentRgb = parseInt(hex.slice(0, 2), 16) + ',' +
+                                parseInt(hex.slice(2, 4), 16) + ',' +
+                                parseInt(hex.slice(4, 6), 16);
+                        }
+                    }
+
+                    if (!accentRgb && typeof getComputedStyle === 'function') {
+                        try {
+                            var probe = document.createElement('span');
+                            probe.style.color = accent;
+                            probe.style.display = 'none';
+                            document.documentElement.appendChild(probe);
+                            var computed = getComputedStyle(probe).color;
+                            probe.remove();
+                            var m = computed && computed.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+                            if (m) accentRgb = m[1] + ',' + m[2] + ',' + m[3];
+                        } catch (_) {}
+                    }
+                }
+
+                var root = document.documentElement;
+                if (accent) root.style.setProperty('--accent-color', accent);
+                if (accentRgb) root.style.setProperty('--accent-rgb', accentRgb);
+
+                if (bg) {
+                    var safe = bg.replace(/'/g, "\\'");
+                    root.style.setProperty('--tmr-boot-bg-image', "url('" + safe + "')");
+
+                    if (!/^data:/i.test(bg)) {
+                        try {
+                            var preload = document.createElement('link');
+                            preload.rel = 'preload';
+                            preload.as = 'image';
+                            preload.href = bg;
+                            document.head.appendChild(preload);
+                        } catch (_) {}
+                    }
+
+                    var style = document.createElement('style');
+                    style.id = 'tmr-boot-theme-style';
+                    style.textContent = 'html,body{' +
+                        'background-image:var(--tmr-boot-bg-image) !important;' +
+                        'background-size:cover !important;' +
+                        'background-position:center !important;' +
+                        'background-repeat:no-repeat !important;' +
+                        'background-attachment:fixed !important;' +
+                    '}';
+                    document.head.appendChild(style);
+                }
+            } catch (e) {
+                // ignore
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="TMR.css?v=20251231z">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;500;700&display=swap');
@@ -596,6 +710,8 @@
         </div>
     </div>
 
+    <script src="auth-client.js?v=20260105d"></script>
+
     <script>
         // Global state
         function getOrCreateDeviceId() {
@@ -625,23 +741,111 @@
         const notesContentArea = document.getElementById('notes-content-area');
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadTheme();
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                if (window.AuthClient && AuthClient.ready) {
+                    await AuthClient.ready;
+                }
+            } catch (e) {
+                console.warn('[NotesHQ] Auth restore failed:', e);
+            }
+
+            await loadTheme();
             loadCategories();
             setupEventListeners();
         });
 
-        function loadTheme() {
-            // Load accent color from TMR's localStorage key
-            const accentColor = localStorage.getItem('tmr_accent') || '#0089f1';
+        async function loadTheme() {
+            let accentColor = null;
+            let bgImage = null;
+            let accentSource = null;
+            let bgSource = null;
+
+            // Local fallback candidates (filled later). We'll use these to avoid
+            // overriding a real local accent with the server's default accent.
+            let localAccentCandidate = null;
+            let localAccentSource = null;
+
+            // Prefer server-saved theme (same as the Themes modal).
+            try {
+                const resp = await fetch('/theme/load', { credentials: 'include' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.theme) {
+                        if (data.theme.accentColor) { accentColor = data.theme.accentColor; accentSource = 'server:/theme/load'; }
+                        if (data.theme.backgroundImage) { bgImage = data.theme.backgroundImage; bgSource = 'server:/theme/load'; }
+                    }
+                }
+            } catch (e) {
+                // ignore (offline/server not running)
+            }
+
+            // If server theme isn't available, try reading from per-user localStorage keys directly.
+            // This works even if auth-client.js failed to load (or scoping isn't active yet).
+            if (!accentColor || !bgImage) {
+                try {
+                    const resp = await fetch('/auth/session', { credentials: 'include' });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const uid = data && data.user && data.user.id;
+                        if (uid) {
+                            if (!accentColor) {
+                                accentColor =
+                                    localStorage.getItem(`tmr_user_${uid}_theme_accent_color`) ||
+                                    localStorage.getItem(`tmr_user_${uid}_tmr_accent`) ||
+                                    null;
+                                if (accentColor) accentSource = 'localStorage:user_scoped';
+                            }
+                            if (!bgImage) {
+                                bgImage =
+                                    localStorage.getItem(`tmr_user_${uid}_theme_bg_image`) ||
+                                    localStorage.getItem(`tmr_user_${uid}_tmr_bg_image`) ||
+                                    null;
+                                if (bgImage) bgSource = 'localStorage:user_scoped';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            // Capture local candidates (even if server returned something) so we can
+            // avoid overriding a real local accent with the server's default.
+            // This happens when the user never saved a theme to the server.
+            localAccentCandidate =
+                localStorage.getItem('theme_accent_color') ||
+                localStorage.getItem('tmr_accent') ||
+                null;
+            if (localAccentCandidate) localAccentSource = 'localStorage:fallback';
+
+            // If server returned its default accent, prefer any locally stored accent.
+            if (accentSource === 'server:/theme/load' && accentColor === '#6366f1' && localAccentCandidate) {
+                accentColor = localAccentCandidate;
+                accentSource = localAccentSource;
+            }
+
+            // Fallback to per-user localStorage theme keys.
+            if (!accentColor) {
+                accentColor =
+                    localStorage.getItem('theme_accent_color') ||
+                    localStorage.getItem('tmr_accent') ||
+                    '#0089f1';
+                accentSource = 'localStorage:fallback_or_default';
+            }
+            if (!bgImage) {
+                bgImage =
+                    localStorage.getItem('theme_bg_image') ||
+                    localStorage.getItem('tmr_bg_image');
+                if (bgImage) bgSource = 'localStorage:fallback';
+            }
+
+            accentColor = normalizeCssColor(accentColor) || '#0089f1';
             document.documentElement.style.setProperty('--accent-color', accentColor);
-            
-            // Convert hex to RGB for the triangle pattern
-            const rgb = hexToRgb(accentColor);
+
+            const rgb = colorToRgb(accentColor);
             document.documentElement.style.setProperty('--accent-rgb', `${rgb.r},${rgb.g},${rgb.b}`);
-            
-            // Load background image from TMR's localStorage key
-            const bgImage = localStorage.getItem('tmr_bg_image');
+
             if (bgImage) {
                 document.body.style.backgroundImage = `url('${bgImage}')`;
                 document.body.style.backgroundSize = 'cover';
@@ -649,7 +853,20 @@
                 document.body.style.backgroundAttachment = 'fixed';
                 document.body.style.backgroundRepeat = 'no-repeat';
             }
-            // Otherwise use the triangle background (already in CSS with CSS variables)
+
+            // One-time debug log to make it obvious what's being applied.
+            try {
+                if (!window.__tmrNotesThemeLogged) {
+                    window.__tmrNotesThemeLogged = true;
+                    console.log('[NotesHQ] Theme applied', {
+                        accentColor,
+                        accentSource,
+                        accentRgb: `${rgb.r},${rgb.g},${rgb.b}`,
+                        bgApplied: !!bgImage,
+                        bgSource
+                    });
+                }
+            } catch (_) {}
         }
         
         function hexToRgb(hex) {
@@ -659,6 +876,58 @@
                 g: parseInt(result[2], 16),
                 b: parseInt(result[3], 16)
             } : { r: 0, g: 157, b: 255 };
+        }
+
+        function normalizeCssColor(value) {
+            if (typeof value !== 'string') return null;
+            const v = value.trim();
+            if (!v || v === 'null' || v === 'undefined') return null;
+            try {
+                if (window.CSS && typeof window.CSS.supports === 'function' && !window.CSS.supports('color', v)) {
+                    return null;
+                }
+            } catch (_) {
+                // ignore
+            }
+            return v;
+        }
+
+        function colorToRgb(color) {
+            // Try hex first (#RRGGBB)
+            if (typeof color === 'string') {
+                const c = color.trim();
+                const rgbHex = hexToRgb(c);
+                if (!(rgbHex.r === 0 && rgbHex.g === 157 && rgbHex.b === 255) || /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.test(c)) {
+                    return rgbHex;
+                }
+
+                // Support #RGB
+                const short = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(c);
+                if (short) {
+                    return {
+                        r: parseInt(short[1] + short[1], 16),
+                        g: parseInt(short[2] + short[2], 16),
+                        b: parseInt(short[3] + short[3], 16)
+                    };
+                }
+
+                // Fallback: let the browser parse the color.
+                try {
+                    const el = document.createElement('span');
+                    el.style.color = c;
+                    document.body.appendChild(el);
+                    const computed = getComputedStyle(el).color;
+                    document.body.removeChild(el);
+                    const m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(computed);
+                    if (m) {
+                        return { r: parseInt(m[1], 10), g: parseInt(m[2], 10), b: parseInt(m[3], 10) };
+                    }
+                } catch (_) {
+                    // ignore
+                }
+            }
+
+            return { r: 0, g: 157, b: 255 };
         }
 
 

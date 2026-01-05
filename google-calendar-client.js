@@ -5,27 +5,27 @@
 
 (function() {
   const GCAL_STATUS_KEY = 'tmr_gcal_status';
-  const DEVICE_ID_KEY = 'tmr_device_id';
-  const GCAL_USER_ID_KEY = 'tmr_gcal_user_id';
 
   // Helper: serverFetch with fallbacks
   async function serverFetch(path, opts = {}) {
     try {
+      // Always include cookies for session auth.
+      const finalOpts = Object.assign({ credentials: 'include' }, opts);
       if (location.hostname.includes('ngrok')) {
         const url = location.origin + path;
         try {
-          const res = await fetch(url, opts);
+          const res = await fetch(url, finalOpts);
           if (res.ok) return res;
         } catch (e) {
           console.debug('[GoogleCalendar] ngrok fetch failed', e);
         }
       }
       try {
-        const res = await fetch(path, opts);
+        const res = await fetch(path, finalOpts);
         if (res.ok) return res;
       } catch (e) { /* try fallback */ }
       const url = 'http://localhost:3002' + path;
-      const res = await fetch(url, opts);
+      const res = await fetch(url, finalOpts);
       return res;
     } catch (e) {
       console.warn('[GoogleCalendar] all fetch attempts failed', e);
@@ -33,32 +33,24 @@
     }
   }
 
-  // Get or create device ID
-  function getDeviceId() {
-    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
-    if (!deviceId) {
-      deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-      localStorage.setItem(DEVICE_ID_KEY, deviceId);
-    }
-    return deviceId;
-  }
-
-  // Get Google Calendar user ID
-  function getGoogleCalendarUserId() {
-    return localStorage.getItem(GCAL_USER_ID_KEY) || getDeviceId();
-  }
-
-  // Set Google Calendar user ID
-  function setGoogleCalendarUserId(userId) {
-    localStorage.setItem(GCAL_USER_ID_KEY, userId);
-  }
+  // Google Calendar is now session-scoped (per logged-in user on the server).
 
   // Check if connected to Google Calendar
   async function checkGoogleCalendarStatus() {
     try {
-      const userId = getGoogleCalendarUserId();
-      const res = await serverFetch(`/auth/google/status?userId=${encodeURIComponent(userId)}`);
+      const res = await serverFetch(`/auth/google/status`);
       const data = await res.json();
+
+      // Diagnostics: verify client auth user vs server token owner
+      try {
+        const clientUserId = (window.AuthClient && typeof window.AuthClient.getUserId === 'function') ? window.AuthClient.getUserId() : null;
+        const serverUserId = data && data.userId ? data.userId : null;
+        console.debug('[GoogleCalendar][diag] status', {
+          clientUserId,
+          serverUserId,
+          connected: !!(data && data.connected)
+        });
+      } catch (e) {}
       
       localStorage.setItem(GCAL_STATUS_KEY, data.connected ? 'connected' : 'disconnected');
       
@@ -67,11 +59,11 @@
       
       return data.connected;
     } catch (err) {
-      // Don't update buttons on error - keep last known state
-      // This prevents false disconnects from network glitches or temporary server issues
-      console.warn('[GoogleCalendar] Status check failed - keeping last known state:', err.message);
-      const lastStatus = localStorage.getItem(GCAL_STATUS_KEY) || 'disconnected';
-      return lastStatus === 'connected';
+      // Security > convenience: never keep a previous account's "connected" state on error.
+      console.warn('[GoogleCalendar] Status check failed - treating as disconnected:', err.message);
+      try { localStorage.setItem(GCAL_STATUS_KEY, 'disconnected'); } catch (e) {}
+      updateGoogleCalendarButtons(false);
+      return false;
     }
   }
 
@@ -112,8 +104,7 @@
   // Get OAuth authorization URL
   async function initiateGoogleAuth() {
     try {
-      const userId = getGoogleCalendarUserId();
-      const res = await serverFetch(`/auth/google?userId=${encodeURIComponent(userId)}`);
+      const res = await serverFetch(`/auth/google`);
       const data = await res.json();
       
       if (!res.ok) {
@@ -186,8 +177,6 @@
         mobileSyncBtn.classList.add('gcal-syncing');
       }
       
-      const userId = getGoogleCalendarUserId();
-      
       // Get all TMR events
       const allEvents = JSON.parse(localStorage.getItem('tmr_events') || '[]');
       
@@ -216,7 +205,7 @@
         const pushRes = await serverFetch('/sync/google-calendar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, events: eventsToSync })
+          body: JSON.stringify({ events: eventsToSync })
         });
         
         pushData = await pushRes.json();
@@ -241,7 +230,7 @@
       }
       
       // Fetch Google Calendar events (last 3 months + next year)
-      const fetchRes = await serverFetch(`/sync/google-calendar/fetch?userId=${encodeURIComponent(userId)}&daysBack=90&daysForward=365`);
+      const fetchRes = await serverFetch(`/sync/google-calendar/fetch?daysBack=90&daysForward=365`);
       const fetchData = await fetchRes.json();
       
       if (fetchData.ok && fetchData.events) {
@@ -394,10 +383,9 @@
   // Logout and disconnect from Google Calendar
   async function logoutGoogleCalendar() {
     try {
-      const userId = getGoogleCalendarUserId();
-      
-      if (!userId) {
-        showNotification('No user connected', 'error');
+      const connected = await checkGoogleCalendarStatus();
+      if (!connected) {
+        showNotification('Google Calendar is not connected', 'error');
         return;
       }
       
@@ -405,7 +393,7 @@
       const shouldClear = confirm(
         'Disconnect from Google Calendar?\n\n' +
         '• Your Google Calendar will be disconnected\n' +
-        '• Local events will be cleared\n' +
+        '• Local events will stay on this account\n' +
         '• You can export your calendar before disconnecting\n\n' +
         'Click OK to continue, or Cancel to go back.'
       );
@@ -424,7 +412,7 @@
         res = await serverFetch('/auth/google/logout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId })
+          body: JSON.stringify({})
         });
       } catch (fetchErr) {
         console.error('[GoogleCalendar] Fetch error:', fetchErr);
@@ -440,9 +428,8 @@
       console.log('[GoogleCalendar] Logout response:', data);
       
       // Clear local state
-      localStorage.removeItem(GCAL_USER_ID_KEY);
       localStorage.removeItem(GCAL_STATUS_KEY);
-      localStorage.removeItem('tmr_events'); // Clear local calendar
+      // Keep local events; disconnect only affects Google sync.
       
       // Reset UI
       updateGoogleCalendarButtons(false);
@@ -552,10 +539,6 @@
     // Check for OAuth callback
     const params = new URLSearchParams(location.search);
     if (params.get('gcal_auth') === 'success') {
-      const userId = params.get('userId');
-      if (userId) {
-        setGoogleCalendarUserId(userId);
-      }
       // Remove from URL
       window.history.replaceState({}, document.title, location.pathname);
       
@@ -572,9 +555,6 @@
     checkStatus: checkGoogleCalendarStatus,
     initiateAuth: initiateGoogleAuth,
     manualSync: syncWithGoogleCalendar,
-    logout: logoutGoogleCalendar,
-    getDeviceId: getDeviceId,
-    getGoogleCalendarUserId: getGoogleCalendarUserId,
-    setGoogleCalendarUserId: setGoogleCalendarUserId
+    logout: logoutGoogleCalendar
   };
 })();

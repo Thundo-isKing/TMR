@@ -45,6 +45,7 @@ db.serialize(() => {
     expiresAt INTEGER NOT NULL,
     createdAt INTEGER NOT NULL,
     FOREIGN KEY (userId) REFERENCES users(id)
+    FOREIGN KEY (userId) REFERENCES users(id)
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
@@ -166,6 +167,52 @@ db.serialize(() => {
 
 module.exports = {
   runTransaction: runTransaction,
+
+  // User accounts
+  createUser: function(username, passwordHash, cb){
+    const now = Date.now();
+    db.run(
+      `INSERT INTO users (username, passwordHash, createdAt) VALUES (?, ?, ?)`
+      , [username, passwordHash, now]
+      , function(err){ cb && cb(err, this && this.lastID); }
+    );
+  },
+
+  getUserByUsername: function(username, cb){
+    db.get(`SELECT id, username, passwordHash, createdAt FROM users WHERE username = ?`, [username], (err, row) => {
+      if (cb) cb(err, row || null);
+    });
+  },
+
+  getUserById: function(id, cb){
+    db.get(`SELECT id, username, passwordHash, createdAt FROM users WHERE id = ?`, [id], (err, row) => {
+      if (cb) cb(err, row || null);
+    });
+  },
+
+  // Session persistence
+  createSession: function(userId, token, expiresAt, cb){
+    const now = Date.now();
+    db.run(
+      `INSERT INTO sessions (userId, token, expiresAt, createdAt) VALUES (?, ?, ?, ?)`
+      , [userId, token, expiresAt, now]
+      , function(err){ cb && cb(err, this && this.lastID); }
+    );
+  },
+
+  getSession: function(token, cb){
+    db.get(`SELECT id, userId, token, expiresAt, createdAt FROM sessions WHERE token = ?`, [token], (err, row) => {
+      if (cb) cb(err, row || null);
+    });
+  },
+
+  deleteSession: function(token, cb){
+    db.run(`DELETE FROM sessions WHERE token = ?`, [token], function(err){ cb && cb(err, this && this.changes); });
+  },
+
+  deleteSessionsByUser: function(userId, cb){
+    db.run(`DELETE FROM sessions WHERE userId = ?`, [userId], function(err){ cb && cb(err, this && this.changes); });
+  },
   
   addSubscription: function(userId, subscription, cb){
     if (!subscription || !subscription.endpoint) {
@@ -431,15 +478,15 @@ module.exports = {
            });
   },
 
-  deleteNoteCategory: function(categoryId, cb){
-    db.run(`DELETE FROM note_categories WHERE id = ?`,
-           [categoryId],
+  deleteNoteCategory: function(categoryId, userId, cb){
+    db.run(`DELETE FROM note_categories WHERE id = ? AND userId = ?`,
+           [categoryId, userId],
            function(err){ cb && cb(err, this && this.changes); });
   },
 
-  updateNoteCategory: function(categoryId, categoryName, cb){
-    db.run(`UPDATE note_categories SET categoryName = ? WHERE id = ?`,
-           [categoryName, categoryId],
+  updateNoteCategory: function(categoryId, userId, categoryName, cb){
+    db.run(`UPDATE note_categories SET categoryName = ? WHERE id = ? AND userId = ?`,
+           [categoryName, categoryId, userId],
            function(err){ cb && cb(err, this && this.changes); });
   },
 
@@ -458,28 +505,28 @@ module.exports = {
            });
   },
 
-  getNotesInCategory: function(categoryId, cb){
-    db.all(`SELECT id, title, content, createdAt, updatedAt FROM notes WHERE categoryId = ? ORDER BY updatedAt DESC`,
-           [categoryId],
+  getNotesInCategory: function(categoryId, userId, cb){
+    db.all(`SELECT id, title, content, createdAt, updatedAt FROM notes WHERE categoryId = ? AND userId = ? ORDER BY updatedAt DESC`,
+           [categoryId, userId],
            (err, rows) => {
              if(err) return cb && cb(err);
              cb && cb(null, rows || []);
            });
   },
 
-  getNote: function(noteId, cb){
-    db.get(`SELECT id, userId, categoryId, title, content, createdAt, updatedAt FROM notes WHERE id = ?`,
-           [noteId],
+  getNote: function(noteId, userId, cb){
+    db.get(`SELECT id, userId, categoryId, title, content, createdAt, updatedAt FROM notes WHERE id = ? AND userId = ?`,
+           [noteId, userId],
            (err, row) => {
              if(err) return cb && cb(err);
              cb && cb(null, row || null);
            });
   },
 
-  updateNote: function(noteId, title, content, cb){
+  updateNote: function(noteId, userId, title, content, cb){
     const now = Date.now();
-    db.run(`UPDATE notes SET title = ?, content = ?, updatedAt = ? WHERE id = ?`,
-           [title, content, now, noteId],
+    db.run(`UPDATE notes SET title = ?, content = ?, updatedAt = ? WHERE id = ? AND userId = ?`,
+           [title, content, now, noteId, userId],
            function(err){
              if(err) {
                console.error('[Database] Error updating note:', err);
@@ -490,9 +537,9 @@ module.exports = {
            });
   },
 
-  deleteNote: function(noteId, cb){
-    db.run(`DELETE FROM notes WHERE id = ?`,
-           [noteId],
+  deleteNote: function(noteId, userId, cb){
+    db.run(`DELETE FROM notes WHERE id = ? AND userId = ?`,
+           [noteId, userId],
            function(err){ 
              if(err) return cb && cb(err);
              cb && cb(null, this && this.changes); 
