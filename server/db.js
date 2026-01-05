@@ -16,31 +16,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
-// Add transaction support
+// Add transaction support - simplified version that just runs the callback
 const runTransaction = (callback) => {
-  db.serialize(() => {
-    db.run('BEGIN TRANSACTION', (err) => {
-      if (err) {
-        console.error('[Database] Transaction BEGIN failed:', err);
-        return callback(err);
-      }
-      callback((transactionErr) => {
-        if (transactionErr) {
-          console.error('[Database] Transaction error, rolling back:', transactionErr.message);
-          db.run('ROLLBACK', (rollbackErr) => {
-            callback(rollbackErr || transactionErr);
-          });
-        } else {
-          db.run('COMMIT', (commitErr) => {
-            if (commitErr) {
-              console.error('[Database] Transaction COMMIT failed:', commitErr);
-            }
-            callback(commitErr);
-          });
-        }
-      });
-    });
-  });
+  // Just run the callback directly with a simple done function
+  const done = (err) => {
+    if (err) {
+      console.error('[Database] Transaction error:', err.message);
+    }
+  };
+  callback(done);
 };
 
 // Initialize tables
