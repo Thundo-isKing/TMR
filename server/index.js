@@ -350,7 +350,31 @@ app.post('/auth/login', authLimiter, async (req, res) => {
       return res.status(401).json({ error: 'invalid_credentials' });
     }
 
-    const matches = await bcrypt.compare(password, user.passwordHash);
+    const storedHash = String(user.passwordHash || '');
+    const looksLikeBcrypt = /^\$2[aby]?\$/.test(storedHash);
+    const looksLikeSha256 = /^[0-9a-fA-F]{64}$/.test(storedHash);
+
+    let matches = false;
+    if (looksLikeBcrypt) {
+      matches = await bcrypt.compare(password, storedHash);
+    } else if (looksLikeSha256) {
+      const sha = nodeCrypto.createHash('sha256').update(String(password)).digest('hex');
+      matches = (sha.toLowerCase() === storedHash.toLowerCase());
+
+      // Transparent migration: rehash to bcrypt after a successful legacy login.
+      if (matches) {
+        try {
+          const upgraded = await bcrypt.hash(password, 10);
+          await dbAsync(db.updateUserPasswordHash, user.id, upgraded);
+        } catch (e) {
+          console.warn('[Auth] Password hash upgrade failed for user', user.id, e && e.message);
+        }
+      }
+    } else {
+      // Unknown/unsupported hash format
+      matches = false;
+    }
+
     if (!matches) {
       return res.status(401).json({ error: 'invalid_credentials' });
     }

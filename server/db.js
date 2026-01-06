@@ -634,6 +634,15 @@ module.exports = {
            });
   },
 
+  updateUserPasswordHash: function(userId, passwordHash, cb) {
+    db.run(`UPDATE users SET passwordHash = ? WHERE id = ?`,
+           [passwordHash, userId],
+           function(err) {
+             if (err) return cb && cb(err);
+             cb && cb(null, this.changes);
+           });
+  },
+
   // Sessions
   createSession: function(userId, token, expiresAt, cb) {
     const now = Date.now();
