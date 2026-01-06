@@ -21,11 +21,13 @@
                             var accent2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_accent_color') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_accent') || null;
                             var bg2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_bg_image') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_bg_image') || null;
                             var anim2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_animation') || null;
-                            if (accent2 || bg2 || anim2) {
+                            var font2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_font_family') || localStorage.getItem('tmr_user_' + lastUid + '_theme_font_family') || null;
+                            if (accent2 || bg2 || anim2 || font2) {
                                 raw = JSON.stringify({
                                     accentColor: accent2,
                                     backgroundImage: bg2,
                                     animation: anim2,
+                                    fontFamily: font2,
                                     updatedAt: Date.now()
                                 });
                                 try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
@@ -37,11 +39,13 @@
                             var aAccent = localStorage.getItem('tmr_anon_theme_accent_color') || localStorage.getItem('tmr_anon_tmr_accent') || null;
                             var aBg = localStorage.getItem('tmr_anon_theme_bg_image') || localStorage.getItem('tmr_anon_tmr_bg_image') || null;
                             var aAnim = localStorage.getItem('tmr_anon_theme_animation') || null;
-                            if (aAccent || aBg || aAnim) {
+                            var aFont = localStorage.getItem('tmr_anon_theme_font_family') || null;
+                            if (aAccent || aBg || aAnim || aFont) {
                                 raw = JSON.stringify({
                                     accentColor: aAccent,
                                     backgroundImage: aBg,
                                     animation: aAnim,
+                                    fontFamily: aFont,
                                     updatedAt: Date.now()
                                 });
                                 try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
@@ -56,10 +60,18 @@
                 var accent = (typeof theme.accentColor === 'string') ? theme.accentColor.trim() : '';
                 var accentRgb = (typeof theme.accentRgb === 'string') ? theme.accentRgb.trim() : '';
                 var bg = (typeof theme.backgroundImage === 'string') ? theme.backgroundImage : '';
+                var fontFamily = (typeof theme.fontFamily === 'string') ? theme.fontFamily.trim() : '';
 
                 if (!accent || accent === 'null' || accent === 'undefined') accent = '';
                 if (!accentRgb || accentRgb === 'null' || accentRgb === 'undefined') accentRgb = '';
                 if (!bg || bg === 'null' || bg === 'undefined') bg = '';
+                if (!fontFamily || fontFamily === 'null' || fontFamily === 'undefined') fontFamily = '';
+
+                // Apply font family if available
+                if (fontFamily) {
+                    root.style.setProperty('--font-family', fontFamily);
+                    document.body.style.fontFamily = fontFamily;
+                }
 
                 // Resolve --accent-rgb even for non-hex colors (rgb(), hsl(), named colors, etc.)
                 if (accent && !accentRgb) {
@@ -127,7 +139,20 @@
         // Prevent a brief flash of the main app UI before the auth modal is shown.
         // auth-client.js will clear this once it has displayed the correct UI.
         (function () {
-            try { document.documentElement.classList.add('tmr-auth-pending'); } catch (e) {}
+            try {
+                document.documentElement.classList.add('tmr-auth-pending');
+
+                // Safety: if auth-client fails to load or crashes before clearing,
+                // don't leave the entire app permanently hidden.
+                setTimeout(function () {
+                    try {
+                        if (document.documentElement.classList.contains('tmr-auth-pending')) {
+                            console.warn('[Auth] Pending timeout; revealing UI');
+                            document.documentElement.classList.remove('tmr-auth-pending');
+                        }
+                    } catch (e) {}
+                }, 3500);
+            } catch (e) {}
         })();
     </script>
     <style>
@@ -1566,6 +1591,24 @@
                         <input id="accent-picker" type="color" value="#0089f1" title="Choose accent color" />
                         <div id="accent-preview" class="color-preview" style="background-color: #0089f1;"></div>
                     </div>
+                </div>
+
+                <!-- Font Section -->
+                <div class="themes-section">
+                    <label for="font-picker">Font Family</label>
+                    <select id="font-picker" title="Choose font family">
+                        <option value="'Google Sans', 'Roboto', system-ui, -apple-system, sans-serif">Google Sans (Default)</option>
+                        <option value="'Courier New', 'Courier', monospace">Courier New</option>
+                        <option value="'Georgia', serif">Georgia</option>
+                        <option value="'Times New Roman', 'Times', serif">Times New Roman</option>
+                        <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                        <option value="'Arial', sans-serif">Arial</option>
+                        <option value="'Verdana', sans-serif">Verdana</option>
+                        <option value="'Impact', fantasy">Impact</option>
+                        <option value="'Lucida Console', monospace">Lucida Console</option>
+                    </select>
+                    <div id="font-preview" class="font-preview">The quick brown fox jumps over the lazy dog</div>
                 </div>
 
                 <!-- Background Image Section -->

@@ -296,6 +296,56 @@ if (leaveBtn) {
         return '';
     }
     
+    function initFontPicker() {
+        const picker = document.getElementById('font-picker');
+        const preview = document.getElementById('font-preview');
+        
+        console.log('[Font] Init. Picker:', !!picker, 'Preview:', !!preview);
+        
+        if(!picker) {
+            console.error('[Font] Picker not found!');
+            return false;
+        }
+        
+        // Load saved font from localStorage
+        const FONT_KEY = 'theme_font_family';
+        const saved = localStorage.getItem(FONT_KEY);
+        const defaultFont = "'Google Sans', 'Roboto', system-ui, -apple-system, sans-serif";
+        
+        function applyFont(fontFamily) {
+            if(!fontFamily) return;
+            console.log('[Font] Applying font:', fontFamily);
+            document.documentElement.style.setProperty('--font-family', fontFamily);
+            document.body.style.fontFamily = fontFamily;
+            if(preview) {
+                preview.style.fontFamily = fontFamily;
+            }
+        }
+        
+        // Apply saved font or default
+        const fontToApply = saved || defaultFont;
+        picker.value = fontToApply;
+        applyFont(fontToApply);
+        
+        // Update on change
+        picker.addEventListener('change', (e) => {
+            const font = e.target.value;
+            console.log('[Font] Font changed to:', font);
+            localStorage.setItem(FONT_KEY, font);
+            applyFont(font);
+        });
+        
+        // Live preview on input
+        picker.addEventListener('input', (e) => {
+            if(preview) {
+                preview.style.fontFamily = e.target.value;
+            }
+        });
+        
+        console.log('[Font] Initialized successfully');
+        return true;
+    }
+
     function initAccentPicker() {
         const picker = document.getElementById('accent-picker');
         const preview = document.getElementById('accent-preview');
@@ -392,6 +442,12 @@ if (leaveBtn) {
             // If it fails, wait for DOM to be ready
             if(document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', initAccentPicker);
+            }
+        }
+        if(!initFontPicker()) {
+            // If it fails, wait for DOM to be ready
+            if(document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initFontPicker);
             }
         }
     }

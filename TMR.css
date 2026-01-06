@@ -2300,6 +2300,41 @@ body.currentschedules-page #clock {
     background: #d0d0d0;
 }
 
+/* Font Picker */
+#font-picker {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #333;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+#font-picker:hover,
+#font-picker:focus {
+    border-color: var(--accent-color, #0089f1);
+    outline: none;
+}
+
+.font-preview {
+    margin-top: 12px;
+    padding: 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    text-align: center;
+    color: #333;
+    font-size: 16px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
 /* Background Image Upload */
 .bg-upload-row {
     display: flex;
