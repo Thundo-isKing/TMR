@@ -2098,6 +2098,17 @@ if (leaveBtn) {
                     
                     // Step 4: Auto-subscribe silently if permission granted
                     if(Notification.permission === 'granted'){
+                        // UX: if the user has granted notification permission, default local reminders to enabled
+                        // unless they explicitly turned them off before.
+                        try {
+                            if (localStorage.getItem(NOTIFY_KEY) == null) {
+                                localStorage.setItem(NOTIFY_KEY, 'true');
+                                if (notifyToggle) notifyToggle.checked = true;
+                            }
+                        } catch (e) {}
+
+                        try { rescheduleAll(); } catch (e) {}
+
                         console.log('[TMR] Permission granted, auto-subscribing for push...');
                         await subscribeForPush(true); // silent mode
                     }
