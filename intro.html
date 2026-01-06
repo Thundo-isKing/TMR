@@ -96,6 +96,7 @@
             scroll-snap-type: y mandatory;
             scroll-behavior: smooth;
             scroll-padding-top: 92px; /* keeps content below the fixed topbar */
+            scrollbar-gutter: stable;
         }
 
         .intro-snap {
@@ -159,17 +160,35 @@
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
         }
 
-        /* Desktop/tablet: lock into 3 columns so Android can't drop under iPhone. */
+        /* Desktop/tablet: keep the cluster centered and stable (no overlap). */
         @media (min-width: 901px) {
             .intro-phones {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-                column-gap: 54px;
-                row-gap: 12px;
+                display: flex;
                 align-items: center;
-                justify-items: center;
+                justify-content: center;
+                flex-wrap: nowrap;
+                gap: 54px;
+                justify-self: center;
+                margin-left: auto;
+                margin-right: auto;
+                transform: translateX(-82px);
+            }
+
+            .intro-tutorial-cta {
+                width: 300px;
+                max-width: 300px;
+            }
+        }
+
+        /* If the viewport is too narrow for a single row, allow wrapping instead of stacking/overlap. */
+        @media (min-width: 901px) and (max-width: 1180px) {
+            .intro-phones {
+                flex-wrap: wrap;
             }
         }
 
@@ -177,15 +196,21 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            flex: 0 1 auto;
+            flex: 0 0 auto;
             justify-content: center;
+            flex-wrap: nowrap;
         }
 
         #intro-sec-mobile .intro-snap-inner {
             justify-items: center;
+            max-width: 1220px;
             /* Reduce bottom-heavy feel by balancing vertical padding in this section only. */
             padding-top: 70px;
             padding-bottom: 70px;
+        }
+
+        @media (min-width: 901px) {
+            /* No extra rules needed here. */
         }
 
         @media (max-width: 900px) {
@@ -221,7 +246,7 @@
             grid-template-rows: auto 1fr;
             gap: 10px;
             cursor: pointer;
-            flex: 0 1 auto;
+            flex: 0 0 auto;
         }
 
         .intro-phone-title {
@@ -742,7 +767,7 @@
         <section class="intro-snap" id="intro-sec-mobile" aria-label="Mobile info">
             <div class="intro-snap-inner">
                 <div class="intro-phones" aria-label="Mobile setup videos">
-                    <div class="intro-phone-group" aria-label="iPhone tutorial">
+                    <div class="intro-phone-group intro-phone-group--iphone" aria-label="iPhone tutorial">
                         <button class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="iphone">Start using TMR tutorial (Iphone)</button>
 
                         <div class="intro-phone" role="button" tabindex="0" data-tutorial="iphone" aria-label="Open iPhone tutorial">
@@ -753,7 +778,7 @@
 
                     <div class="intro-or" aria-hidden="true">or</div>
 
-                    <div class="intro-phone-group" aria-label="Android tutorial">
+                    <div class="intro-phone-group intro-phone-group--android" aria-label="Android tutorial">
                         <div class="intro-phone" role="button" tabindex="0" data-tutorial="android" aria-label="Open Android tutorial">
                             <div class="intro-phone-title">Android setup video</div>
                             <div class="intro-phone-screen">Video placeholder</div>
