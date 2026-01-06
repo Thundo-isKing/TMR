@@ -725,6 +725,35 @@
             return deviceId;
         }
 
+        function getAuthenticatedUserId() {
+            try {
+                const uid = localStorage.getItem('tmr_last_user_id');
+                return uid ? String(uid) : null;
+            } catch { return null; }
+        }
+
+        function migrateDeviceNotesToUserNamespace() {
+            const uid = getAuthenticatedUserId();
+            if (!uid) return;
+            const deviceKey = 'tmr_device_notes';
+            const userKey = `tmr_user_${uid}_notes`;
+            try {
+                const deviceData = localStorage.getItem(deviceKey);
+                const userData = localStorage.getItem(userKey);
+                if (deviceData && !userData) {
+                    localStorage.setItem(userKey, deviceData);
+                    console.log('[NotesHQ] Migrated notes from device namespace to user namespace');
+                }
+            } catch (e) {
+                console.warn('[NotesHQ] Migration error:', e);
+            }
+        }
+
+        function getNotesStorageKey() {
+            const uid = getAuthenticatedUserId();
+            return uid ? `tmr_user_${uid}_notes` : 'tmr_device_notes';
+        }
+
         let currentUser = getOrCreateDeviceId();
         let currentCategoryId = null;
         let editingCategoryId = null;
@@ -751,6 +780,9 @@
             } catch (e) {
                 console.warn('[NotesHQ] Auth restore failed:', e);
             }
+
+            // Migrate old per-device notes to per-user namespace if needed
+            migrateDeviceNotesToUserNamespace();
 
             await loadTheme();
             loadCategories();
