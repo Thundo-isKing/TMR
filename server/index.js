@@ -2,14 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
+const nodeCrypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const webpush = require('web-push');
-const crypto = require('crypto');
-const cookieParser = require('cookie-parser');
-const bcrypt = require('bcrypt');
-const rateLimit = require('express-rate-limit');
 const db = require('./db');
 
 // ADD: Import security modules
@@ -180,7 +176,7 @@ const attachUser = async (req, res, next) => {
 app.use(attachUser);
 
 const createSessionForUser = async (userId) => {
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = nodeCrypto.randomBytes(32).toString('hex');
   const expiresAt = Date.now() + SESSION_TTL_MS;
   await dbAsync(db.createSession, userId, token, expiresAt);
   return { token, expiresAt };
