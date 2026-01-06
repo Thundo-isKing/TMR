@@ -1,7 +1,6 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="auth-check.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TMR ~ Create Your Future</title>
@@ -1142,10 +1141,7 @@
             <div class="tmr-menu-item">
                 <button id="fullscreen-btn-tmr" type="button" class="small-tmr-btn">Fullscreen</button>
             </div>
-            <div class="tmr-menu-item" style="border-top:1px solid #ccc; padding-top:8px; margin-top:8px;">
-                <button id="header-logout-btn" class="small-tmr-btn" type="button" style="background-color: #ff6b6b; color: white;">Logout</button>
-                <button id="header-logout-all-btn" class="small-tmr-btn" type="button" style="background-color: #ff4444; color: white; margin-top:6px;">Logout All Devices</button>
-            </div>
+            <!-- Logout controls intentionally removed (use the Account modal flow instead) -->
         </div>
         </div>
         
@@ -1164,7 +1160,7 @@
             <button id="header-notes-btn" class="header-text-btn" tabindex="0">📝 Notes</button>
             <button id="header-themes-btn" class="header-text-btn" tabindex="0">🎨 Themes</button>
             <span id="header-username" style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; color: var(--accent-color, #0089f1);">Loading...</span>
-            <button id="header-logout-btn" class="header-text-btn" tabindex="0" title="Logout">🚪 Logout</button>
+            <button id="header-logout-btn" class="header-text-btn" type="button" style="display:none;" title="Logout">🚪 Logout</button>
         </div>
     </header>
 
@@ -1442,23 +1438,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="auth-client.js?v=20260105c"></script>
-    <script src="TMR.js?v=20260105c"></script>
-    <script src="calendar.js?v=20260105c"></script>
-    <script src="calendar-mobile.js?v=20260105c"></script>
-    <script src="google-calendar-client.js?v=20260105c"></script>
-    <script src="meibot.js?v=20260105c"></script>
+    <script src="auth-client.js?v=20260106a"></script>
+    <script src="TMR.js?v=20260106a"></script>
+    <script src="calendar.js?v=20260106a"></script>
+    <script src="calendar-mobile.js?v=20260106a"></script>
+    <script src="google-calendar-client.js?v=20260106a"></script>
+    <script src="meibot.js?v=20260106a"></script>
 
     <!-- New Layout Logic Script -->
     <script>
         (function() {
-            // Check first visit
-            const hasSeen = localStorage.getItem('tmr_tutorial_seen');
-            if (!hasSeen) {
-                window.location.href = 'intro.html';
-                return;
-            }
-
             // Tutorial button in dropdown
             const tutorialBtn = document.getElementById('tutorial-btn');
             if (tutorialBtn) {

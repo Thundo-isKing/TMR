@@ -160,45 +160,74 @@ const AuthClient = (() => {
   const migrateAnonDataToUserScope = (uid) => {
     if (!uid) return;
 
+    const toDst = (baseKey) => `${CACHE_PREFIX}user_${uid}_${baseKey}`;
+    const sourceKeysFor = (baseKey) => {
+      // Sources we may have from older builds:
+      // - anon-scoped (written while session was restoring)
+      // - legacy suffix-scoped (from earlier multi-user approach)
+      // - unscoped (single-user era)
+      return [
+        // Old code sometimes appended `_user<id>` while scoped localStorage was active,
+        // producing doubly-scoped keys like `tmr_user_<id>_<baseKey>_user<id>`.
+        `${CACHE_PREFIX}user_${uid}_${baseKey}_user${uid}`,
+        `${CACHE_PREFIX}anon_${baseKey}`,
+        `${baseKey}_user${uid}`,
+        `${baseKey}`
+      ];
+    };
+
     const copyIfMissing = (baseKey) => {
-      const src = `${CACHE_PREFIX}anon_${baseKey}`;
-      const dst = `${CACHE_PREFIX}user_${uid}_${baseKey}`;
-      const srcVal = rawGetItem(src);
-      if (srcVal == null) return;
+      const dst = toDst(baseKey);
       const dstVal = rawGetItem(dst);
-      if (dstVal == null) {
-        rawSetItem(dst, srcVal);
+      if (dstVal != null) {
+        // Destination already populated: clear only anon key to avoid cross-account leakage.
+        try { rawRemoveItem(`${CACHE_PREFIX}anon_${baseKey}`); } catch (_) {}
+        return;
       }
-      rawRemoveItem(src);
+
+      for (const src of sourceKeysFor(baseKey)) {
+        const srcVal = rawGetItem(src);
+        if (srcVal == null) continue;
+        rawSetItem(dst, srcVal);
+        try { rawRemoveItem(src); } catch (_) {}
+        break;
+      }
     };
 
     const mergeArrayById = (baseKey) => {
-      const src = `${CACHE_PREFIX}anon_${baseKey}`;
-      const dst = `${CACHE_PREFIX}user_${uid}_${baseKey}`;
-      const srcRaw = rawGetItem(src);
-      if (!srcRaw) return;
-      let srcArr;
-      try { srcArr = JSON.parse(srcRaw); } catch (_) { srcArr = null; }
-      if (!Array.isArray(srcArr) || srcArr.length === 0) { rawRemoveItem(src); return; }
-
+      const dst = toDst(baseKey);
       let dstArr;
       try { dstArr = JSON.parse(rawGetItem(dst) || '[]'); } catch (_) { dstArr = []; }
       if (!Array.isArray(dstArr)) dstArr = [];
 
       const seen = new Set(dstArr.map(t => t && t.id).filter(Boolean));
       let changed = false;
-      for (const item of srcArr) {
-        const id = item && item.id;
-        if (id && seen.has(id)) continue;
-        dstArr.push(item);
-        if (id) seen.add(id);
-        changed = true;
+
+      for (const src of sourceKeysFor(baseKey)) {
+        const srcRaw = rawGetItem(src);
+        if (!srcRaw) continue;
+        let srcArr;
+        try { srcArr = JSON.parse(srcRaw); } catch (_) { srcArr = null; }
+        if (!Array.isArray(srcArr) || srcArr.length === 0) {
+          try { rawRemoveItem(src); } catch (_) {}
+          continue;
+        }
+
+        for (const item of srcArr) {
+          const id = item && item.id;
+          if (id && seen.has(id)) continue;
+          dstArr.push(item);
+          if (id) seen.add(id);
+          changed = true;
+        }
+
+        // We've migrated this source; remove it so we don't double-import later.
+        try { rawRemoveItem(src); } catch (_) {}
       }
 
       if (changed) {
         try { rawSetItem(dst, JSON.stringify(dstArr)); } catch (_) {}
       }
-      rawRemoveItem(src);
     };
 
     // Todos and basic appearance settings
@@ -275,6 +304,17 @@ const AuthClient = (() => {
     // Only clear the boot snapshot if the server explicitly says there's no session.
     // If the server is down / network hiccup, keep it so pages don't flash defaults.
     try { if (sessionExplicitlyMissing) clearBootThemeSnapshot(); } catch (e) {}
+
+    // Allow guest mode (no session) when explicitly selected.
+    try {
+      const guestMode = rawGetItem('guest_mode') || rawGetItem(`${CACHE_PREFIX}anon_guest_mode`);
+      if (guestMode) {
+        showGuestUI();
+        try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: null, guest: true } })); } catch (e) {}
+        return false;
+      }
+    } catch (e) {}
+
     showLoginUI();
     return false;
   };
@@ -307,6 +347,8 @@ const AuthClient = (() => {
       currentUser = data.user;
       console.log('[Auth] Registered and logged in as:', currentUser.username);
       resolveReady(currentUser);
+      try { rawRemoveItem('guest_mode'); } catch (e) {}
+      try { rawRemoveItem(`${CACHE_PREFIX}anon_guest_mode`); } catch (e) {}
       try { migrateAnonDataToUserScope(currentUser.id); } catch (e) {}
       clearAllCaches();
       try { updateBootThemeSnapshot(); } catch (e) {}
@@ -345,6 +387,8 @@ const AuthClient = (() => {
       currentUser = data.user;
       console.log('[Auth] Logged in as:', currentUser.username);
       resolveReady(currentUser);
+      try { rawRemoveItem('guest_mode'); } catch (e) {}
+      try { rawRemoveItem(`${CACHE_PREFIX}anon_guest_mode`); } catch (e) {}
       try { migrateAnonDataToUserScope(currentUser.id); } catch (e) {}
       clearAllCaches();
       try { updateBootThemeSnapshot(); } catch (e) {}
@@ -584,12 +628,14 @@ const AuthClient = (() => {
     const appContainer = document.querySelector('.calendar-page');
     const header = document.querySelector('.page-header');
     const headerLoginBtn = document.getElementById('header-login-btn');
+    const headerLogoutBtn = document.getElementById('header-logout-btn');
 
     // Keep the app visible; the auth modal is an overlay.
     // This prevents the "only header remains" blank state if something goes wrong.
     if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
     if (header) header.style.setProperty('display', 'flex', 'important');
     if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
+    if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
 
     if (!authModal) {
       console.error('[Auth] Cannot show login UI: #auth-modal-backdrop not found');
@@ -690,6 +736,7 @@ const AuthClient = (() => {
     const appContainer = document.querySelector('.calendar-page');
     const header = document.querySelector('.page-header');
     const headerLoginBtn = document.getElementById('header-login-btn');
+    const headerLogoutBtn = document.getElementById('header-logout-btn');
 
     if (authModal) {
       authModal.style.setProperty('display', 'none', 'important');
@@ -700,8 +747,31 @@ const AuthClient = (() => {
     if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
     if (header) header.style.setProperty('display', 'flex', 'important');
     if (headerLoginBtn) headerLoginBtn.style.display = 'none';  // Hide login button when logged in
+    if (headerLogoutBtn) headerLogoutBtn.style.display = 'inline-block';
 
     console.log('[Auth] App UI shown');
+  };
+
+  const showGuestUI = () => {
+    currentUser = null;
+    const authModal = document.getElementById('auth-modal-backdrop');
+    const appContainer = document.querySelector('.calendar-page');
+    const header = document.querySelector('.page-header');
+    const headerLoginBtn = document.getElementById('header-login-btn');
+    const headerLogoutBtn = document.getElementById('header-logout-btn');
+
+    if (authModal) {
+      authModal.style.setProperty('display', 'none', 'important');
+      authModal.style.setProperty('visibility', 'hidden', 'important');
+      authModal.style.setProperty('opacity', '0', 'important');
+      authModal.style.setProperty('z-index', '-1', 'important');
+    }
+    if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
+    if (header) header.style.setProperty('display', 'flex', 'important');
+    if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
+    if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
+
+    console.log('[Auth] Guest UI shown');
   };
 
   /**
@@ -818,26 +888,36 @@ const AuthClient = (() => {
       });
     }
 
-    // Logout button in header
-    const logoutBtn = document.getElementById('header-logout-btn');
-    if (logoutBtn) {
-      console.log('[Auth] Found logout button');
-      logoutBtn.addEventListener('click', async () => {
-        if (confirm('Are you sure you want to logout?')) {
-          await logout();
-        }
-      });
+    // Logout button(s)
+    const logoutButtons = [
+      document.getElementById('header-logout-btn'),
+      document.getElementById('menu-logout-btn')
+    ].filter(Boolean);
+    if (logoutButtons.length) {
+      console.log('[Auth] Found logout button(s):', logoutButtons.length);
+      for (const btn of logoutButtons) {
+        btn.addEventListener('click', async () => {
+          if (confirm('Are you sure you want to logout?')) {
+            await logout();
+          }
+        });
+      }
     }
 
-    // Logout all button
-    const logoutAllBtn = document.getElementById('header-logout-all-btn');
-    if (logoutAllBtn) {
-      console.log('[Auth] Found logout-all button');
-      logoutAllBtn.addEventListener('click', async () => {
-        if (confirm('Logout from all devices?')) {
-          await logoutAll();
-        }
-      });
+    // Logout all button(s)
+    const logoutAllButtons = [
+      document.getElementById('header-logout-all-btn'),
+      document.getElementById('menu-logout-all-btn')
+    ].filter(Boolean);
+    if (logoutAllButtons.length) {
+      console.log('[Auth] Found logout-all button(s):', logoutAllButtons.length);
+      for (const btn of logoutAllButtons) {
+        btn.addEventListener('click', async () => {
+          if (confirm('Logout from all devices?')) {
+            await logoutAll();
+          }
+        });
+      }
     }
 
     console.log('[Auth] Event listeners attached');

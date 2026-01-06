@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const dotenv = require('dotenv');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const nodeCrypto = require('crypto');
@@ -21,8 +22,16 @@ process.on('uncaughtException', (error) => {
   console.error('[FATAL] Uncaught Exception:', error);
 });
 
-// Ensure VAPID keys exist; if not, generate and write to .env
+// Load environment variables from the project root (.env)
+// so local development works without manually exporting env vars.
 const envPath = path.join(__dirname, '..', '.env');
+try {
+  dotenv.config({ path: envPath });
+} catch (e) {
+  // Non-fatal: fall back to process.env
+}
+
+// Ensure VAPID keys exist; if not, generate and write to .env
 let VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 let VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
@@ -1236,26 +1245,19 @@ app.post('/notes/tasks/confirm', requireAuth, (req, res) => {
 
 // ========== EVENTS ENDPOINTS ==========
 
-app.post('/events/create', (req, res) => {
+app.post('/events/create', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
     const { event } = req.body;
     if (!event || !event.title || !event.date) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
-
-      db.createEvent(session.userId, event, (err, eventId) => {
-        if (err) {
-          console.error('[Events] Create error:', err);
-          return res.status(500).json({ error: 'Failed to create event' });
-        }
-        res.json({ ok: true, eventId });
-      });
+    db.createEvent(req.user.id, event, (err, eventId) => {
+      if (err) {
+        console.error('[Events] Create error:', err);
+        return res.status(500).json({ error: 'Failed to create event' });
+      }
+      res.json({ ok: true, eventId });
     });
   } catch (err) {
     console.error('[Events] Create error:', err);
@@ -1263,21 +1265,14 @@ app.post('/events/create', (req, res) => {
   }
 });
 
-app.get('/events', (req, res) => {
+app.get('/events', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
-
-      db.getEventsByUserId(session.userId, (err, events) => {
-        if (err) {
-          console.error('[Events] Get error:', err);
-          return res.status(500).json({ error: 'Failed to get events' });
-        }
-        res.json({ events });
-      });
+    db.getEventsByUserId(req.user.id, (err, events) => {
+      if (err) {
+        console.error('[Events] Get error:', err);
+        return res.status(500).json({ error: 'Failed to get events' });
+      }
+      res.json({ events });
     });
   } catch (err) {
     console.error('[Events] Get error:', err);
@@ -1285,20 +1280,19 @@ app.get('/events', (req, res) => {
   }
 });
 
-app.put('/events/:eventId', (req, res) => {
+app.put('/events/:eventId', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
     const { eventId } = req.params;
     const { event } = req.body;
 
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+    db.getEventById(eventId, (err, existing) => {
+      if (err) return res.status(500).json({ error: 'Failed to load event' });
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      if (String(existing.userId) !== String(req.user.id)) return res.status(403).json({ error: 'Forbidden' });
 
-      db.updateEvent(eventId, event, (err, changes) => {
-        if (err) {
-          console.error('[Events] Update error:', err);
+      db.updateEvent(eventId, event, (err2, changes) => {
+        if (err2) {
+          console.error('[Events] Update error:', err2);
           return res.status(500).json({ error: 'Failed to update event' });
         }
         res.json({ ok: true, changes });
@@ -1310,19 +1304,18 @@ app.put('/events/:eventId', (req, res) => {
   }
 });
 
-app.delete('/events/:eventId', (req, res) => {
+app.delete('/events/:eventId', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
     const { eventId } = req.params;
 
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+    db.getEventById(eventId, (err, existing) => {
+      if (err) return res.status(500).json({ error: 'Failed to load event' });
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      if (String(existing.userId) !== String(req.user.id)) return res.status(403).json({ error: 'Forbidden' });
 
-      db.deleteEvent(eventId, (err, changes) => {
-        if (err) {
-          console.error('[Events] Delete error:', err);
+      db.deleteEvent(eventId, (err2, changes) => {
+        if (err2) {
+          console.error('[Events] Delete error:', err2);
           return res.status(500).json({ error: 'Failed to delete event' });
         }
         res.json({ ok: true, changes });
@@ -1336,26 +1329,19 @@ app.delete('/events/:eventId', (req, res) => {
 
 // ========== TODOS ENDPOINTS ==========
 
-app.post('/todos/create', (req, res) => {
+app.post('/todos/create', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
     const { todo } = req.body;
     if (!todo || !todo.text) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
-
-      db.createTodo(session.userId, todo, (err, todoId) => {
-        if (err) {
-          console.error('[Todos] Create error:', err);
-          return res.status(500).json({ error: 'Failed to create todo' });
-        }
-        res.json({ ok: true, todoId });
-      });
+    db.createTodo(req.user.id, todo, (err, todoId) => {
+      if (err) {
+        console.error('[Todos] Create error:', err);
+        return res.status(500).json({ error: 'Failed to create todo' });
+      }
+      res.json({ ok: true, todoId });
     });
   } catch (err) {
     console.error('[Todos] Create error:', err);
@@ -1363,21 +1349,14 @@ app.post('/todos/create', (req, res) => {
   }
 });
 
-app.get('/todos', (req, res) => {
+app.get('/todos', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
-
-      db.getTodosByUserId(session.userId, (err, todos) => {
-        if (err) {
-          console.error('[Todos] Get error:', err);
-          return res.status(500).json({ error: 'Failed to get todos' });
-        }
-        res.json({ todos });
-      });
+    db.getTodosByUserId(req.user.id, (err, todos) => {
+      if (err) {
+        console.error('[Todos] Get error:', err);
+        return res.status(500).json({ error: 'Failed to get todos' });
+      }
+      res.json({ todos });
     });
   } catch (err) {
     console.error('[Todos] Get error:', err);
@@ -1385,20 +1364,19 @@ app.get('/todos', (req, res) => {
   }
 });
 
-app.put('/todos/:todoId', (req, res) => {
+app.put('/todos/:todoId', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
     const { todoId } = req.params;
     const { todo } = req.body;
 
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+    db.getTodoById(todoId, (err, existing) => {
+      if (err) return res.status(500).json({ error: 'Failed to load todo' });
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      if (String(existing.userId) !== String(req.user.id)) return res.status(403).json({ error: 'Forbidden' });
 
-      db.updateTodo(todoId, todo, (err, changes) => {
-        if (err) {
-          console.error('[Todos] Update error:', err);
+      db.updateTodo(todoId, todo, (err2, changes) => {
+        if (err2) {
+          console.error('[Todos] Update error:', err2);
           return res.status(500).json({ error: 'Failed to update todo' });
         }
         res.json({ ok: true, changes });
@@ -1410,19 +1388,18 @@ app.put('/todos/:todoId', (req, res) => {
   }
 });
 
-app.delete('/todos/:todoId', (req, res) => {
+app.delete('/todos/:todoId', requireAuth, (req, res) => {
   try {
-    const token = req.cookies?.auth_token;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-
     const { todoId } = req.params;
 
-    db.getSessionByToken(token, (err, session) => {
-      if (err || !session) return res.status(401).json({ error: 'Invalid token' });
+    db.getTodoById(todoId, (err, existing) => {
+      if (err) return res.status(500).json({ error: 'Failed to load todo' });
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      if (String(existing.userId) !== String(req.user.id)) return res.status(403).json({ error: 'Forbidden' });
 
-      db.deleteTodo(todoId, (err, changes) => {
-        if (err) {
-          console.error('[Todos] Delete error:', err);
+      db.deleteTodo(todoId, (err2, changes) => {
+        if (err2) {
+          console.error('[Todos] Delete error:', err2);
           return res.status(500).json({ error: 'Failed to delete todo' });
         }
         res.json({ ok: true, changes });

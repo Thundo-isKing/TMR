@@ -1,35 +1,5 @@
-﻿
-// Wrap localStorage to use per-user keys via AuthClient.
-// Important: do NOT call AuthClient.storage from inside this proxy (would recurse).
-const originalLocalStorage = window.localStorage;
-window.__tmrOriginalLocalStorage = originalLocalStorage;
-
-// NOTE: auth-client.js installs a robust key-scoping patch for localStorage.
-// Avoid installing a Proxy (some browsers disallow replacing window.localStorage,
-// and if it does work it can double-scope keys).
-try {
-    if (!window.__tmrScopedLocalStorageInstalled && typeof AuthClient !== 'undefined' && AuthClient && typeof AuthClient.getCacheKey === 'function') {
-        const toUserKey = (key) => AuthClient.getCacheKey(String(key));
-
-        window.localStorage = new Proxy(originalLocalStorage, {
-            get(target, prop) {
-                if (prop === 'getItem') return (key) => target.getItem(toUserKey(key));
-                if (prop === 'setItem') return (key, val) => target.setItem(toUserKey(key), val);
-                if (prop === 'removeItem') return (key) => target.removeItem(toUserKey(key));
-                if (prop === 'clear') return () => target.clear();
-                if (prop === 'length') return target.length;
-                if (prop === 'key') return (idx) => target.key(idx);
-                return target[prop];
-            },
-            set(target, prop, val) {
-                target[prop] = val;
-                return true;
-            }
-        });
-    }
-} catch (e) {
-    // Ignore: safest fallback is to use native localStorage (auth-client will patch methods).
-}
+﻿// Note: AuthClient (auth-client.js) installs the per-user localStorage scoping.
+// Do not attempt to replace or proxy window.localStorage here.
 
 const displayClock = () => {
     const now = new Date();
@@ -80,11 +50,18 @@ if (refreshBtn) {
 let currentUserId = null;
 async function initializeUserId() {
     try {
-        const res = await fetch('/auth/verify');
+        if (typeof AuthClient !== 'undefined' && AuthClient && AuthClient.ready) {
+            const { user } = await AuthClient.ready;
+            currentUserId = user && user.id ? user.id : null;
+            if (currentUserId) console.log('[TMR] User ID loaded (session):', currentUserId);
+            return;
+        }
+
+        const res = await fetch('/auth/session', { credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
-            currentUserId = data.userId;
-            console.log('[TMR] User ID loaded:', currentUserId);
+            currentUserId = data && data.user && data.user.id ? data.user.id : null;
+            if (currentUserId) console.log('[TMR] User ID loaded (session):', currentUserId);
         }
     } catch (err) {
         console.error('[TMR] Failed to load user ID:', err);
@@ -93,8 +70,9 @@ async function initializeUserId() {
 
 // Make localStorage keys user-specific
 function getStorageKey(baseKey) {
-    if (!currentUserId) return baseKey;
-    return `${baseKey}_user${currentUserId}`;
+    // AuthClient installs a scoped localStorage patch that already isolates
+    // keys per user (tmr_user_<id>_* / tmr_anon_*). Avoid double-scoping.
+    return baseKey;
 }
 
 // ========== Server-side data management ==========
@@ -475,7 +453,66 @@ if (leaveBtn) {
 
 // Background Image Handler
 (function(){
-    const BG_IMAGE_KEY = 'tmr_bg_image';
+    // Use the theme system key as primary so NotesHQ/Docs/TMR all agree.
+    // Important: do NOT store large images twice (localStorage quota is small).
+    const BG_IMAGE_KEY_PRIMARY = 'theme_bg_image';
+    const BG_IMAGE_KEY_LEGACY = 'tmr_bg_image';
+
+    const compressImageFileToDataUrl = (file, { maxW = 1920, maxH = 1080, quality = 0.82 } = {}) => {
+        return new Promise((resolve, reject) => {
+            try {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const iw = img.naturalWidth || img.width;
+                        const ih = img.naturalHeight || img.height;
+
+                        let w = iw;
+                        let h = ih;
+                        const scale = Math.min(1, maxW / w, maxH / h);
+                        w = Math.max(1, Math.round(w * scale));
+                        h = Math.max(1, Math.round(h * scale));
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) throw new Error('Canvas 2D context not available');
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        // JPEG drastically reduces size for photos/wallpapers.
+                        const out = canvas.toDataURL('image/jpeg', quality);
+                        try { URL.revokeObjectURL(url); } catch (_) {}
+                        resolve(out);
+                    } catch (e) {
+                        try { URL.revokeObjectURL(url); } catch (_) {}
+                        reject(e);
+                    }
+                };
+                img.onerror = () => {
+                    try { URL.revokeObjectURL(url); } catch (_) {}
+                    reject(new Error('Failed to load image'));
+                };
+                img.src = url;
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
+
+    const readFileAsDataUrl = (file) => {
+        return new Promise((resolve, reject) => {
+            try {
+                const reader = new FileReader();
+                reader.onload = (event) => resolve(event.target.result);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
     
     function initBackgroundImage() {
         const fileInput = document.getElementById('bg-image-upload');
@@ -492,7 +529,9 @@ if (leaveBtn) {
         }
         
         // Load and display stored image on init
-        const stored = localStorage.getItem(getStorageKey(BG_IMAGE_KEY));
+        const stored =
+            localStorage.getItem(getStorageKey(BG_IMAGE_KEY_PRIMARY)) ||
+            localStorage.getItem(getStorageKey(BG_IMAGE_KEY_LEGACY));
         if(stored) {
             console.log('[BgImage] Found stored image');
             previewImg.src = stored;
@@ -505,13 +544,40 @@ if (leaveBtn) {
             if(dataUrl) {
                 console.log('[BgImage] Applying background image');
                 document.body.classList.remove('triangle-background');
-                document.body.style.backgroundImage = `url('${dataUrl}')`;
-                document.body.style.backgroundSize = 'cover';
-                document.body.style.backgroundPosition = 'center';
-                document.body.style.backgroundAttachment = 'fixed';
-                document.body.style.backgroundRepeat = 'no-repeat';
+                // The app injects a pre-paint boot theme style that sets background with `!important`.
+                // Update the CSS var + snapshot so the new image isn't overridden and doesn't revert.
+                try {
+                    const safe = String(dataUrl).replace(/'/g, "\\'");
+                    document.documentElement.style.setProperty('--tmr-boot-bg-image', `url('${safe}')`);
+                    let boot;
+                    try { boot = JSON.parse(localStorage.getItem('tmr_boot_theme') || '{}'); } catch (_) { boot = {}; }
+                    if (!boot || typeof boot !== 'object') boot = {};
+                    boot.backgroundImage = dataUrl;
+                    boot.updatedAt = Date.now();
+                    try { localStorage.setItem('tmr_boot_theme', JSON.stringify(boot)); } catch (_) {}
+                } catch (_) {}
+
+                // Also set inline styles (with important) for robustness.
+                try { document.body.style.setProperty('background-image', `url('${dataUrl}')`, 'important'); } catch (_) { document.body.style.backgroundImage = `url('${dataUrl}')`; }
+                try { document.body.style.setProperty('background-size', 'cover', 'important'); } catch (_) { document.body.style.backgroundSize = 'cover'; }
+                try { document.body.style.setProperty('background-position', 'center', 'important'); } catch (_) { document.body.style.backgroundPosition = 'center'; }
+                try { document.body.style.setProperty('background-attachment', 'fixed', 'important'); } catch (_) { document.body.style.backgroundAttachment = 'fixed'; }
+                try { document.body.style.setProperty('background-repeat', 'no-repeat', 'important'); } catch (_) { document.body.style.backgroundRepeat = 'no-repeat'; }
             } else {
                 console.log('[BgImage] Clearing background image, restoring default triangles');
+                // Remove the boot theme style if it exists, otherwise it may keep forcing the old image.
+                try {
+                    const bootStyle = document.getElementById('tmr-boot-theme-style');
+                    if (bootStyle && bootStyle.parentNode) bootStyle.parentNode.removeChild(bootStyle);
+                    document.documentElement.style.removeProperty('--tmr-boot-bg-image');
+                    let boot;
+                    try { boot = JSON.parse(localStorage.getItem('tmr_boot_theme') || '{}'); } catch (_) { boot = {}; }
+                    if (boot && typeof boot === 'object') {
+                        boot.backgroundImage = null;
+                        boot.updatedAt = Date.now();
+                        try { localStorage.setItem('tmr_boot_theme', JSON.stringify(boot)); } catch (_) {}
+                    }
+                } catch (_) {}
                 // Clear ALL inline background styles
                 document.body.style.backgroundImage = '';
                 document.body.style.backgroundSize = '';
@@ -525,7 +591,8 @@ if (leaveBtn) {
         
         function clearBackgroundImage() {
             console.log('[BgImage] Clearing image');
-            localStorage.removeItem(getStorageKey(BG_IMAGE_KEY));
+            localStorage.removeItem(getStorageKey(BG_IMAGE_KEY_PRIMARY));
+            localStorage.removeItem(getStorageKey(BG_IMAGE_KEY_LEGACY));
             fileInput.value = '';
             previewContainer.style.display = 'none';
             noneText.style.display = 'block';
@@ -533,28 +600,41 @@ if (leaveBtn) {
         }
         
         // Handle file upload
-        fileInput.addEventListener('change', (e) => {
+        fileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if(!file) return;
             
             console.log('[BgImage] File selected:', file.name);
-            const reader = new FileReader();
-            
-            reader.onload = (event) => {
-                const dataUrl = event.target.result;
-                console.log('[BgImage] File read, storing and applying');
-                localStorage.setItem(getStorageKey(BG_IMAGE_KEY), dataUrl);
+
+            try {
+                // GIFs must be kept as-is, otherwise canvas -> JPEG will freeze on the first frame.
+                const isGif = (file.type === 'image/gif') || (/\.gif$/i.test(file.name || ''));
+                const dataUrl = isGif
+                    ? await readFileAsDataUrl(file)
+                    : await compressImageFileToDataUrl(file, { maxW: 1920, maxH: 1080, quality: 0.82 });
+
+                console.log(isGif
+                    ? '[BgImage] File read (GIF preserved), storing and applying'
+                    : '[BgImage] File read+compressed, storing and applying');
+
+                // Clear previous values first to free space.
+                try { localStorage.removeItem(getStorageKey(BG_IMAGE_KEY_PRIMARY)); } catch (_) {}
+                try { localStorage.removeItem(getStorageKey(BG_IMAGE_KEY_LEGACY)); } catch (_) {}
+
+                // Store only once (primary key). Legacy key is left unset to avoid doubling storage.
+                localStorage.setItem(getStorageKey(BG_IMAGE_KEY_PRIMARY), dataUrl);
+
                 previewImg.src = dataUrl;
                 previewContainer.style.display = 'flex';
                 noneText.style.display = 'none';
                 applyBackgroundImage(dataUrl);
-            };
-            
-            reader.onerror = () => {
-                console.error('[BgImage] Error reading file');
-            };
-            
-            reader.readAsDataURL(file);
+            } catch (err) {
+                console.error('[BgImage] Upload failed:', err);
+                const msg = (err && err.name === 'QuotaExceededError')
+                    ? 'Could not save that background: storage is full. Try a smaller image/GIF, or clear site data and try again.'
+                    : 'Could not save that background. Try a different image, or clear site data and try again.';
+                alert(msg);
+            }
         });
         
         // Handle clear button
@@ -634,80 +714,36 @@ if (leaveBtn) {
     }
 })();
 
-// Header button: Logout / Create Account
-(function(){
-    const logoutBtn = document.getElementById('header-logout-btn');
-
-    if(logoutBtn){
-        // Check if guest mode
-        const guestMode = localStorage.getItem('guest_mode');
-        
-        if (guestMode) {
-            // Guest mode: change button to "Create Account"
-            logoutBtn.textContent = '➕ Create Account';
-            logoutBtn.addEventListener('click', () => {
-                console.log('[Header] Create Account button clicked (guest mode)');
-                window.location.href = 'intro.html';
-            });
-        } else {
-            // Logged in: normal logout button
-            logoutBtn.addEventListener('click', async () => {
-                console.log('[Header] Logout button clicked');
-                
-                try {
-                    const res = await fetch('/auth/logout', {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-                    
-                    if (res.ok) {
-                        // Clear local user data
-                        localStorage.removeItem('user_id');
-                        localStorage.removeItem('guest_mode');
-                        console.log('[Header] Logout successful');
-                        // Redirect to intro
-                        window.location.href = 'intro.html';
-                    } else {
-                        console.error('[Header] Logout failed:', res.status);
-                        alert('Logout failed');
-                    }
-                } catch (err) {
-                    console.error('[Header] Logout error:', err);
-                    alert('Logout error: ' + err.message);
-                }
-            });
-        }
-    }
-})();
-
 // Header: Display username
 (function(){
     const usernameSpan = document.getElementById('header-username');
     if (!usernameSpan) return; // Element doesn't exist on this page
-    
-    const guestMode = localStorage.getItem('guest_mode');
-    
-    if (guestMode) {
-        // Guest mode
-        usernameSpan.textContent = '👤 Guest';
-    } else {
-        // Fetch username from server
-        fetch('/auth/verify', {
-            credentials: 'include'
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.ok && data.username) {
-                usernameSpan.textContent = `👤 ${data.username}`;
-            } else {
-                usernameSpan.textContent = '👤 User';
-            }
-        })
-        .catch(err => {
-            console.error('[Header] Failed to fetch username:', err);
-            usernameSpan.textContent = '👤 User';
-        });
+
+    const update = (user) => {
+        if (user && user.username) {
+            usernameSpan.textContent = `👤 ${user.username}`;
+        } else {
+            usernameSpan.textContent = '👤 Guest';
+        }
+    };
+
+    if (typeof AuthClient !== 'undefined' && AuthClient && AuthClient.ready) {
+        AuthClient.ready
+            .then(({ user }) => update(user))
+            .catch((err) => {
+                console.error('[Header] Failed to load session user:', err);
+                update(null);
+            });
+        return;
     }
+
+    fetch('/auth/session', { credentials: 'include' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => update(data && data.user ? data.user : null))
+        .catch((err) => {
+            console.error('[Header] Failed to load session user:', err);
+            update(null);
+        });
 })();
 
 // Header search functionality with fuzzy matching and debounce

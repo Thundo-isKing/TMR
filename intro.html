@@ -146,7 +146,7 @@
                         <h2>Create Account</h2>
                         <div id="register-error" style="color: #d32f2f; margin-bottom: 12px; display: none;"></div>
                         <input type="text" id="register-username" placeholder="Username (3+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
-                        <input type="password" id="register-password" placeholder="Password (6+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
+                        <input type="password" id="register-password" placeholder="Password (8+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
                         <button type="submit" class="tmr-btn auth-register-btn" style="width: 100%; margin-bottom: 12px;">Register</button>
                         <p style="text-align: center; color: #666; font-size: 14px;">
                             Have an account? <button type="button" id="switch-to-login" class="tmr-btn" style="background: #f0f0f0; color: #333; width: auto; padding: 6px 12px; font-size: 14px;">Login</button>
@@ -198,38 +198,10 @@
             const signInBtn = document.getElementById('signin-btn');
             const guestStartBtn = document.getElementById('guest-start-btn');
             const guestModeBtn = document.getElementById('guest-mode-btn');
-            
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            const switchToRegisterBtn = document.getElementById('switch-to-register');
-            const switchToLoginBtn = document.getElementById('switch-to-login');
 
-            // Check if user is already logged in by verifying cookie auth
-            fetch('/auth/verify')
-                .then(res => {
-                    if (res.ok) return res.json();
-                    throw new Error('Not authenticated');
-                })
-                .then(data => {
-                    if (data.ok) {
-                        // User is logged in, go to TMR.html
-                        localStorage.setItem('user_id', data.userId);
-                        localStorage.setItem('tmr_tutorial_seen', '1');
-                        localStorage.removeItem('guest_mode');
-                        window.location.href = 'TMR.html';
-                    }
-                })
-                .catch(() => {
-                    // Not authenticated, show tutorial by default
-                    const guestMode = localStorage.getItem('guest_mode');
-                    if (guestMode) {
-                        // User chose guest mode previously, show tutorial
-                        showTutorial();
-                    } else {
-                        // New user: show tutorial first, auth panel hidden
-                        showTutorial();
-                    }
-                });
+            // This page is tutorial-only.
+            // Sign-in / register happens inside TMR.html via the AuthClient modal.
+            showTutorial();
 
             function showAuthPanel() {
                 authPanel.style.display = 'block';
@@ -242,94 +214,25 @@
             }
 
             // Tutorial buttons
-            signInBtn.addEventListener('click', showAuthPanel);
-            guestStartBtn.addEventListener('click', () => {
-                localStorage.setItem('guest_mode', '1');
-                localStorage.removeItem('user_id');
+            signInBtn.addEventListener('click', () => {
                 localStorage.setItem('tmr_tutorial_seen', '1');
+                localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
                 window.location.href = 'TMR.html';
             });
-
-            // Auth form switching
-            switchToRegisterBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
-            });
-
-            switchToLoginBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                registerForm.style.display = 'none';
-                loginForm.style.display = 'block';
-            });
-
-            // Login form submission
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const username = document.getElementById('login-username').value;
-                const password = document.getElementById('login-password').value;
-                const errorDiv = document.getElementById('login-error');
-
-                try {
-                    const res = await fetch('/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ username, password })
-                    });
-                    const data = await res.json();
-
-                    if (data.ok) {
-                        localStorage.setItem('user_id', data.userId);
-                        localStorage.removeItem('guest_mode');
-                        localStorage.setItem('tmr_tutorial_seen', '1');
-                        window.location.href = 'TMR.html';
-                    } else {
-                        errorDiv.textContent = data.error || 'Login failed';
-                        errorDiv.style.display = 'block';
-                    }
-                } catch (err) {
-                    errorDiv.textContent = 'Connection error: ' + err.message;
-                    errorDiv.style.display = 'block';
-                }
-            });
-
-            // Register form submission
-            registerForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const username = document.getElementById('register-username').value;
-                const password = document.getElementById('register-password').value;
-                const errorDiv = document.getElementById('register-error');
-
-                try {
-                    const res = await fetch('/auth/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ username, password })
-                    });
-                    const data = await res.json();
-
-                    if (data.ok) {
-                        localStorage.setItem('user_id', data.userId);
-                        localStorage.removeItem('guest_mode');
-                        localStorage.setItem('tmr_tutorial_seen', '1');
-                        window.location.href = 'TMR.html';
-                    } else {
-                        errorDiv.textContent = data.error || 'Registration failed';
-                        errorDiv.style.display = 'block';
-                    }
-                } catch (err) {
-                    errorDiv.textContent = 'Connection error: ' + err.message;
-                    errorDiv.style.display = 'block';
-                }
+            guestStartBtn.addEventListener('click', () => {
+                localStorage.setItem('guest_mode', '1');
+                localStorage.setItem('tmr_anon_guest_mode', '1');
+                localStorage.setItem('tmr_tutorial_seen', '1');
+                localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
+                window.location.href = 'TMR.html';
             });
 
             // Guest mode button
             guestModeBtn.addEventListener('click', () => {
                 localStorage.setItem('guest_mode', '1');
-                localStorage.removeItem('user_id');
+                localStorage.setItem('tmr_anon_guest_mode', '1');
                 localStorage.setItem('tmr_tutorial_seen', '1');
+                localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
                 window.location.href = 'TMR.html';
             });
 
@@ -338,8 +241,9 @@
             if (skipBtn) {
                 skipBtn.addEventListener('click', () => {
                     localStorage.setItem('guest_mode', '1');
-                    localStorage.removeItem('user_id');
+                    localStorage.setItem('tmr_anon_guest_mode', '1');
                     localStorage.setItem('tmr_tutorial_seen', '1');
+                    localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
                     window.location.href = 'TMR.html';
                 });
             }
