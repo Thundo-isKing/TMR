@@ -123,6 +123,22 @@
             }
         })();
     </script>
+    <script>
+        // Prevent a brief flash of the main app UI before the auth modal is shown.
+        // auth-client.js will clear this once it has displayed the correct UI.
+        (function () {
+            try { document.documentElement.classList.add('tmr-auth-pending'); } catch (e) {}
+        })();
+    </script>
+    <style>
+        /* While auth is resolving, hide UI to avoid flashes.
+           Do NOT override background-image here (boot theme injector may have set one). */
+        html.tmr-auth-pending body {
+            background-color: var(--accent-color, #667eea) !important;
+        }
+        html.tmr-auth-pending body > * { visibility: hidden; }
+    </style>
+    <link rel="stylesheet" href="page-transitions.css?v=20260106a">
     <link rel="stylesheet" href="TMR.css?v=20251231z">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
     <link rel="stylesheet" href="calendar-mobile.css?v=20251208b">
@@ -1438,6 +1454,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="page-transitions.js?v=20260106a" defer></script>
     <script src="auth-client.js?v=20260106a"></script>
     <script src="TMR.js?v=20260106a"></script>
     <script src="calendar.js?v=20260106a"></script>

@@ -132,12 +132,25 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+// First-visit routing:
+// - First-time visitors hitting the bare domain (/) should see intro.html.
+// - Returning visitors go to TMR.html (login modal shown client-side if not authed).
+// - Authenticated users go straight to TMR.html (calendar UI).
+const INTRO_SEEN_COOKIE = 'tmr_intro_seen';
+const introSeenCookieOptions = {
+  httpOnly: false,
+  sameSite: 'lax',
+  secure: secureCookie,
+  maxAge: 365 * 24 * 60 * 60 * 1000 // 1 year
+};
+
 // Serve the static client from the project root so the push API and the
 // web app share the same origin (helps when exposing via a single ngrok
 // HTTPS tunnel). This makes `https://<ngrok>/TMR.html` and `/sw.js`
 // available from the same server as the push endpoints.
 const staticRoot = path.join(__dirname, '..');
-app.use(express.static(staticRoot));
+// NOTE: We mount express.static AFTER first-visit routing so we can intercept
+// direct hits to /TMR.html for first-time users.
 
 // Simple CORS middleware to allow the client (served on a different port
 // during development) to call this API. In production restrict origins.
@@ -183,6 +196,32 @@ const attachUser = async (req, res, next) => {
 };
 
 app.use(attachUser);
+
+// If a first-time user directly hits /TMR.html, show intro.html once.
+// Otherwise, fall through to static serving of TMR.html.
+app.get('/TMR.html', (req, res, next) => {
+  if (req.user) return next();
+  const seen = req.cookies ? req.cookies[INTRO_SEEN_COOKIE] : null;
+  if (seen === '1') return next();
+  try { res.cookie(INTRO_SEEN_COOKIE, '1', introSeenCookieOptions); } catch (_) {}
+  return res.redirect(302, '/intro.html');
+});
+
+app.get(['/', '/index.html'], (req, res) => {
+  // If already authenticated, go straight to the app.
+  if (req.user) return res.redirect(302, '/TMR.html');
+
+  // If they've seen the intro on this device/browser, go to the app (login modal).
+  const seen = req.cookies ? req.cookies[INTRO_SEEN_COOKIE] : null;
+  if (seen === '1') return res.redirect(302, '/TMR.html');
+
+  // First visit: mark and show the intro.
+  try { res.cookie(INTRO_SEEN_COOKIE, '1', introSeenCookieOptions); } catch (_) {}
+  return res.redirect(302, '/intro.html');
+});
+
+// IMPORTANT: disable automatic index.html serving so our custom '/' handler can run.
+app.use(express.static(staticRoot, { index: false }));
 
 const createSessionForUser = async (userId) => {
   const token = nodeCrypto.randomBytes(32).toString('hex');

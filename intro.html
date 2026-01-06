@@ -3,313 +3,415 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMR - Tutorial</title>
-    <link rel="stylesheet" href="TMR.css?v=20251208e">
+    <title>TMR — Welcome</title>
+    <link rel="stylesheet" href="page-transitions.css?v=20260106a">
+    <link rel="stylesheet" href="TMR.css?v=20260106a">
     <link rel="stylesheet" href="backgrounds.css">
-    <!-- Comprehensive mobile layout override (v3) -->
+    <script src="page-transitions.js?v=20260106a" defer></script>
     <style>
-    /* Auth buttons: no transform, no shadow, darker on hover */
-    .auth-login-btn,
-    .auth-register-btn,
-    .auth-guest-btn {
-        box-shadow: none !important;
-        transition: background-color 0.08s ease-out !important;
-        transform: none !important;
-    }
-    
-    .auth-login-btn {
-        background: #4caf50 !important;
-    }
-    
-    .auth-register-btn {
-        background: #2196f3 !important;
-    }
-    
-    .auth-guest-btn {
-        background: #ff9800 !important;
-    }
-    
-    .auth-login-btn:hover {
-        background: #45a049 !important;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    
-    .auth-register-btn:hover {
-        background: #1976d2 !important;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    
-    .auth-guest-btn:hover {
-        background: #e68900 !important;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    
-    @media (max-width:600px){
-      /* Reset body and main layout - add bottom padding for modal space */
-      body { padding-top:160px !important; padding-bottom:10px !important; margin:0; overflow-x:hidden}
-      
-      /* Keep TMR tag in top corner, small */
-      #TMR-tag { position:fixed !important; top:8px !important; left:8px !important; z-index:3000 !important}
-      
-      /* Keep dropdown menu small in corner */
-      .tmr-menu { position:absolute !important; left:0 !important; right:auto !important; top:100% !important; margin-top:8px !important; width:auto !important; max-width:none !important; min-width:220px !important}
-      .tmr-menu input, .tmr-menu select, .tmr-menu button, .tmr-menu .small-tmr-btn { width:100% !important; box-sizing:border-box !important}
-      
-      /* Clock fixed at top, narrow, centered */
-      .clock-container { position:fixed !important; top:56px !important; left:50% !important; transform:translateX(-50%) !important; width:320px !important; margin:0 !important; z-index:2500 !important}
-      .clock-outer-box { width:100% !important}
-      
-      /* Reset all side buttons: remove fixed positioning and absolute child positioning */
-      .side-buttons { position:relative !important; top:auto !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important; transform:none !important; pointer-events:auto !important; padding:0}
-      
-      /* Reset schedule buttons: remove absolute left/right positioning */
-      .schedule-button, .schedule-button2 { 
-        position:relative !important; left:auto !important; right:auto !important; top:auto !important;
-        width:70vw !important; max-width:360px !important; min-width:180px !important;
-        height:auto !important; min-height:48px !important;
-        padding:12px 16px !important; margin:0 auto !important;
-        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
-      }
-      
-      /* Reset todo button: remove fixed absolute positioning */
-      .todo-button, .schedule-button { 
-        position:relative !important; right:auto !important; left:auto !important;
-        width:70vw !important; max-width:360px !important; min-width:180px !important;
-        height:auto !important; min-height:48px !important;
-        padding:12px 16px !important; margin:0 auto !important;
-        font-size:18px !important; border-radius:10px !important; box-shadow:none !important
-      }
-      
-      /* Reset bottom buttons */
-      .bottom-buttons { position:relative !important; top:auto !important; left:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
-      .bottom-buttons button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; box-shadow:none !important}
-      
-      /* Ensure all .tmr-btn follow the mobile style */
-      .tmr-btn { width:70vw !important; max-width:360px !important; min-width:180px !important; height:auto !important; min-height:48px !important; padding:12px 16px !important; font-size:18px !important; margin:0 auto !important; box-shadow:none !important; border-radius:10px !important}
-      .small-tmr-btn { padding:10px 14px !important; font-size:16px !important}
-      
-      /* Reset button-group */
-      .button-group { position:relative !important; top:auto !important; transform:none !important; width:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:16px !important}
-      .button-group button { width:70vw !important; max-width:360px !important; height:auto !important; min-height:48px !important}
-      
-      /* Hide or reposition cs-buttons for mobile */
-      .cs-buttons { display:none}
-    }
-    /* Landscape mode adjustments */
-    @media (max-width:600px) and (orientation:landscape){
-      body { padding-top:100px !important}
-      .clock-container { top:50px !important; width:280px !important}
-      .tmr-btn, .small-tmr-btn, .schedule-button, .schedule-button2, .todo-button, .bottom-buttons button { width:65vw !important; max-width:340px !important; min-height:40px !important; padding:8px 12px !important; font-size:16px !important}
-    }
-    </style></head>
+        /* Intro-specific accent colors (prevents default blue fallbacks from TMR.css). */
+        :root {
+            --accent-color: #667eea;
+            --accent-hover: #764ba2;
+        }
 
-<body class="page-background triangle-background-blue">
+        /* Match the auth/login modal overlay gradient. */
+        html, body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            background-attachment: fixed !important;
+        }
 
-    <div id="TMR-tag" class="tmr-tag">
-        <button id="tmr-toggle" class="tmr-tag-btn" aria-haspopup="true" aria-expanded="false">
-            <h1 style="margin:0;">TMR</h1>
-            <span class="caret">▾</span>
-        </button>
-        <div id="tmr-menu" class="tmr-menu" hidden>
-            <div class="tmr-menu-item">
-                <button id="skip-tutorial-btn" class="small-tmr-btn" type="button">Skip Tutorial</button>
-            </div>
-        </div>
-    </div>
+        /* Page-load animation (content fade-in). */
+        @keyframes introFadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-    <!-- Tutorial Overlay (full page) -->
-    <div id="tutorial-overlay" class="tutorial-overlay" style="display: flex;">
-        <div class="tutorial-container">
-            <!-- Login/Register Panel -->
-            <div id="auth-panel" style="display: none;">
-                <h1>Welcome Back to TMR</h1>
-                <p style="color: #666; margin-bottom: 30px;">Sign in to access your calendar, todos, and notes from any device.</p>
+        /* Preserve header centering (translateX(-50%)) while animating in. */
+        @keyframes introTopbarIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
 
-                <div id="auth-forms">
-                    <!-- Login Form -->
-                    <form id="login-form" style="display: block;">
-                        <h2>Login</h2>
-                        <div id="login-error" style="color: #d32f2f; margin-bottom: 12px; display: none;"></div>
-                        <input type="text" id="login-username" placeholder="Username" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
-                        <input type="password" id="login-password" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
-                        <button type="submit" class="tmr-btn auth-login-btn" style="width: 100%; margin-bottom: 12px;">Login</button>
-                        <p style="text-align: center; color: #666; font-size: 14px;">
-                            Don't have an account? <button type="button" id="switch-to-register" class="tmr-btn" style="background: #f0f0f0; color: #333; width: auto; padding: 6px 12px; font-size: 14px;">Register</button>
-                        </p>
-                    </form>
+        .intro-topbar {
+            opacity: 0;
+            animation: introTopbarIn 520ms ease-out both;
+        }
 
-                    <!-- Register Form -->
-                    <form id="register-form" style="display: none;">
-                        <h2>Create Account</h2>
-                        <div id="register-error" style="color: #d32f2f; margin-bottom: 12px; display: none;"></div>
-                        <input type="text" id="register-username" placeholder="Username (3+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
-                        <input type="password" id="register-password" placeholder="Password (8+ characters)" required style="width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px;">
-                        <button type="submit" class="tmr-btn auth-register-btn" style="width: 100%; margin-bottom: 12px;">Register</button>
-                        <p style="text-align: center; color: #666; font-size: 14px;">
-                            Have an account? <button type="button" id="switch-to-login" class="tmr-btn" style="background: #f0f0f0; color: #333; width: auto; padding: 6px 12px; font-size: 14px;">Login</button>
-                        </p>
-                    </form>
-                </div>
+        .intro-main > .intro-card {
+            opacity: 0;
+            animation: introFadeInUp 520ms ease-out both;
+        }
 
-                <hr style="margin: 24px 0; border: none; border-top: 1px solid #ddd;">
-                <button id="guest-mode-btn" class="tmr-btn auth-guest-btn" style="width: 100%; margin-bottom: 12px;">Continue as Guest</button>
-                <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.6;">
-                    <strong>⚠️ Guest Mode Warning:</strong> Your data will not be saved across different devices or browsers. Data loss is a risk. Please consider creating an account for data persistence.
-                </div>
-            </div>
+        .intro-topbar { animation-delay: 0ms; }
+        .intro-main > .intro-card:nth-of-type(1) { animation-delay: 80ms; }
+        .intro-main > .intro-card:nth-of-type(2) { animation-delay: 140ms; }
+        .intro-main > .intro-card:nth-of-type(3) { animation-delay: 200ms; }
 
-            <!-- Tutorial Content -->
-            <div id="tutorial-content" style="display: block;">
-                <div class="tutorial-content">
-                    <h1>Welcome to TMR</h1>
-                    <p>TMR helps you manage your time, schedule events, and get AI-powered assistance.</p>
-                    
-                    <h2>Key Features:</h2>
-                    <ul>
-                        <li><strong>📅 Calendar:</strong> View and manage events</li>
-                        <li><strong>📋 Todo List:</strong> Track your daily tasks</li>
-                        <li><strong>🤖 Meibot:</strong> AI assistant to help schedule events and create todos</li>
-                        <li><strong>🔔 Notifications:</strong> Get reminded about upcoming events</li>
-                    </ul>
+        /* Landing layout only (no new theme/colors). */
+        /* Landing buttons: no translate/shadows; slight darken on hover. */
+        body .intro-main .tmr-btn,
+        body .intro-topbar .tmr-btn,
+        body .intro-main .small-tmr-btn,
+        body .intro-topbar .small-tmr-btn {
+            transform: none !important;
+            box-shadow: none !important;
+            transition: background-color 0.12s ease-out !important;
+        }
 
-                    <h2>Getting Started:</h2>
-                    <ol>
-                        <li>Click "Sign In" below to create an account or login</li>
-                        <li>Use the buttons to create events, todos, or chat with Meibot</li>
-                        <li>Come back to this tutorial anytime from the menu</li>
-                    </ol>
+        body .intro-main .tmr-btn:hover,
+        body .intro-topbar .tmr-btn:hover,
+        body .intro-main .small-tmr-btn:hover,
+        body .intro-topbar .small-tmr-btn:hover {
+            transform: none !important;
+            box-shadow: none !important;
+            background-color: var(--accent-hover) !important;
+        }
 
-                    <button id="signin-btn" class="tmr-btn auth-login-btn" style="margin-top: 30px;">Sign In / Register</button>
-                    <button id="guest-start-btn" class="tmr-btn auth-guest-btn" style="margin-top: 12px;">Continue as Guest</button>
-                </div>
-            </div>
-        </div>
-    </div>
+        /* Avoid blue focus ring from TMR.css on this landing page. */
+        body .intro-main .header-text-btn:focus,
+        body .intro-topbar .header-text-btn:focus {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22) !important;
+        }
 
-    <script src="TMR.js"></script>
-    <script>
-        // Authentication and Tutorial logic
-        (function() {
-            const authPanel = document.getElementById('auth-panel');
-            const tutorialContent = document.getElementById('tutorial-content');
-            const signInBtn = document.getElementById('signin-btn');
-            const guestStartBtn = document.getElementById('guest-start-btn');
-            const guestModeBtn = document.getElementById('guest-mode-btn');
+        .intro-topbar.page-header {
+            top: 18px;
+            height: auto;
+            padding: 12px 18px;
+        }
 
-            // This page is tutorial-only.
-            // Sign-in / register happens inside TMR.html via the AuthClient modal.
-            showTutorial();
-
-            function showAuthPanel() {
-                authPanel.style.display = 'block';
-                tutorialContent.style.display = 'none';
-            }
-
-            function showTutorial() {
-                authPanel.style.display = 'none';
-                tutorialContent.style.display = 'block';
-            }
-
-            // Tutorial buttons
-            signInBtn.addEventListener('click', () => {
-                localStorage.setItem('tmr_tutorial_seen', '1');
-                localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
-                window.location.href = 'TMR.html';
-            });
-            guestStartBtn.addEventListener('click', () => {
-                localStorage.setItem('guest_mode', '1');
-                localStorage.setItem('tmr_anon_guest_mode', '1');
-                localStorage.setItem('tmr_tutorial_seen', '1');
-                localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
-                window.location.href = 'TMR.html';
-            });
-
-            // Guest mode button
-            guestModeBtn.addEventListener('click', () => {
-                localStorage.setItem('guest_mode', '1');
-                localStorage.setItem('tmr_anon_guest_mode', '1');
-                localStorage.setItem('tmr_tutorial_seen', '1');
-                localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
-                window.location.href = 'TMR.html';
-            });
-
-            // Skip tutorial from menu (guest mode)
-            const skipBtn = document.getElementById('skip-tutorial-btn');
-            if (skipBtn) {
-                skipBtn.addEventListener('click', () => {
-                    localStorage.setItem('guest_mode', '1');
-                    localStorage.setItem('tmr_anon_guest_mode', '1');
-                    localStorage.setItem('tmr_tutorial_seen', '1');
-                    localStorage.setItem('tmr_anon_tmr_tutorial_seen', '1');
-                    window.location.href = 'TMR.html';
-                });
-            }
-        })();
-    </script>
-
-    <style>
-        .tutorial-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+        .intro-topbar .brand {
             display: flex;
             align-items: center;
-            justify-content: center;
-            z-index: 9999;
+            gap: 10px;
+            user-select: none;
         }
 
-        .tutorial-container {
-            background: white;
-            border-radius: 16px;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        .intro-topbar .brand-title {
+            font-size: 18px;
+            letter-spacing: 0.3px;
         }
 
-        .tutorial-content h1 {
-            margin-top: 0;
-            color: #0089f1;
-            font-size: 32px;
+        .intro-main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 110px 16px 56px;
+            display: grid;
+            gap: 16px;
         }
 
-        .tutorial-content h2 {
-            color: #333;
-            margin-top: 24px;
-            font-size: 20px;
+        .intro-card.page-header {
+            position: relative;
+            top: auto;
+            left: auto;
+            transform: none;
+            width: 100%;
+            max-width: none;
+            height: auto;
+            z-index: 1;
+
+            display: block;
+            padding: 22px;
+            border-radius: 22px;
+
+            /* Frosted-glass hover expand/return. */
+            transition: transform 160ms ease-out;
+            will-change: transform;
         }
 
-        .tutorial-content ul, .tutorial-content ol {
+        .intro-card.page-header:hover {
+            transform: scale(1.02);
+        }
+
+        .intro-hero h1 {
+            margin: 0;
+            font-size: 40px;
+            line-height: 1.05;
+        }
+
+        .intro-type {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0;
+        }
+
+        .intro-type-word {
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .intro-type-caret {
+            display: inline-block;
+            width: 0.65ch;
+            margin-left: 2px;
+            opacity: 0.9;
+            animation: introCaretBlink 900ms steps(1, end) infinite;
+        }
+
+        @keyframes introCaretBlink {
+            0%, 49% { opacity: 0.9; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .intro-hero p {
+            margin: 10px 0 0;
             font-size: 16px;
-            line-height: 1.8;
-            color: #555;
+            opacity: 0.92;
+            line-height: 1.5;
         }
 
-        .tutorial-content li {
-            margin: 10px 0;
+        .intro-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
         }
 
-        @media (max-width: 600px) {
-            .tutorial-container {
-                max-width: 95vw;
-                padding: 24px;
+        .intro-actions .tmr-btn {
+            margin: 0;
+        }
+
+        .intro-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .intro-feature {
+            padding: 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+
+            /* Frosted-glass hover expand/return. */
+            transition: transform 160ms ease-out;
+            will-change: transform;
+        }
+
+        .intro-feature:hover {
+            transform: scale(1.02);
+        }
+
+        .intro-feature h3 {
+            margin: 0 0 6px;
+            font-size: 16px;
+        }
+
+        .intro-feature p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .intro-section h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+
+        .intro-section ul {
+            margin: 8px 0 0;
+            padding-left: 18px;
+        }
+
+        .intro-section li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .intro-note {
+            margin-top: 10px;
+            font-size: 13px;
+            opacity: 0.85;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 900px) {
+            .intro-grid { grid-template-columns: 1fr; }
+            .intro-hero h1 { font-size: 32px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .intro-topbar,
+            .intro-main > .intro-card {
+                opacity: 1;
+                animation: none;
             }
 
-            .tutorial-content h1 {
-                font-size: 24px;
+            .intro-type-caret {
+                animation: none;
+                opacity: 0;
             }
 
-            .tutorial-content h2 {
-                font-size: 18px;
+            .intro-card.page-header,
+            .intro-feature {
+                transition: none;
+            }
+
+            .intro-card.page-header:hover,
+            .intro-feature:hover {
+                transform: none;
             }
         }
     </style>
+</head>
+
+<body class="page-background">
+    <div class="page-header intro-topbar">
+        <div class="header-left brand">
+            <div class="brand-title">TMR</div>
+        </div>
+        <div class="header-right">
+            <a class="header-text-btn" href="#Pricing">Pricing</a>
+            <a class="header-text-btn" href="#iphone">iPhone Setup</a>
+            <a class="header-text-btn" href="#Android">Android Setup</a>
+            <button id="continue-signin-top" class="tmr-btn small-tmr-btn" type="button">Sign In</button>
+        </div>
+    </div>
+
+    <main class="intro-main">
+        <section class="page-header intro-card intro-hero">
+            <h1>
+                Stay on
+                <span class="intro-type" aria-live="polite" aria-atomic="true">
+                    <span id="intro-type-word" class="intro-type-word">schedule</span>
+                    <span class="intro-type-caret" aria-hidden="true">|</span>
+                </span>.
+            </h1>
+            <p>
+                TMR helps you manage events, todos, and reminders — with AI assistance when you want it.
+            </p>
+
+            <div class="intro-actions">
+                <button id="continue-signin" class="tmr-btn" type="button">Get started</button>
+            
+            </div>
+
+            <div id="features" class="intro-grid" aria-label="TMR features">
+                <div class="intro-feature">
+                    <h3>Calendar + reminders</h3>
+                    <p>Create events, set reminders, and keep your day clear.</p>
+                </div>
+                <div class="intro-feature">
+                    <h3>Todos + reminders</h3>
+                    <p>Track tasks without losing the bigger picture.</p>
+                </div>
+                <div class="intro-feature">
+                    <h3>Meibot (May-bot) ~AI helper~</h3>
+                    <p>Ask for help scheduling or organizing — faster than typing everything manually.</p>
+                </div>
+                <div class="intro-feature">
+                  <h3>Notes... for ideas</h3>
+                <p>Jot down thoughts and plans to revisit later.</p>
+                </div>
+                <div class="intro-feature">
+                  <h3>Themes and customization</h3>
+                <p>Make your planner your OWN.</p>
+                </div>
+                <div class="intro-feature">
+                  <h3>Accounts, Google calendar integration, and so much more</h3>
+                <p>Your future, all in one place [:.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="iphone" class="page-header intro-card intro-section">
+            <h2>Mobile quick-start (iPhone)</h2>
+            <ul>
+                <li><strong>Use Safari:</strong> open the app link in Safari for the smoothest setup.</li>
+                <li><strong>Add to Home Screen:</strong> Share → “Add to Home Screen” for a more app-like experience (this allows notifications).</li>
+                <li><strong>Notifications:</strong> iOS support depends on version and whether the site is installed to Home Screen.</li>
+            </ul>
+            <div class="intro-note">
+                If notifications don’t work on iPhone, turn into webapp by adding to Home Screen and re-check site permissions(visual tutorial coming soon).
+            </div>
+           
+            
+        </section>
+        <section id="Android" class="page-header intro-card intro-section">
+             <h2>Mobile quick-start (Android)</h2>
+            <ul>
+                <li><strong>Use Chrome:</strong> open the app link in Chrome/Google for the smoothest setup.</li>
+                <li><strong>Enable Notifications:</strong> Allow notifications via popup.</li>
+                <li><strong>Add to Home Screen:</strong> Share → “Add to Home Screen” for a more app-like experience (Needn't have to worry about recieving notifications... apple sucks).</li>
+            </ul>
+            
+        </section>
+
+        <section class="page-header intro-card intro-section">
+            <h2>Ready to try it?</h2>
+            <button id="continue-signin-bottom" class="tmr-btn" type="button" style="width: 100%;">Continue to Sign In</button>
+            <div class="intro-note">This will open the app where you can sign in or create an account.</div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const btns = [
+                document.getElementById('continue-signin'),
+                document.getElementById('continue-signin-top'),
+                document.getElementById('continue-signin-bottom')
+            ].filter(Boolean);
+            if (!btns.length) return;
+
+            const go = () => {
+                try { localStorage.setItem('tmr_tutorial_seen', '1'); } catch (e) {}
+                // The sign-in UI is handled inside TMR.html by the AuthClient modal.
+                window.location.href = 'TMR.html';
+            };
+
+            btns.forEach((b) => b.addEventListener('click', go));
+        })();
+
+        (function () {
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReduced) return;
+
+            const wordEl = document.getElementById('intro-type-word');
+            if (!wordEl) return;
+
+            const words = ['schedule', 'events', 'todos', 'reminders', 'TIME'];
+            const typeDelay = 115;
+            const backDelay = 75;
+            const holdDelay = 1100;
+            const betweenDelay = 320;
+
+            let wordIndex = 0;
+            let charIndex = words[0].length;
+            let direction = -1; // start by backspacing the initial word
+
+            const tick = () => {
+                const current = words[wordIndex];
+
+                if (direction === 1) {
+                    charIndex = Math.min(charIndex + 1, current.length);
+                    wordEl.textContent = current.slice(0, charIndex);
+                    if (charIndex >= current.length) {
+                        direction = -1;
+                        window.setTimeout(tick, holdDelay);
+                        return;
+                    }
+                    window.setTimeout(tick, typeDelay);
+                    return;
+                }
+
+                // Backspacing
+                charIndex = Math.max(charIndex - 1, 0);
+                wordEl.textContent = current.slice(0, charIndex);
+                if (charIndex <= 0) {
+                    wordIndex = (wordIndex + 1) % words.length;
+                    direction = 1;
+                    window.setTimeout(tick, betweenDelay);
+                    return;
+                }
+                window.setTimeout(tick, backDelay);
+            };
+
+            window.setTimeout(tick, holdDelay);
+        })();
+    </script>
 </body>
 </html>

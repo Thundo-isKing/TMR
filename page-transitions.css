@@ -1,0 +1,16 @@
+/* Shared page fade transitions (safe, minimal).
+   Keep this conservative: only fade-out on navigation.
+   (Always-on opacity animations can cause visible seams with backdrop-filter.)
+*/
+
+html.tmr-page-fade-out body {
+    opacity: 0 !important;
+    transition: opacity 140ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.tmr-page-fade-out body {
+        opacity: 1 !important;
+        transition: none !important;
+    }
+}

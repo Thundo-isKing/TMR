@@ -13,6 +13,23 @@ const AuthClient = (() => {
   const RAW_FNS_KEY = '__tmrLocalStorageRawFns';
   const SCOPED_PATCH_INSTALLED_KEY = '__tmrScopedLocalStorageInstalled';
   const BOOT_THEME_KEY = 'tmr_boot_theme';
+  const AUTH_PENDING_CLASS = 'tmr-auth-pending';
+
+  const setAuthPending = () => {
+    try {
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.add(AUTH_PENDING_CLASS);
+      }
+    } catch (_) {}
+  };
+
+  const clearAuthPending = () => {
+    try {
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.remove(AUTH_PENDING_CLASS);
+      }
+    } catch (_) {}
+  };
 
   const getRawLocalStorageFns = () => {
     if (typeof window === 'undefined') return null;
@@ -267,14 +284,42 @@ const AuthClient = (() => {
         if (data.user) {
           currentUser = data.user;
           console.log('[Auth] Restored session for user:', currentUser.username);
-          showLoggedInUI();
-          try { migrateAnonDataToUserScope(currentUser.id); } catch (e) {}
-          try { migrateOwnedEventsToUserScope(currentUser.id); } catch (e) {}
-          try { updateBootThemeSnapshot(); } catch (e) {}
-          try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: currentUser, restored: true } })); } catch (e) {}
 
-          // Mark auth as ready for other modules.
-          resolveReady(currentUser);
+          // Best-effort: load the user's theme immediately so the next reload can use
+          // the boot snapshot (pre-paint) and avoid flashing default UI.
+          try {
+            const tRes = await fetch('/theme/load', {
+              credentials: 'include',
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (tRes && tRes.ok) {
+              const tj = await tRes.json();
+              const theme = tj && tj.theme ? tj.theme : null;
+              if (theme && typeof theme === 'object') {
+                try {
+                  // Only adopt server accent if it's not the default or if we have no local value.
+                  const localAccent = (() => {
+                    try { return localStorage.getItem('theme_accent_color'); } catch (e) { return null; }
+                  })();
+                  if (typeof theme.accentColor === 'string') {
+                    const serverAccent = theme.accentColor.trim();
+                    if (serverAccent && (serverAccent !== '#6366f1' || !localAccent)) {
+                      localStorage.setItem('theme_accent_color', serverAccent);
+                    }
+                  }
+                  if (typeof theme.animation === 'string') localStorage.setItem('theme_animation', theme.animation);
+                  if (typeof theme.animationSpeed !== 'undefined') localStorage.setItem('theme_animation_speed', String(theme.animationSpeed));
+                  if (typeof theme.animationIntensity !== 'undefined') localStorage.setItem('theme_animation_intensity', String(theme.animationIntensity));
+
+                  // Never clear background from a null/default server response.
+                  if (typeof theme.backgroundImage === 'string' && theme.backgroundImage) {
+                    localStorage.setItem('theme_bg_image', theme.backgroundImage);
+                  }
+                } catch (e) {}
+              }
+            }
+          } catch (e) {}
 
           // Important: many modules read localStorage during initial load.
           // If they ran before we restored the session, they may have read from the anonymous namespace.
@@ -286,11 +331,27 @@ const AuthClient = (() => {
               const now = String(currentUser.id);
               if (last !== now) {
                 sessionStorage.setItem(lastUserKey, now);
+                // Ensure the boot snapshot is ready for the next load.
+                try { updateBootThemeSnapshot(); } catch (e) {}
+                // Avoid briefly showing the app UI before we reload.
+                setAuthPending();
                 setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 10);
                 return true;
               }
             }
           } catch (e) {}
+
+          // No forced reload: finish init and show the app.
+          try { migrateAnonDataToUserScope(currentUser.id); } catch (e) {}
+          try { migrateOwnedEventsToUserScope(currentUser.id); } catch (e) {}
+          try { updateBootThemeSnapshot(); } catch (e) {}
+          showLoggedInUI();
+          try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: currentUser, restored: true } })); } catch (e) {}
+
+          // Mark auth as ready for other modules.
+          resolveReady(currentUser);
+
+          clearAuthPending();
 
           return true;
         }
@@ -310,12 +371,15 @@ const AuthClient = (() => {
       const guestMode = rawGetItem('guest_mode') || rawGetItem(`${CACHE_PREFIX}anon_guest_mode`);
       if (guestMode) {
         showGuestUI();
+        clearAuthPending();
         try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: null, guest: true } })); } catch (e) {}
         return false;
       }
     } catch (e) {}
 
     showLoginUI();
+    // Login modal is now visible; safe to reveal the page (modal covers it).
+    clearAuthPending();
     return false;
   };
 
@@ -351,10 +415,47 @@ const AuthClient = (() => {
       try { rawRemoveItem(`${CACHE_PREFIX}anon_guest_mode`); } catch (e) {}
       try { migrateAnonDataToUserScope(currentUser.id); } catch (e) {}
       clearAllCaches();
+
+      // Prime the theme cache before reload so the boot snapshot can prevent flashes.
+      try {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('tmr_last_user_id', String(currentUser.id));
+      } catch (e) {}
+      try {
+        const tRes = await fetch('/theme/load', {
+          credentials: 'include',
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (tRes && tRes.ok) {
+          const tj = await tRes.json();
+          const theme = tj && tj.theme ? tj.theme : null;
+          if (theme && typeof theme === 'object') {
+            try {
+              const localAccent = (() => {
+                try { return localStorage.getItem('theme_accent_color'); } catch (e) { return null; }
+              })();
+              if (typeof theme.accentColor === 'string') {
+                const serverAccent = theme.accentColor.trim();
+                if (serverAccent && (serverAccent !== '#6366f1' || !localAccent)) {
+                  localStorage.setItem('theme_accent_color', serverAccent);
+                }
+              }
+              if (typeof theme.animation === 'string') localStorage.setItem('theme_animation', theme.animation);
+              if (typeof theme.animationSpeed !== 'undefined') localStorage.setItem('theme_animation_speed', String(theme.animationSpeed));
+              if (typeof theme.animationIntensity !== 'undefined') localStorage.setItem('theme_animation_intensity', String(theme.animationIntensity));
+              if (typeof theme.backgroundImage === 'string' && theme.backgroundImage) {
+                localStorage.setItem('theme_bg_image', theme.backgroundImage);
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+
       try { updateBootThemeSnapshot(); } catch (e) {}
-      showLoggedInUI();
       try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: currentUser } })); } catch (e) {}
-      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 50);
+      // Avoid showing the app briefly before reload (causes visible flashes).
+      setAuthPending();
+      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 30);
       return data.user;
     } catch (err) {
       console.error('[Auth] Register error:', err.message);
@@ -391,10 +492,47 @@ const AuthClient = (() => {
       try { rawRemoveItem(`${CACHE_PREFIX}anon_guest_mode`); } catch (e) {}
       try { migrateAnonDataToUserScope(currentUser.id); } catch (e) {}
       clearAllCaches();
+
+      // Prime the theme cache before reload so the boot snapshot can prevent flashes.
+      try {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('tmr_last_user_id', String(currentUser.id));
+      } catch (e) {}
+      try {
+        const tRes = await fetch('/theme/load', {
+          credentials: 'include',
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (tRes && tRes.ok) {
+          const tj = await tRes.json();
+          const theme = tj && tj.theme ? tj.theme : null;
+          if (theme && typeof theme === 'object') {
+            try {
+              const localAccent = (() => {
+                try { return localStorage.getItem('theme_accent_color'); } catch (e) { return null; }
+              })();
+              if (typeof theme.accentColor === 'string') {
+                const serverAccent = theme.accentColor.trim();
+                if (serverAccent && (serverAccent !== '#6366f1' || !localAccent)) {
+                  localStorage.setItem('theme_accent_color', serverAccent);
+                }
+              }
+              if (typeof theme.animation === 'string') localStorage.setItem('theme_animation', theme.animation);
+              if (typeof theme.animationSpeed !== 'undefined') localStorage.setItem('theme_animation_speed', String(theme.animationSpeed));
+              if (typeof theme.animationIntensity !== 'undefined') localStorage.setItem('theme_animation_intensity', String(theme.animationIntensity));
+              if (typeof theme.backgroundImage === 'string' && theme.backgroundImage) {
+                localStorage.setItem('theme_bg_image', theme.backgroundImage);
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+
       try { updateBootThemeSnapshot(); } catch (e) {}
-      showLoggedInUI();
       try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: currentUser } })); } catch (e) {}
-      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 50);
+      // Avoid showing the app briefly before reload (causes visible flashes).
+      setAuthPending();
+      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 30);
       return data.user;
     } catch (err) {
       console.error('[Auth] Login error:', err.message);
@@ -426,7 +564,8 @@ const AuthClient = (() => {
     showLoginUI();
     console.log('[Auth] Logged out');
     try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: null } })); } catch (e) {}
-    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 50);
+    // Avoid a full reload on logout to prevent the visible "default UI flash".
+    // The auth modal already blocks interaction, and storage is now in the anon namespace.
   };
 
   /**
@@ -457,7 +596,7 @@ const AuthClient = (() => {
     showLoginUI();
     console.log('[Auth] Logged out from all sessions');
     try { window.dispatchEvent(new CustomEvent('tmr:auth-changed', { detail: { user: null } })); } catch (e) {}
-    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 50);
+    // Avoid a full reload on logout to prevent the visible "default UI flash".
   };
 
   /**
@@ -630,17 +769,22 @@ const AuthClient = (() => {
     const headerLoginBtn = document.getElementById('header-login-btn');
     const headerLogoutBtn = document.getElementById('header-logout-btn');
 
-    // Keep the app visible; the auth modal is an overlay.
-    // This prevents the "only header remains" blank state if something goes wrong.
-    if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
-    if (header) header.style.setProperty('display', 'flex', 'important');
-    if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
-    if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
-
     if (!authModal) {
       console.error('[Auth] Cannot show login UI: #auth-modal-backdrop not found');
+      // Fallback: if the modal is missing, don't leave the page blank.
+      if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
+      if (header) header.style.setProperty('display', 'flex', 'important');
+      if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
+      if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
+      clearAuthPending();
       return;
     }
+
+    // Hide the app behind the auth modal to prevent flashes of default/previous UI.
+    if (appContainer) appContainer.style.setProperty('display', 'none', 'important');
+    if (header) header.style.setProperty('display', 'none', 'important');
+    if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
+    if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
 
     // Defensive: if the modal was moved into a hidden container or detached,
     // it can end up with a 0x0 rect even though its own display is "flex".
@@ -726,6 +870,9 @@ const AuthClient = (() => {
       elementFromPointCenter: describeEl(topEl),
       hiddenAncestor
     });
+
+    // Ensure we never leave the page in a hidden "pending" state.
+    clearAuthPending();
   };
 
   /**
