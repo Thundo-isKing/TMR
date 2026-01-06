@@ -38,30 +38,22 @@
             animation: introTopbarIn 520ms ease-out both;
         }
 
-        .intro-main > .intro-card {
-            opacity: 0;
-            animation: introFadeInUp 520ms ease-out both;
-        }
-
         .intro-topbar { animation-delay: 0ms; }
-        .intro-main > .intro-card:nth-of-type(1) { animation-delay: 80ms; }
-        .intro-main > .intro-card:nth-of-type(2) { animation-delay: 140ms; }
-        .intro-main > .intro-card:nth-of-type(3) { animation-delay: 200ms; }
 
         /* Landing layout only (no new theme/colors). */
         /* Landing buttons: no translate/shadows; slight darken on hover. */
-        body .intro-main .tmr-btn,
+        body .intro-scroll .tmr-btn,
         body .intro-topbar .tmr-btn,
-        body .intro-main .small-tmr-btn,
+        body .intro-scroll .small-tmr-btn,
         body .intro-topbar .small-tmr-btn {
             transform: none !important;
             box-shadow: none !important;
             transition: background-color 0.12s ease-out !important;
         }
 
-        body .intro-main .tmr-btn:hover,
+        body .intro-scroll .tmr-btn:hover,
         body .intro-topbar .tmr-btn:hover,
-        body .intro-main .small-tmr-btn:hover,
+        body .intro-scroll .small-tmr-btn:hover,
         body .intro-topbar .small-tmr-btn:hover {
             transform: none !important;
             box-shadow: none !important;
@@ -69,7 +61,7 @@
         }
 
         /* Avoid blue focus ring from TMR.css on this landing page. */
-        body .intro-main .header-text-btn:focus,
+        body .intro-scroll .header-text-btn:focus,
         body .intro-topbar .header-text-btn:focus {
             box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22) !important;
         }
@@ -92,12 +84,277 @@
             letter-spacing: 0.3px;
         }
 
-        .intro-main {
+        body {
+            overflow: hidden;
+        }
+
+        /* Replace the regular page scroll with a snap-scrolling container. */
+        .intro-scroll {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            scroll-padding-top: 92px; /* keeps content below the fixed topbar */
+        }
+
+        .intro-snap {
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            min-height: 100vh;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            /* Blur out non-active sections. */
+            filter: blur(10px);
+            opacity: 0.22;
+            transform: scale(0.98);
+            transition: filter 260ms ease-out, opacity 260ms ease-out, transform 260ms ease-out;
+            pointer-events: none;
+        }
+
+        .intro-snap.is-active {
+            filter: none;
+            opacity: 1;
+            transform: none;
+            pointer-events: auto;
+        }
+
+        .intro-snap-inner {
+            width: 100%;
             max-width: 1100px;
             margin: 0 auto;
-            padding: 110px 16px 56px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            padding-top: 88px;
+            padding-bottom: 28px;
             display: grid;
+            gap: 12px;
+            align-content: center;
+        }
+
+        /* Section-specific tuning (per your notes). */
+        #intro-sec-features .intro-snap-inner {
+            max-width: 1220px;
+            transform: translateY(-50px);
+        }
+
+        /* Bigger cards section presence. */
+        #intro-sec-features .intro-feature {
+            max-width: 360px;
+        }
+
+        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+            #intro-sec-features .intro-feature-stage.intro-carousel .intro-feature {
+                width: min(380px, 90%);
+            }
+        }
+
+        /* Mobile tutorial row: keep iPhone + OR + Android aligned. */
+        .intro-phones {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Desktop/tablet: lock into 3 columns so Android can't drop under iPhone. */
+        @media (min-width: 901px) {
+            .intro-phones {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+                column-gap: 54px;
+                row-gap: 12px;
+                align-items: center;
+                justify-items: center;
+            }
+        }
+
+        .intro-phone-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 0 1 auto;
+            justify-content: center;
+        }
+
+        #intro-sec-mobile .intro-snap-inner {
+            justify-items: center;
+            /* Reduce bottom-heavy feel by balancing vertical padding in this section only. */
+            padding-top: 70px;
+            padding-bottom: 70px;
+        }
+
+        @media (max-width: 900px) {
+            .intro-phones {
+                flex-direction: column;
+            }
+            .intro-phone-group {
+                flex-direction: column;
+            }
+        }
+
+        .intro-or {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 31px;
+            letter-spacing: 0.2px;
+            user-select: none;
+            padding: 0 12px;
+            white-space: nowrap;
+        }
+
+        .intro-phone {
+            /* Constrain by viewport height so snap sections never overflow. */
+            height: min(calc(52vh + 150px), 670px, calc(100vh - 260px));
+            width: auto;
+            /* Wider phone (adds ~50px width at typical heights). */
+            aspect-ratio: 11 / 19.5;
+            border-radius: 34px;
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            padding: 14px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            cursor: pointer;
+            flex: 0 1 auto;
+        }
+
+        .intro-phone-title {
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 15px;
+            letter-spacing: 0.2px;
+            text-align: center;
+        }
+
+        .intro-phone-screen {
+            border-radius: 26px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px dashed rgba(0, 0, 0, 0.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 0, 0, 0.55);
+            font-size: 14px;
+        }
+
+        .intro-tutorial-cta {
+            margin: 0;
+            white-space: nowrap;
+            /* Constrain: .tmr-btn has huge padding by default. */
+            padding: 14px 18px !important;
+            font-size: 16px !important;
+            max-width: 280px;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .intro-or {
+                padding: 6px 0;
+            }
+            .intro-tutorial-cta {
+                width: min(420px, 96%);
+            }
+
+            .intro-phone {
+                height: min(calc(46vh + 150px), 610px, calc(100vh - 300px));
+                width: auto;
+            }
+        }
+
+        /* Hide the inline instruction cards; they appear in the tutorial overlay instead. */
+        #intro-sec-mobile .intro-card.intro-section {
+            display: none;
+        }
+
+        .intro-tutorial-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+        }
+
+        .intro-tutorial-overlay.is-open {
+            display: block;
+        }
+
+        .intro-tutorial-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .intro-tutorial-panel {
+            position: relative;
+            height: 100vh;
+            width: 100%;
+            padding: 92px 16px 28px;
+            box-sizing: border-box;
+            display: grid;
+            place-items: center;
+            pointer-events: none;
+        }
+
+        .intro-tutorial-grid {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
             gap: 16px;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        @media (max-width: 900px) {
+            .intro-tutorial-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .intro-tutorial-instructions {
+            margin: 0;
+        }
+
+        /* Ensure cloned instructions are visible in overlay even though we hide them inline. */
+        .intro-tutorial-grid .intro-card.intro-section {
+            display: block;
+        }
+
+        .intro-tutorial-phone {
+            justify-self: center;
+        }
+
+        body.tmr-tutorial-open {
+            overflow: hidden;
+        }
+
+        .intro-hero-outside {
+            text-align: center;
+            color: #fff;
+            max-width: 980px;
+            margin: 0 auto 4px;
+            opacity: 0;
+            animation: introFadeInUp 520ms ease-out both;
+            animation-delay: 60ms;
+        }
+
+        .intro-hero-outside h1 {
+            margin: 0;
+            font-size: 76px;
+            line-height: 1.02;
+        }
+
+        .intro-hero-outside p {
+            margin: 12px 0 0;
+            font-size: 22px;
+            opacity: 0.92;
+            line-height: 1.5;
         }
 
         .intro-card.page-header {
@@ -123,10 +380,17 @@
             transform: scale(1.02);
         }
 
-        .intro-hero h1 {
-            margin: 0;
-            font-size: 40px;
-            line-height: 1.05;
+        /* Feature section should NOT have a frosted/glass container behind the cards. */
+        .intro-card.intro-hero {
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        .intro-card.intro-hero:hover {
+            transform: none;
         }
 
         .intro-type {
@@ -153,18 +417,16 @@
             50%, 100% { opacity: 0; }
         }
 
-        .intro-hero p {
-            margin: 10px 0 0;
-            font-size: 16px;
-            opacity: 0.92;
-            line-height: 1.5;
-        }
 
         .intro-actions {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            margin-top: 16px;
+            margin-top: 14px;
+        }
+
+        .intro-hero-outside .intro-actions {
+            justify-content: center;
         }
 
         .intro-actions .tmr-btn {
@@ -178,38 +440,153 @@
             margin-top: 14px;
         }
 
+        .intro-feature-stage {
+            width: 100%;
+        }
+
+        /* Desktop hover carousel (grid fallback remains for touch / reduced-motion). */
+        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+            .intro-feature-stage.intro-carousel {
+                position: relative;
+                display: block;
+                margin-top: 14px;
+                /* Height is set dynamically by JS to match the active card. */
+            }
+
+            .intro-feature-stage.intro-carousel .intro-feature {
+                position: absolute;
+                top: 0;
+                left: 50%;
+                width: min(340px, 84%);
+                margin: 0;
+                transform-origin: center;
+                transition: transform 420ms ease-out, opacity 420ms ease-out;
+            }
+
+            .intro-feature-stage.intro-carousel .intro-feature[data-pos="0"] {
+                transform: translateX(-50%) scale(1);
+                opacity: 1;
+                z-index: 5;
+                pointer-events: auto;
+            }
+
+            .intro-feature-stage.intro-carousel .intro-feature[data-pos="-1"] {
+                transform: translateX(-120%) scale(0.92);
+                opacity: 0.6;
+                z-index: 3;
+                pointer-events: none;
+            }
+
+            .intro-feature-stage.intro-carousel .intro-feature[data-pos="1"] {
+                transform: translateX(20%) scale(0.92);
+                opacity: 0.6;
+                z-index: 3;
+                pointer-events: none;
+            }
+
+            .intro-feature-stage.intro-carousel .intro-feature[data-pos="-2"] {
+                transform: translateX(-165%) scale(0.82);
+                opacity: 0.28;
+                z-index: 2;
+                pointer-events: none;
+            }
+
+            .intro-feature-stage.intro-carousel .intro-feature[data-pos="2"] {
+                transform: translateX(65%) scale(0.82);
+                opacity: 0.28;
+                z-index: 2;
+                pointer-events: none;
+            }
+
+            /* Hide everything else (still present for smooth cycling). */
+            .intro-feature-stage.intro-carousel .intro-feature:not([data-pos="0"]):not([data-pos="-1"]):not([data-pos="1"]):not([data-pos="-2"]):not([data-pos="2"]) {
+                opacity: 0;
+                transform: translateX(-50%) scale(0.78);
+                z-index: 1;
+                pointer-events: none;
+            }
+
+            /* When carousel is active, don't use the grid layout. */
+            .intro-feature-stage.intro-carousel.intro-grid {
+                display: block;
+            }
+        }
+
+        .intro-features-header {
+            text-align: center;
+            margin: 6px 0 6px;
+        }
+
+        .intro-features-header h2 {
+            margin: 0;
+            font-size: 30px;
+        }
+
+        .intro-features-desc {
+            margin: 8px auto 0;
+            max-width: 760px;
+            font-size: 18px;
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+
         .intro-feature {
             padding: 16px;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.55);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
 
-            /* Frosted-glass hover expand/return. */
-            transition: transform 160ms ease-out;
+            /* Playing-card feel (portrait). */
+            aspect-ratio: 3 / 4;
+            min-height: 210px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            width: 100%;
+            max-width: 320px;
+            justify-self: center;
+
+            /* Card-like hover (only in grid mode). */
+            transition: transform 180ms ease-out, box-shadow 180ms ease-out;
             will-change: transform;
         }
 
-        .intro-feature:hover {
-            transform: scale(1.02);
+        .intro-feature-stage:not(.intro-carousel) .intro-feature:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        .intro-feature-media {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.06);
+            border: 1px dashed rgba(0, 0, 0, 0.18);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            letter-spacing: 0.2px;
+            color: rgba(0, 0, 0, 0.55);
         }
 
         .intro-feature h3 {
-            margin: 0 0 6px;
-            font-size: 16px;
+            margin: 0 0 8px;
+            font-size: 22px;
         }
 
         .intro-feature p {
             margin: 0;
-            font-size: 14px;
+            font-size: 17px;
             opacity: 0.9;
             line-height: 1.5;
         }
 
         .intro-section h2 {
             margin: 0 0 10px;
-            font-size: 18px;
+            font-size: 24px;
         }
 
         .intro-section ul {
@@ -220,23 +597,43 @@
         .intro-section li {
             margin: 8px 0;
             line-height: 1.5;
+            font-size: 16px;
         }
 
         .intro-note {
             margin-top: 10px;
-            font-size: 13px;
+            font-size: 15px;
             opacity: 0.85;
             line-height: 1.5;
         }
 
         @media (max-width: 900px) {
             .intro-grid { grid-template-columns: 1fr; }
-            .intro-hero h1 { font-size: 32px; }
+            .intro-hero-outside h1 { font-size: 52px; }
+            .intro-hero-outside p { font-size: 19px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
+            body { overflow: auto; }
+
+            .intro-scroll {
+                height: auto;
+                overflow: visible;
+                scroll-snap-type: none;
+                scroll-behavior: auto;
+            }
+
+            .intro-snap {
+                min-height: auto;
+                filter: none;
+                opacity: 1;
+                transform: none;
+                pointer-events: auto;
+            }
+
             .intro-topbar,
-            .intro-main > .intro-card {
+            .intro-hero-outside,
+            .intro-snap-inner > .intro-card {
                 opacity: 1;
                 animation: none;
             }
@@ -265,97 +662,170 @@
             <div class="brand-title">TMR</div>
         </div>
         <div class="header-right">
-            <a class="header-text-btn" href="#Pricing">Pricing (free?)</a>
+            <a class="header-text-btn" href="#intro-sec-cta">Pricing (free?)</a>
             <a class="header-text-btn" href="#iphone">iPhone Setup</a>
             <a class="header-text-btn" href="#Android">Android Setup</a>
             <button id="continue-signin-top" class="tmr-btn small-tmr-btn" type="button">Sign In</button>
         </div>
     </div>
 
-    <main class="intro-main">
-        <section class="page-header intro-card intro-hero">
-            <h1>
-                Stay on
-                <span class="intro-type" aria-live="polite" aria-atomic="true">
-                    <span id="intro-type-word" class="intro-type-word">schedule</span>
-                    <span class="intro-type-caret" aria-hidden="true">|</span>
-                </span>.
-            </h1>
-            <p>
-                TMR helps you manage events, todos, and reminders — with AI assistance when you want it.
-            </p>
-
-            <div class="intro-actions">
-                <button id="continue-signin" class="tmr-btn" type="button">Get started</button>
-            
-            </div>
-
-            <div id="features" class="intro-grid" aria-label="TMR features">
-                <div class="intro-feature">
-                    <h3>Calendar + reminders</h3>
-                    <p>Create events, set reminders, and keep your day clear.</p>
-                </div>
-                <div class="intro-feature">
-                    <h3>Todos + reminders</h3>
-                    <p>Track tasks without losing the bigger picture.</p>
-                </div>
-                <div class="intro-feature">
-                    <h3>Meibot (May-bot) ~AI helper~</h3>
-                    <p>Ask for help scheduling or organizing — faster than typing everything manually.</p>
-                </div>
-                <div class="intro-feature">
-                  <h3>Notes... for ideas</h3>
-                <p>Jot down thoughts and plans to revisit later.</p>
-                </div>
-                <div class="intro-feature">
-                  <h3>Themes and customization</h3>
-                <p>Make your planner your OWN.</p>
-                </div>
-                <div class="intro-feature">
-                  <h3>Accounts, Google calendar integration, and so much more</h3>
-                <p>Your future, all in one place [:.</p>
-                </div>
+    <main class="intro-scroll" id="intro-scroll">
+        <!-- Section 1: Hero text → Get started button -->
+        <section class="intro-snap is-active" id="intro-sec-hero" aria-label="Intro hero">
+            <div class="intro-snap-inner">
+                <section class="intro-hero-outside" aria-label="TMR headline">
+                    <h1>
+                        Stay on
+                        <span class="intro-type" aria-live="polite" aria-atomic="true">
+                            <span id="intro-type-word" class="intro-type-word">schedule</span>
+                            <span class="intro-type-caret" aria-hidden="true">.|</span>
+                        </span>
+                    </h1>
+                    <p>
+                        TMR helps you manage events, todos, and reminders — with AI assistance when you want it.
+                    </p>
+                    <div class="intro-actions">
+                        <button id="continue-signin" class="tmr-btn" type="button">Get started</button>
+                    </div>
+                </section>
             </div>
         </section>
 
-        <section id="iphone" class="page-header intro-card intro-section">
-            <h2>Mobile quick-start (iPhone)</h2>
-            <ul>
-                <li><strong>Use Safari:</strong> open the app link in Safari for the smoothest setup.</li>
-                <li><strong>Add to Home Screen:</strong> Share → “Add to Home Screen” for a more app-like experience (this allows notifications).</li>
-                <li><strong>Notifications:</strong> iOS support depends on version and whether the site is installed to Home Screen.</li>
-            </ul>
-            <div class="intro-note">
-                If notifications don’t work on iPhone, turn into webapp by adding to Home Screen and re-check site permissions(visual tutorial coming soon).
+        <!-- Section 2: Description + feature cards -->
+        <section class="intro-snap" id="intro-sec-features" aria-label="Intro features">
+            <div class="intro-snap-inner">
+                <section class="page-header intro-card intro-hero">
+                    <div id="features" class="intro-features-header">
+                        <h2>Why you're missing out</h2>
+                        <p class="intro-features-desc">
+                            Built for planning fast: calendar, todos, reminders, notes, themes, and Meibot — all in one place.
+                        </p>
+                    </div>
+
+                    <div class="intro-feature-stage intro-grid" aria-label="TMR features">
+                        <div class="intro-feature">
+                            <div class="intro-feature-media">Video / Image</div>
+                            <h3>Calendar + reminders</h3>
+                            <p>Create events, set reminders, and keep your day clear.</p>
+                        </div>
+                        <div class="intro-feature">
+                            <div class="intro-feature-media">Video / Image</div>
+                            <h3>Todos + reminders</h3>
+                            <p>Track tasks without losing the bigger picture.</p>
+                        </div>
+                        <div class="intro-feature">
+                            <div class="intro-feature-media">Video / Image</div>
+                            <h3>Meibot (May-bot) ~AI helper~</h3>
+                            <p>Ask for help scheduling or organizing — faster than typing everything manually.</p>
+                        </div>
+                        <div class="intro-feature">
+                            <div class="intro-feature-media">Video / Image</div>
+                            <h3>Notes... for ideas</h3>
+                            <p>Jot down thoughts and plans to revisit later.</p>
+                        </div>
+                        <div class="intro-feature">
+                            <div class="intro-feature-media">Video / Image</div>
+                            <h3>Themes and customization</h3>
+                            <p>Make your planner your OWN.</p>
+                        </div>
+                        <div class="intro-feature">
+                            <div class="intro-feature-media">Video / Image</div>
+                            <h3>Accounts, Google calendar integration, and so much more</h3>
+                            <p>Your future, all in one place [:.</p>
+                        </div>
+                    </div>
+                </section>
             </div>
-           
-            
-        </section>
-        <section id="Android" class="page-header intro-card intro-section">
-             <h2>Mobile quick-start (Android)</h2>
-            <ul>
-                <li><strong>Use Chrome:</strong> open the app link in Chrome/Google for the smoothest setup.</li>
-                <li><strong>Enable Notifications:</strong> Allow notifications via popup.</li>
-                <li><strong>Add to Home Screen:</strong> Share → “Add to Home Screen” for a more app-like experience (Needn't have to worry about recieving notifications... apple sucks).</li>
-            </ul>
-            
         </section>
 
-        <section class="page-header intro-card intro-section">
-            <h2>Ready to try it?</h2>
-            <button id="continue-signin-bottom" class="tmr-btn" type="button" style="width: 100%;">Continue to Sign In</button>
-            <div class="intro-note">This will open the app where you can sign in or create an account.</div>
+        <!-- Section 3: iPhone + Android info cards -->
+        <section class="intro-snap" id="intro-sec-mobile" aria-label="Mobile info">
+            <div class="intro-snap-inner">
+                <div class="intro-phones" aria-label="Mobile setup videos">
+                    <div class="intro-phone-group" aria-label="iPhone tutorial">
+                        <button class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="iphone">Start using TMR tutorial (Iphone)</button>
+
+                        <div class="intro-phone" role="button" tabindex="0" data-tutorial="iphone" aria-label="Open iPhone tutorial">
+                            <div class="intro-phone-title">iPhone setup video</div>
+                            <div class="intro-phone-screen">Video placeholder</div>
+                        </div>
+                    </div>
+
+                    <div class="intro-or" aria-hidden="true">or</div>
+
+                    <div class="intro-phone-group" aria-label="Android tutorial">
+                        <div class="intro-phone" role="button" tabindex="0" data-tutorial="android" aria-label="Open Android tutorial">
+                            <div class="intro-phone-title">Android setup video</div>
+                            <div class="intro-phone-screen">Video placeholder</div>
+                        </div>
+
+                        <button class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="android">Start using TMR tutorial (Android)</button>
+                    </div>
+                </div>
+
+                <section id="iphone" class="page-header intro-card intro-section">
+                    <h2>Mobile quick-start (iPhone)</h2>
+                    <ul>
+                        <li><strong>Use Safari:</strong> open the app link in Safari for the smoothest setup.</li>
+                        <li><strong>Add to Home Screen:</strong> Share → “Add to Home Screen” for a more app-like experience (this allows notifications).</li>
+                        <li><strong>Notifications:</strong> iOS support depends on version and whether the site is installed to Home Screen.</li>
+                    </ul>
+                    <div class="intro-note">
+                        If notifications don’t work on iPhone, turn into webapp by adding to Home Screen and re-check site permissions(visual tutorial coming soon).
+                    </div>
+                </section>
+
+                <section id="Android" class="page-header intro-card intro-section">
+                    <h2>Mobile quick-start (Android)</h2>
+                    <ul>
+                        <li><strong>Use Chrome:</strong> open the app link in Chrome/Google for the smoothest setup.</li>
+                        <li><strong>Enable Notifications:</strong> Allow notifications via popup.</li>
+                        <li><strong>Add to Home Screen:</strong> Share → “Add to Home Screen” for a more app-like experience (Needn't have to worry about recieving notifications... apple sucks).</li>
+                    </ul>
+                </section>
+            </div>
+        </section>
+
+        <!-- Section 4: Ready to try it -->
+        <section class="intro-snap" id="intro-sec-cta" aria-label="Ready to try">
+            <div class="intro-snap-inner">
+                <section class="page-header intro-card intro-section">
+                    <h2>Ready to try it?</h2>
+                    <button id="continue-signin-bottom" class="tmr-btn" type="button" style="width: 100%;">Continue to Sign In</button>
+                    <div class="intro-note">This will open the app where you can sign in or create an account.</div>
+                </section>
+            </div>
         </section>
     </main>
 
+    <div id="tutorial-overlay" class="intro-tutorial-overlay" aria-hidden="true">
+        <div class="intro-tutorial-backdrop" data-tutorial-close="1"></div>
+        <div class="intro-tutorial-panel" role="dialog" aria-modal="true" aria-label="TMR tutorial">
+            <div class="intro-tutorial-grid" id="tutorial-grid">
+                <!-- populated by JS -->
+            </div>
+        </div>
+    </div>
+
     <script>
         (function () {
-            const btns = [
-                document.getElementById('continue-signin'),
+            const getStartedBtn = document.getElementById('continue-signin');
+            const signinBtns = [
                 document.getElementById('continue-signin-top'),
                 document.getElementById('continue-signin-bottom')
             ].filter(Boolean);
-            if (!btns.length) return;
+
+            if (!getStartedBtn && !signinBtns.length) return;
+
+            // Get started: scroll to the cards/features section (no sign-in modal yet).
+            if (getStartedBtn) {
+                getStartedBtn.addEventListener('click', () => {
+                    const target = document.getElementById('intro-sec-features') || document.getElementById('features');
+                    if (target && target.scrollIntoView) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            }
 
             const go = () => {
                 try { localStorage.setItem('tmr_tutorial_seen', '1'); } catch (e) {}
@@ -363,7 +833,7 @@
                 window.location.href = 'TMR.html';
             };
 
-            btns.forEach((b) => b.addEventListener('click', go));
+            signinBtns.forEach((b) => b.addEventListener('click', go));
         })();
 
         (function () {
@@ -411,6 +881,277 @@
             };
 
             window.setTimeout(tick, holdDelay);
+        })();
+
+        (function () {
+            const stage = document.querySelector('.intro-feature-stage');
+            if (!stage) return;
+
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const supportsHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+            if (prefersReduced || !supportsHover) return; // keep the grid on touch / reduced-motion
+
+            const cards = Array.prototype.slice.call(stage.querySelectorAll('.intro-feature'));
+            if (cards.length < 2) return;
+
+            stage.classList.add('intro-carousel');
+
+            let activeIndex = 0;
+
+            const mod = (n, m) => ((n % m) + m) % m;
+
+            const updateHeight = () => {
+                const active = cards[activeIndex];
+                if (!active) return;
+                const h = Math.max(active.offsetHeight, 140);
+                stage.style.height = (h + 4) + 'px';
+            };
+
+            const render = () => {
+                const total = cards.length;
+                for (let i = 0; i < total; i++) {
+                    let rel = i - activeIndex;
+                    // wrap to the closest signed distance
+                    if (rel > total / 2) rel -= total;
+                    if (rel < -total / 2) rel += total;
+                    cards[i].setAttribute('data-pos', String(rel));
+                }
+                updateHeight();
+            };
+
+            render();
+
+            let lastSide = null;
+            let sideSince = 0;
+            let lastAdvance = 0;
+
+            stage.addEventListener('mousemove', (e) => {
+                const active = cards[activeIndex];
+                if (!active || !active.contains(e.target)) return;
+
+                const rect = active.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const side = x < rect.width / 2 ? 'left' : 'right';
+
+                const now = (window.performance && performance.now) ? performance.now() : Date.now();
+                if (side !== lastSide) {
+                    lastSide = side;
+                    sideSince = now;
+                    return;
+                }
+
+                // Dwell-based switching to avoid rapid flicker when crossing the midpoint.
+                // (Intentionally a bit slow/smooth.)
+                if (now - sideSince < 520) return;
+                if (now - lastAdvance < 780) return;
+
+                lastAdvance = now;
+                activeIndex = mod(activeIndex + (side === 'right' ? 1 : -1), cards.length);
+                render();
+                sideSince = now;
+            });
+
+            stage.addEventListener('mouseleave', () => {
+                lastSide = null;
+            });
+
+            window.addEventListener('resize', updateHeight);
+        })();
+
+        (function () {
+            const scrollRoot = document.getElementById('intro-scroll');
+            if (!scrollRoot) return;
+
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReduced) return;
+
+            const sections = Array.prototype.slice.call(scrollRoot.querySelectorAll('.intro-snap'));
+            if (!sections.length) return;
+
+            // Make topbar hash links scroll inside the snap container (since body is non-scroll).
+            const topbar = document.querySelector('.intro-topbar');
+            if (topbar) {
+                topbar.addEventListener('click', (e) => {
+                    const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+                    if (!a) return;
+                    const href = a.getAttribute('href');
+                    if (!href || href === '#') return;
+
+                    // iPhone/Android tags: scroll to the section AND open the tutorial overlay.
+                    if (href === '#iphone' || href === '#Android') {
+                        e.preventDefault();
+
+                        const mobileSection = document.getElementById('intro-sec-mobile');
+                        if (mobileSection && mobileSection.scrollIntoView) {
+                            mobileSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+
+                        const kind = (href === '#iphone') ? 'iphone' : 'android';
+                        const btn = document.querySelector('[data-tutorial-btn="' + kind + '"]');
+                        // Let the scroll start, then open.
+                        window.setTimeout(() => {
+                            if (btn && btn.click) btn.click();
+                        }, 250);
+                        return;
+                    }
+
+                    const target = document.querySelector(href);
+                    if (!target) return;
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+
+            let active = sections[0];
+            const setActive = (el) => {
+                if (!el || el === active) return;
+                if (active) active.classList.remove('is-active');
+                active = el;
+                active.classList.add('is-active');
+            };
+
+            // Active section detection (drives blur/unblur).
+            try {
+                const io = new IntersectionObserver((entries) => {
+                    let best = null;
+                    let bestRatio = 0;
+                    for (const entry of entries) {
+                        if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
+                            best = entry.target;
+                            bestRatio = entry.intersectionRatio;
+                        }
+                    }
+                    if (best) setActive(best);
+                }, { root: scrollRoot, threshold: [0.25, 0.4, 0.55, 0.7] });
+
+                sections.forEach((s) => io.observe(s));
+            } catch (e) {
+                // no-op
+            }
+
+            // Semi-auto scroll: one section per wheel gesture (desktop hover devices).
+            const supportsHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+            if (!supportsHover) return;
+
+            let locked = false;
+            const scrollToIndex = (idx) => {
+                const target = sections[idx];
+                if (!target) return;
+                locked = true;
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.setTimeout(() => { locked = false; }, 650);
+            };
+
+            const getActiveIndex = () => {
+                const idx = sections.indexOf(active);
+                return idx < 0 ? 0 : idx;
+            };
+
+            scrollRoot.addEventListener('wheel', (e) => {
+                if (document.body.classList.contains('tmr-tutorial-open')) {
+                    e.preventDefault();
+                    return;
+                }
+                if (locked) {
+                    e.preventDefault();
+                    return;
+                }
+
+                // Ignore tiny trackpad noise.
+                if (Math.abs(e.deltaY) < 18) return;
+
+                e.preventDefault();
+                const dir = e.deltaY > 0 ? 1 : -1;
+                const next = Math.min(sections.length - 1, Math.max(0, getActiveIndex() + dir));
+                scrollToIndex(next);
+            }, { passive: false });
+        })();
+
+        (function () {
+            const overlay = document.getElementById('tutorial-overlay');
+            const grid = document.getElementById('tutorial-grid');
+            if (!overlay || !grid) return;
+
+            const open = (kind) => {
+                const sourceId = kind === 'iphone' ? 'iphone' : 'Android';
+                const source = document.getElementById(sourceId);
+                if (!source) return;
+
+                grid.innerHTML = '';
+
+                const instructions = source.cloneNode(true);
+                instructions.removeAttribute('id');
+                instructions.classList.add('intro-tutorial-instructions');
+
+                const phone = document.createElement('div');
+                phone.className = 'intro-phone intro-tutorial-phone';
+                phone.setAttribute('aria-label', kind === 'iphone' ? 'iPhone tutorial video' : 'Android tutorial video');
+                phone.style.cursor = 'default';
+
+                const title = document.createElement('div');
+                title.className = 'intro-phone-title';
+                title.textContent = kind === 'iphone' ? 'iPhone tutorial video' : 'Android tutorial video';
+
+                const screen = document.createElement('div');
+                screen.className = 'intro-phone-screen';
+                screen.textContent = 'Video placeholder';
+
+                phone.appendChild(title);
+                phone.appendChild(screen);
+
+                grid.appendChild(instructions);
+                grid.appendChild(phone);
+
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('tmr-tutorial-open');
+            };
+
+            const close = () => {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('tmr-tutorial-open');
+                grid.innerHTML = '';
+            };
+
+            document.addEventListener('click', (e) => {
+                const closeEl = e.target && e.target.closest ? e.target.closest('[data-tutorial-close]') : null;
+                if (closeEl) {
+                    close();
+                    return;
+                }
+
+                const btn = e.target && e.target.closest ? e.target.closest('[data-tutorial-btn]') : null;
+                if (btn) {
+                    e.preventDefault();
+                    open(btn.getAttribute('data-tutorial-btn'));
+                    return;
+                }
+
+                const phone = e.target && e.target.closest ? e.target.closest('[data-tutorial]') : null;
+                if (phone) {
+                    // Ignore clicks inside the overlay itself.
+                    if (overlay.classList.contains('is-open')) return;
+                    open(phone.getAttribute('data-tutorial'));
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (!overlay.classList.contains('is-open')) return;
+                if (e.key === 'Escape') close();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (overlay.classList.contains('is-open')) return;
+                const active = document.activeElement;
+                if (!active) return;
+                const phone = active.matches && active.matches('[data-tutorial]') ? active : null;
+                if (!phone) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    open(phone.getAttribute('data-tutorial'));
+                }
+            });
         })();
     </script>
 </body>
