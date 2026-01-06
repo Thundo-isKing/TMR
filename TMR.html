@@ -61,16 +61,23 @@
                 var accentRgb = (typeof theme.accentRgb === 'string') ? theme.accentRgb.trim() : '';
                 var bg = (typeof theme.backgroundImage === 'string') ? theme.backgroundImage : '';
                 var fontFamily = (typeof theme.fontFamily === 'string') ? theme.fontFamily.trim() : '';
+                var boldText = (typeof theme.boldText === 'string') ? theme.boldText.trim() : '';
 
                 if (!accent || accent === 'null' || accent === 'undefined') accent = '';
                 if (!accentRgb || accentRgb === 'null' || accentRgb === 'undefined') accentRgb = '';
                 if (!bg || bg === 'null' || bg === 'undefined') bg = '';
                 if (!fontFamily || fontFamily === 'null' || fontFamily === 'undefined') fontFamily = '';
+                if (!boldText || boldText === 'null' || boldText === 'undefined') boldText = '';
 
                 // Apply font family if available
                 if (fontFamily) {
                     root.style.setProperty('--font-family', fontFamily);
                     document.body.style.fontFamily = fontFamily;
+                }
+
+                // Apply bold text if enabled
+                if (boldText === 'true') {
+                    document.body.style.fontWeight = '600';
                 }
 
                 // Resolve --accent-rgb even for non-hex colors (rgb(), hsl(), named colors, etc.)
@@ -1197,7 +1204,7 @@
         
         <!-- Right: Notes & Themes Buttons -->
         <div class="header-right">
-            <div id="header-clock" style="padding: 0 16px; display: flex; align-items: center; font-size: 18px; font-weight: 500; color: var(--accent-color, #0089f1); font-family: 'Product Sans', Arial, Helvetica, sans-serif; letter-spacing: 0.5px;">--:--:-- --</div>
+            <div id="header-clock" style="padding: 0 16px; display: flex; align-items: center; font-size: 18px; font-weight: 500; color: var(--accent-color, #0089f1); font-family: var(--font-family, 'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif); letter-spacing: 0.5px;">--:--:-- --</div>
             <button id="header-notes-btn" class="header-text-btn" tabindex="0">📝 Notes</button>
             <button id="header-themes-btn" class="header-text-btn" tabindex="0">🎨 Themes</button>
             <span id="header-username" style="padding: 0 16px; display: flex; align-items: center; font-size: 14px; color: var(--accent-color, #0089f1);">Loading...</span>
@@ -1597,7 +1604,7 @@
                 <div class="themes-section">
                     <label for="font-picker">Font Family</label>
                     <select id="font-picker" title="Choose font family">
-                        <option value="'Google Sans', 'Roboto', system-ui, -apple-system, sans-serif">Google Sans (Default)</option>
+                        <option value="'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif">Product Sans (Default)</option>
                         <option value="'Courier New', 'Courier', monospace">Courier New</option>
                         <option value="'Georgia', serif">Georgia</option>
                         <option value="'Times New Roman', 'Times', serif">Times New Roman</option>
