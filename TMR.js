@@ -778,6 +778,92 @@ if (leaveBtn) {
     }
 })();
 
+// Background Video Handler (Live wallpaper)
+(function(){
+    function initBackgroundVideo() {
+        const fileInput = document.getElementById('bg-video-upload');
+        const clearBtn = document.getElementById('bg-video-clear-btn');
+        const previewContainer = document.getElementById('bg-video-preview-container');
+        const previewVideo = document.getElementById('bg-video-preview');
+        const noneText = document.getElementById('bg-video-none-text');
+
+        if (!fileInput || !clearBtn || !previewContainer || !previewVideo || !noneText) {
+            return false;
+        }
+
+        async function refreshPreview() {
+            if (!window.TMRThemeVideo || typeof window.TMRThemeVideo.applyFromStorage !== 'function') {
+                noneText.style.display = 'block';
+                previewContainer.style.display = 'none';
+                return;
+            }
+
+            await window.TMRThemeVideo.applyFromStorage();
+            const url = (typeof window.TMRThemeVideo.getCurrentObjectUrl === 'function')
+                ? window.TMRThemeVideo.getCurrentObjectUrl()
+                : null;
+
+            if (url) {
+                previewVideo.src = url;
+                previewVideo.style.display = 'block';
+                previewContainer.style.display = 'flex';
+                noneText.style.display = 'none';
+                try {
+                    const p = previewVideo.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
+                } catch (_) {}
+            } else {
+                previewVideo.removeAttribute('src');
+                try { previewVideo.load(); } catch (_) {}
+                previewContainer.style.display = 'none';
+                noneText.style.display = 'block';
+            }
+        }
+
+        // Init from storage
+        refreshPreview().catch(() => {});
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            try {
+                if (!window.TMRThemeVideo || typeof window.TMRThemeVideo.saveFromFile !== 'function') {
+                    throw new Error('Background video support not available');
+                }
+
+                await window.TMRThemeVideo.saveFromFile(file);
+                await refreshPreview();
+            } catch (err) {
+                console.error('[BgVideo] Upload failed:', err);
+                const msg = (err && err.message) ? String(err.message) : 'Could not save that background video.';
+                alert(msg);
+                try { fileInput.value = ''; } catch (_) {}
+            }
+        });
+
+        clearBtn.addEventListener('click', async () => {
+            try {
+                if (window.TMRThemeVideo && typeof window.TMRThemeVideo.clear === 'function') {
+                    await window.TMRThemeVideo.clear();
+                }
+            } catch (err) {
+                console.error('[BgVideo] Clear failed:', err);
+            }
+            try { fileInput.value = ''; } catch (_) {}
+            await refreshPreview();
+        });
+
+        return true;
+    }
+
+    if (!initBackgroundVideo()) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initBackgroundVideo);
+        }
+    }
+})();
+
 // Dropdown toggle for the TMR header menu (in page header - desktop only)
 (function(){
     const toggle = document.getElementById('tmr-header-btn');

@@ -1493,6 +1493,7 @@
     <!-- Scripts -->
     <script src="page-transitions.js?v=20260106a" defer></script>
     <script src="auth-client.js?v=20260106a"></script>
+    <script src="theme-video.js?v=20260106a"></script>
     <script src="TMR.js?v=20260106a"></script>
     <script src="calendar.js?v=20260106a"></script>
     <script src="calendar-mobile.js?v=20260106a"></script>
@@ -1639,6 +1640,19 @@
                         <img id="bg-image-preview" src="" alt="Background preview" />
                     </div>
                     <div id="bg-image-none-text" class="bg-none-text">No image uploaded</div>
+                </div>
+
+                <!-- Background Video Section -->
+                <div class="themes-section">
+                    <label for="bg-video-upload">Background Video</label>
+                    <div class="bg-upload-row">
+                        <input id="bg-video-upload" type="file" accept="video/*" />
+                        <button id="bg-video-clear-btn" type="button" class="themes-btn-secondary">Clear</button>
+                    </div>
+                    <div id="bg-video-preview-container" class="bg-preview-container" style="display: none;">
+                        <video id="bg-video-preview" muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+                    </div>
+                    <div id="bg-video-none-text" class="bg-none-text">No video uploaded</div>
                 </div>
 
             </div>

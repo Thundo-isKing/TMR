@@ -4,6 +4,22 @@
     --font-family: 'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif;
 }
 
+/* Live wallpaper background video */
+.tmr-bg-video {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    pointer-events: none;
+    z-index: -1;
+}
+
+html.tmr-has-bg-video body {
+    background-image: none !important;
+    background-color: transparent !important;
+}
+
 .side-buttons + .clock-container {
     margin-top: 100px !important;
 }
