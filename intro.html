@@ -265,6 +265,15 @@
             justify-content: center;
             color: rgba(0, 0, 0, 0.55);
             font-size: 14px;
+            overflow: hidden;
+        }
+
+        .intro-phone-screen > video,
+        .intro-phone-screen > img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         .intro-tutorial-cta {
@@ -553,6 +562,7 @@
             font-size: 18px;
             line-height: 1.5;
             opacity: 0.9;
+            
         }
 
         .intro-feature {
@@ -589,12 +599,71 @@
             background: rgba(0, 0, 0, 0.06);
             border: 1px dashed rgba(0, 0, 0, 0.18);
             margin-bottom: 12px;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 12px;
             letter-spacing: 0.2px;
             color: rgba(0, 0, 0, 0.55);
+        }
+
+        .intro-feature-media > video,
+        .intro-feature-media > img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Feature media lightbox (click to enlarge) */
+        .intro-media-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9500;
+            display: none;
+        }
+
+        .intro-media-overlay.is-open {
+            display: block;
+        }
+
+        .intro-media-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .intro-media-modal {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .intro-media-frame {
+            width: min(960px, 94vw);
+            max-height: min(74vh, 680px);
+            aspect-ratio: 16 / 9;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+            pointer-events: auto;
+        }
+
+        .intro-media-frame video,
+        .intro-media-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         .intro-feature h3 {
@@ -729,32 +798,44 @@
 
                     <div class="intro-feature-stage intro-grid" aria-label="TMR features">
                         <div class="intro-feature">
-                            <div class="intro-feature-media">Video / Image</div>
+                            <div class="intro-feature-media">
+                                <video class="intro-feature-video" data-src="assets/intro/encoded/0106%20(1)(1).mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                             <h3>Calendar + reminders</h3>
                             <p>Create events, set reminders, and keep your day clear.</p>
                         </div>
                         <div class="intro-feature">
-                            <div class="intro-feature-media">Video / Image</div>
+                            <div class="intro-feature-media">
+                                <video class="intro-feature-video" data-src="assets/intro/encoded/todos.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                             <h3>Todos + reminders</h3>
                             <p>Track tasks without losing the bigger picture.</p>
                         </div>
                         <div class="intro-feature">
-                            <div class="intro-feature-media">Video / Image</div>
+                            <div class="intro-feature-media">
+                                <video class="intro-feature-video" data-src="assets/intro/encoded/meibot.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                             <h3>Meibot (May-bot) ~AI helper~</h3>
                             <p>Ask for help scheduling or organizing — faster than typing everything manually.</p>
                         </div>
                         <div class="intro-feature">
-                            <div class="intro-feature-media">Video / Image</div>
+                            <div class="intro-feature-media">
+                                <video class="intro-feature-video" data-src="assets/intro/encoded/notes.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                             <h3>Notes... for ideas</h3>
                             <p>Jot down thoughts and plans to revisit later.</p>
                         </div>
                         <div class="intro-feature">
-                            <div class="intro-feature-media">Video / Image</div>
+                            <div class="intro-feature-media">
+                                <video class="intro-feature-video" data-src="assets/intro/encoded/themes.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                             <h3>Themes and customization</h3>
                             <p>Make your planner your OWN.</p>
                         </div>
                         <div class="intro-feature">
-                            <div class="intro-feature-media">Video / Image</div>
+                            <div class="intro-feature-media">
+                                <video class="intro-feature-video" data-src="assets/intro/encoded/account.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                             <h3>Accounts, Google calendar integration, and so much more</h3>
                             <p>Your future, all in one place [:.</p>
                         </div>
@@ -772,7 +853,9 @@
 
                         <div class="intro-phone" role="button" tabindex="0" data-tutorial="iphone" aria-label="Open iPhone tutorial">
                             <div class="intro-phone-title">iPhone setup video</div>
-                            <div class="intro-phone-screen">Video placeholder</div>
+                            <div class="intro-phone-screen">
+                                <video class="intro-phone-video" data-src="assets/intro/iphone-tutorial.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                         </div>
                     </div>
 
@@ -781,7 +864,9 @@
                     <div class="intro-phone-group intro-phone-group--android" aria-label="Android tutorial">
                         <div class="intro-phone" role="button" tabindex="0" data-tutorial="android" aria-label="Open Android tutorial">
                             <div class="intro-phone-title">Android setup video</div>
-                            <div class="intro-phone-screen">Video placeholder</div>
+                            <div class="intro-phone-screen">
+                                <video class="intro-phone-video" data-src="assets/intro/android-tutorial.mp4" autoplay muted loop playsinline preload="none"></video>
+                            </div>
                         </div>
 
                         <button class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="android">Start using TMR tutorial (Android)</button>
@@ -832,6 +917,15 @@
         </div>
     </div>
 
+    <div id="intro-media-overlay" class="intro-media-overlay" aria-hidden="true">
+        <div class="intro-media-backdrop" data-media-close="1"></div>
+        <div class="intro-media-modal" role="dialog" aria-modal="true" aria-label="Feature preview">
+            <div class="intro-media-frame">
+                <video id="intro-media-video" autoplay muted loop playsinline preload="metadata"></video>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function () {
             const getStartedBtn = document.getElementById('continue-signin');
@@ -859,6 +953,133 @@
             };
 
             signinBtns.forEach((b) => b.addEventListener('click', go));
+        })();
+
+        // Feature media lightbox: click video/image to enlarge.
+        (function () {
+            const overlay = document.getElementById('intro-media-overlay');
+            const video = document.getElementById('intro-media-video');
+            if (!overlay || !video) return;
+
+            const open = (src) => {
+                if (!src) return;
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+                video.removeAttribute('src');
+                video.src = src;
+                try {
+                    const p = video.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
+                } catch (_) {}
+            };
+
+            const close = () => {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                try { video.pause(); } catch (_) {}
+                try {
+                    video.removeAttribute('src');
+                    video.load();
+                } catch (_) {}
+            };
+
+            document.addEventListener('click', (e) => {
+                const closeEl = e.target && e.target.closest && e.target.closest('[data-media-close="1"]');
+                if (closeEl) {
+                    close();
+                    return;
+                }
+
+                const media = e.target && e.target.closest && e.target.closest('.intro-feature-media, .intro-phone-screen');
+                if (!media) return;
+
+                const v = media.querySelector('video');
+                const img = media.querySelector('img');
+                const src = v
+                    ? (v.dataset && v.dataset.src) || v.currentSrc || v.getAttribute('src')
+                    : (img ? (img.currentSrc || img.getAttribute('src')) : '');
+                if (!src) return;
+
+                // Only lightbox when clicking directly on a media preview.
+                open(src);
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlay.classList.contains('is-open')) close();
+            });
+        })();
+
+        // Lazy-load and only play preview videos when visible.
+        (function () {
+            const videos = Array.from(document.querySelectorAll('video.intro-feature-video, video.intro-phone-video'));
+            if (!videos.length) return;
+
+            // Normalize: move any src into data-src and start paused.
+            videos.forEach((v) => {
+                try {
+                    if (!v.dataset || !v.dataset.src) {
+                        const src = v.getAttribute('src');
+                        if (src) {
+                            v.dataset.src = src;
+                            v.removeAttribute('src');
+                        }
+                    }
+                    v.preload = 'none';
+                    try { v.pause(); } catch (_) {}
+                } catch (_) {}
+            });
+
+            const ensureSrc = (v) => {
+                const want = v.dataset && v.dataset.src;
+                if (!want) return false;
+                if (v.getAttribute('src')) return true;
+                v.src = want;
+                try { v.load(); } catch (_) {}
+                return true;
+            };
+
+            const playSafe = (v) => {
+                try {
+                    const p = v.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
+                } catch (_) {}
+            };
+
+            // If IntersectionObserver is unavailable, just load the first visible ones and pause on scroll.
+            if (typeof IntersectionObserver !== 'function') {
+                const tick = () => {
+                    videos.forEach((v) => {
+                        const r = v.getBoundingClientRect();
+                        const inView = r.bottom > 0 && r.top < window.innerHeight;
+                        if (inView) {
+                            if (ensureSrc(v)) playSafe(v);
+                        } else {
+                            try { v.pause(); } catch (_) {}
+                        }
+                    });
+                };
+                window.addEventListener('scroll', tick, { passive: true });
+                window.addEventListener('resize', tick);
+                tick();
+                return;
+            }
+
+            const io = new IntersectionObserver((entries) => {
+                for (const entry of entries) {
+                    const v = entry.target;
+                    if (entry.isIntersecting) {
+                        if (ensureSrc(v)) playSafe(v);
+                    } else {
+                        try { v.pause(); } catch (_) {}
+                    }
+                }
+            }, {
+                root: null,
+                threshold: 0.25,
+                rootMargin: '120px 0px 120px 0px'
+            });
+
+            videos.forEach((v) => io.observe(v));
         })();
 
         (function () {
