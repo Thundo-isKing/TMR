@@ -792,9 +792,9 @@
             <div class="intro-snap-inner">
                 <section class="page-header intro-card intro-hero">
                     <div id="features" class="intro-features-header">
-                        <h2>Why you're missing out</h2>
+                        <h2>See your future... control it</h2>
                         <p class="intro-features-desc">
-                            Built for planning fast: calendar, todos, reminders, notes, themes, and Meibot — all in one place.
+                            Built for planning fast: calendar, todos, reminders, notes, themes, and Meibot — all in one place. (click card to view)
                         </p>
                     </div>
 
@@ -1172,16 +1172,29 @@
             let lastSide = null;
             let sideSince = 0;
             let lastAdvance = 0;
+            let lockUntil = 0;
+
+            stage.addEventListener('pointerdown', (e) => {
+                const active = cards[activeIndex];
+                if (!active || !active.contains(e.target)) return;
+                const now = (window.performance && performance.now) ? performance.now() : Date.now();
+                // Prevent switching while the user is trying to click/drag.
+                lockUntil = now + 900;
+            }, { passive: true });
 
             stage.addEventListener('mousemove', (e) => {
                 const active = cards[activeIndex];
                 if (!active || !active.contains(e.target)) return;
+
+                // Don't switch while the user is interacting with the video/media.
+                if (e.target && e.target.closest && e.target.closest('.intro-feature-media')) return;
 
                 const rect = active.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const side = x < rect.width / 2 ? 'left' : 'right';
 
                 const now = (window.performance && performance.now) ? performance.now() : Date.now();
+                if (now < lockUntil) return;
                 if (side !== lastSide) {
                     lastSide = side;
                     sideSince = now;
