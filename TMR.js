@@ -299,18 +299,45 @@ if (leaveBtn) {
     function initFontPicker() {
         const picker = document.getElementById('font-picker');
         const preview = document.getElementById('font-preview');
+        const boldToggle = document.getElementById('bold-toggle');
         
-        console.log('[Font] Init. Picker:', !!picker, 'Preview:', !!preview);
+        console.log('[Font] Init. Picker:', !!picker, 'Preview:', !!preview, 'BoldToggle:', !!boldToggle);
         
         if(!picker) {
             console.error('[Font] Picker not found!');
             return false;
         }
         
-        // Load saved font from localStorage
+        // Load saved font and bold from localStorage
         const FONT_KEY = 'theme_font_family';
+        const BOLD_KEY = 'theme_bold_text';
         const saved = localStorage.getItem(FONT_KEY);
-        const defaultFont = "'Google Sans', 'Roboto', system-ui, -apple-system, sans-serif";
+        const savedBold = localStorage.getItem(BOLD_KEY) === 'true';
+        const defaultFont = "'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif";
+
+        function getLastUserIdSafe() {
+            try { return (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('tmr_last_user_id') : null; } catch (_) { return null; }
+        }
+
+        function syncThemeKeyAcrossNamespaces(keySuffix, value) {
+            try {
+                const lastUid = getLastUserIdSafe();
+                if (lastUid) {
+                    localStorage.setItem(`tmr_user_${lastUid}_${keySuffix}`, value);
+                } else {
+                    localStorage.setItem(`tmr_anon_${keySuffix}`, value);
+                }
+            } catch (_) {}
+        }
+
+        function updateBootThemeSnapshot(patch) {
+            try {
+                const raw = localStorage.getItem('tmr_boot_theme');
+                const theme = raw ? (JSON.parse(raw) || {}) : {};
+                const updated = { ...theme, ...patch, updatedAt: Date.now() };
+                localStorage.setItem('tmr_boot_theme', JSON.stringify(updated));
+            } catch (_) {}
+        }
         
         function applyFont(fontFamily) {
             if(!fontFamily) return;
@@ -322,16 +349,36 @@ if (leaveBtn) {
             }
         }
         
+        function applyBold(isBold) {
+            console.log('[Font] Applying bold:', isBold);
+            if(isBold) {
+                document.body.style.fontWeight = '600';
+                if(preview) preview.style.fontWeight = '600';
+            } else {
+                document.body.style.fontWeight = 'normal';
+                if(preview) preview.style.fontWeight = 'normal';
+            }
+        }
+        
         // Apply saved font or default
         const fontToApply = saved || defaultFont;
         picker.value = fontToApply;
         applyFont(fontToApply);
         
-        // Update on change
+        // Apply saved bold state
+        if(boldToggle) {
+            boldToggle.checked = savedBold;
+            applyBold(savedBold);
+        }
+        
+        // Update font on change
         picker.addEventListener('change', (e) => {
             const font = e.target.value;
             console.log('[Font] Font changed to:', font);
             localStorage.setItem(FONT_KEY, font);
+            // Keep scoped theme keys + boot snapshot in sync for other pages/first-paint.
+            syncThemeKeyAcrossNamespaces('theme_font_family', font);
+            updateBootThemeSnapshot({ fontFamily: font });
             applyFont(font);
         });
         
@@ -341,6 +388,19 @@ if (leaveBtn) {
                 preview.style.fontFamily = e.target.value;
             }
         });
+        
+        // Bold toggle handler
+        if(boldToggle) {
+            boldToggle.addEventListener('change', (e) => {
+                const isBold = e.target.checked;
+                console.log('[Font] Bold toggled:', isBold);
+                const v = isBold ? 'true' : 'false';
+                localStorage.setItem(BOLD_KEY, v);
+                syncThemeKeyAcrossNamespaces('theme_bold_text', v);
+                updateBootThemeSnapshot({ boldText: v });
+                applyBold(isBold);
+            });
+        }
         
         console.log('[Font] Initialized successfully');
         return true;

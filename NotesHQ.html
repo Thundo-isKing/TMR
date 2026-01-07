@@ -20,11 +20,15 @@
                             var accent2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_accent_color') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_accent') || null;
                             var bg2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_bg_image') || localStorage.getItem('tmr_user_' + lastUid + '_tmr_bg_image') || null;
                             var anim2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_animation') || null;
-                            if (accent2 || bg2 || anim2) {
+                            var font2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_font_family') || null;
+                            var bold2 = localStorage.getItem('tmr_user_' + lastUid + '_theme_bold_text') || null;
+                            if (accent2 || bg2 || anim2 || font2 || bold2) {
                                 raw = JSON.stringify({
                                     accentColor: accent2,
                                     backgroundImage: bg2,
                                     animation: anim2,
+                                    fontFamily: font2,
+                                    boldText: bold2,
                                     updatedAt: Date.now()
                                 });
                                 try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
@@ -35,11 +39,15 @@
                             var aAccent = localStorage.getItem('tmr_anon_theme_accent_color') || localStorage.getItem('tmr_anon_tmr_accent') || null;
                             var aBg = localStorage.getItem('tmr_anon_theme_bg_image') || localStorage.getItem('tmr_anon_tmr_bg_image') || null;
                             var aAnim = localStorage.getItem('tmr_anon_theme_animation') || null;
-                            if (aAccent || aBg || aAnim) {
+                            var aFont = localStorage.getItem('tmr_anon_theme_font_family') || null;
+                            var aBold = localStorage.getItem('tmr_anon_theme_bold_text') || null;
+                            if (aAccent || aBg || aAnim || aFont || aBold) {
                                 raw = JSON.stringify({
                                     accentColor: aAccent,
                                     backgroundImage: aBg,
                                     animation: aAnim,
+                                    fontFamily: aFont,
+                                    boldText: aBold,
                                     updatedAt: Date.now()
                                 });
                                 try { localStorage.setItem('tmr_boot_theme', raw); } catch (_) {}
@@ -51,13 +59,29 @@
                 var theme = JSON.parse(raw);
                 if (!theme || typeof theme !== 'object') return;
 
+                var root = document.documentElement;
+
                 var accent = (typeof theme.accentColor === 'string') ? theme.accentColor.trim() : '';
                 var accentRgb = (typeof theme.accentRgb === 'string') ? theme.accentRgb.trim() : '';
                 var bg = (typeof theme.backgroundImage === 'string') ? theme.backgroundImage : '';
+                var fontFamily = (typeof theme.fontFamily === 'string') ? theme.fontFamily.trim() : '';
+                var boldText = (typeof theme.boldText === 'string') ? theme.boldText.trim() : '';
 
                 if (!accent || accent === 'null' || accent === 'undefined') accent = '';
                 if (!accentRgb || accentRgb === 'null' || accentRgb === 'undefined') accentRgb = '';
                 if (!bg || bg === 'null' || bg === 'undefined') bg = '';
+
+                if (!fontFamily || fontFamily === 'null' || fontFamily === 'undefined') fontFamily = '';
+                if (!boldText || boldText === 'null' || boldText === 'undefined') boldText = '';
+
+                if (fontFamily) {
+                    root.style.setProperty('--font-family', fontFamily);
+                    document.body.style.fontFamily = fontFamily;
+                }
+
+                if (boldText === 'true') {
+                    document.body.style.fontWeight = '600';
+                }
 
                 if (accent && !accentRgb) {
                     if (accent[0] === '#') {
@@ -84,7 +108,6 @@
                     }
                 }
 
-                var root = document.documentElement;
                 if (accent) root.style.setProperty('--accent-color', accent);
                 if (accentRgb) root.style.setProperty('--accent-rgb', accentRgb);
 
@@ -123,19 +146,11 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;500;700&display=swap');
 
-        * {
-            font-family: 'Product Sans', Arial, Helvetica, sans-serif;
-        }
-
-        body, button, input, label, span, div, h1, h2, h3, h4, h5, h6, p {
-            font-weight: bold;
-        }
-
         body {
             margin: 0;
             padding: 12px;
             min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: var(--font-family, 'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif);
             position: relative;
             overflow-x: hidden;
             background-color: white;
