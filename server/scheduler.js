@@ -11,45 +11,8 @@ module.exports = function({ db, webpush }){
         if(err) return console.warn('Scheduler DB error', err);
         for(const r of reminders){
           try{
-            // Get the specific subscription that created this reminder
-            if (r.subscriptionId) {
-              db.getSubscriptionById(r.subscriptionId, async (err2, sub) => {
-                if(err2) {
-                  console.warn('Failed to get subscription:', err2);
-                  return db.markDelivered(r.id);
-                }
-                if(!sub) {
-                  console.warn('Subscription not found for reminder:', r.id, 'subscriptionId:', r.subscriptionId);
-                  return db.markDelivered(r.id);
-                }
-                
-                try{
-                  await webpush.sendNotification(sub.subscription, JSON.stringify({ title: r.title || 'Reminder', body: r.body || '', data: { reminderId: r.id } }));
-                  console.log('[Scheduler] Sent reminder to subscriptionId:', r.subscriptionId);
-                  // reset failure count on success
-                  if(failureCounts[sub.id]) failureCounts[sub.id] = 0;
-                }catch(e){
-                  console.warn('push send fail', e && e.statusCode ? ('status:' + e.statusCode) : e);
-                  // if permanent (410 Gone) or Not Found, remove subscription immediately
-                  const status = e && e.statusCode ? e.statusCode : (e && e.status ? e.status : null);
-                  const endpoint = (sub.subscription && sub.subscription.endpoint) ? sub.subscription.endpoint : null;
-                  if(status === 410 || status === 404){
-                    console.log('Removing subscription (permanent) id=', sub.id, 'endpoint=', endpoint);
-                    db.removeSubscriptionById(sub.id, ()=>{});
-                  } else {
-                    // transient: increment failure count and remove after 2 consecutive failures
-                    failureCounts[sub.id] = (failureCounts[sub.id] || 0) + 1;
-                    if(failureCounts[sub.id] >= 2){
-                      console.log('Removing subscription after repeated failures id=', sub.id);
-                      db.removeSubscriptionById(sub.id, ()=>{});
-                    }
-                  }
-                }
-                db.markDelivered(r.id);
-              });
-            } else if (r.userId) {
-              // Fallback for old reminders without subscriptionId: send to all subscriptions for that userId
-              console.warn('[Scheduler] Reminder', r.id, 'has userId but no subscriptionId - using fallback to all subscriptions');
+            // Account-wide behavior: if a reminder has userId, broadcast to ALL subscriptions for that userId.
+            if (r.userId) {
               db.getSubscriptionsByUserId(r.userId, async (err2, subs) => {
                 if(err2) {
                   console.warn('subs fetch err', err2);
@@ -72,6 +35,39 @@ module.exports = function({ db, webpush }){
                         console.log('Removing subscription after repeated failures id=', s.id);
                         db.removeSubscriptionById(s.id, ()=>{});
                       }
+                    }
+                  }
+                }
+                db.markDelivered(r.id);
+              });
+            } else if (r.subscriptionId) {
+              // Legacy/device-specific reminder: send only to that subscription
+              db.getSubscriptionById(r.subscriptionId, async (err2, sub) => {
+                if(err2) {
+                  console.warn('Failed to get subscription:', err2);
+                  return db.markDelivered(r.id);
+                }
+                if(!sub) {
+                  console.warn('Subscription not found for reminder:', r.id, 'subscriptionId:', r.subscriptionId);
+                  return db.markDelivered(r.id);
+                }
+
+                try{
+                  await webpush.sendNotification(sub.subscription, JSON.stringify({ title: r.title || 'Reminder', body: r.body || '', data: { reminderId: r.id } }));
+                  console.log('[Scheduler] Sent reminder to subscriptionId:', r.subscriptionId);
+                  if(failureCounts[sub.id]) failureCounts[sub.id] = 0;
+                }catch(e){
+                  console.warn('push send fail', e && e.statusCode ? ('status:' + e.statusCode) : e);
+                  const status = e && e.statusCode ? e.statusCode : (e && e.status ? e.status : null);
+                  const endpoint = (sub.subscription && sub.subscription.endpoint) ? sub.subscription.endpoint : null;
+                  if(status === 410 || status === 404){
+                    console.log('Removing subscription (permanent) id=', sub.id, 'endpoint=', endpoint);
+                    db.removeSubscriptionById(sub.id, ()=>{});
+                  } else {
+                    failureCounts[sub.id] = (failureCounts[sub.id] || 0) + 1;
+                    if(failureCounts[sub.id] >= 2){
+                      console.log('Removing subscription after repeated failures id=', sub.id);
+                      db.removeSubscriptionById(sub.id, ()=>{});
                     }
                   }
                 }

@@ -270,7 +270,11 @@ app.post('/subscribe', (req, res) => {
     return res.status(400).json({ error: 'subscription.endpoint required' });
   }
 
-  db.addSubscription(userId || null, subscription, (err, id) => {
+  // If authenticated, always bind subscription to the signed-in account
+  // so reminders can be broadcast to all devices on that account.
+  const effectiveUserId = (req.user && req.user.id != null) ? String(req.user.id) : (userId || null);
+
+  db.addSubscription(effectiveUserId, subscription, (err, id) => {
     if (err) {
       if (err.message.includes('UNIQUE constraint failed')) {
         // Duplicate subscription - silently accept
@@ -280,7 +284,7 @@ app.post('/subscribe', (req, res) => {
       console.error('[Subscribe] Error:', err.message);
       return res.status(500).json({ error: 'Database error', details: err.message });
     }
-    console.log('[Subscribe] Subscription added:', id, 'userId:', userId);
+    console.log('[Subscribe] Subscription added:', id, 'userId:', effectiveUserId);
     res.json({ ok: true, id });
   });
 });
@@ -308,9 +312,12 @@ app.post('/unsubscribe', (req, res) => {
 // Reminder endpoint: persist a reminder to be delivered at deliverAt (ms)
 app.post('/reminder', (req, res) => {
   const { subscriptionId, userId, title, body, deliverAt } = req.body;
-  
-  if (!subscriptionId) {
-    return res.status(400).json({ error: 'subscriptionId required' });
+
+  // Prefer authenticated account id when available.
+  const effectiveUserId = (req.user && req.user.id != null) ? String(req.user.id) : (userId || null);
+
+  if (!subscriptionId && !effectiveUserId) {
+    return res.status(400).json({ error: 'subscriptionId or userId required' });
   }
   
   if (!deliverAt) {
@@ -330,14 +337,14 @@ app.post('/reminder', (req, res) => {
   }
 
   const delaySecs = Math.round(delayMs / 1000);
-  console.log('[Reminder] POST received:', { subscriptionId, userId, title, body, deliverAt: deliverAtNum, delaySecs });
+  console.log('[Reminder] POST received:', { subscriptionId, userId: effectiveUserId, title, body, deliverAt: deliverAtNum, delaySecs });
   
-  db.addReminder(subscriptionId, userId || null, title || '', body || '', deliverAtNum, (err, id) => {
+  db.addReminder(subscriptionId || null, effectiveUserId, title || '', body || '', deliverAtNum, (err, id) => {
     if (err) {
       console.error('[Reminder] Error:', err.message);
       return res.status(500).json({ error: 'Database error', details: err.message });
     }
-    console.log('[Reminder] Added:', id, '- delivering in', delaySecs, 'seconds to subscriptionId:', subscriptionId);
+    console.log('[Reminder] Added:', id, '- delivering in', delaySecs, 'seconds', { subscriptionId: subscriptionId || null, userId: effectiveUserId });
     res.json({ ok: true, id, deliversIn: delaySecs });
   });
 });

@@ -1414,7 +1414,78 @@ if (leaveBtn) {
     // Expose Meibot todo creator
     // --- Notification scheduling helpers ---
     const scheduled = new Map(); // key -> timeout id
+    const serverReminderInFlight = new Map(); // key -> whenMs
     function isNotifyEnabled(){ return localStorage.getItem(NOTIFY_KEY) === 'true'; }
+    function isPushEnabled(){ return !!localStorage.getItem('tmr_push_enabled'); }
+    function getPushSubscriptionId(){
+        const raw = (localStorage.getItem('tmr_push_sub_id') || '').trim();
+        const n = Number(raw);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    function getDeviceId(){
+        let deviceId = localStorage.getItem('tmr_device_id');
+        if(!deviceId){
+            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            localStorage.setItem('tmr_device_id', deviceId);
+        }
+        return deviceId;
+    }
+    function getServerReminderCache(){
+        try{ return JSON.parse(localStorage.getItem('tmr_server_reminder_cache_v1') || '{}') || {}; }catch(e){ return {}; }
+    }
+    function setServerReminderCache(cache){
+        try{ localStorage.setItem('tmr_server_reminder_cache_v1', JSON.stringify(cache || {})); }catch(e){}
+    }
+    async function queueServerReminder(key, whenMs, title, body){
+        try{
+            const mode = getNotifyMode();
+            if(mode !== 'server' && mode !== 'both') return;
+            if(!isNotifyEnabled()) return;
+            if(!isPushEnabled()) return;
+
+            const subscriptionId = getPushSubscriptionId();
+            // Subscription id improves diagnostics, but userId is what enables account-wide delivery.
+            // If we don't have a subscription yet, skip queueing for now.
+            if(!subscriptionId) return;
+
+            let accountId = null;
+            try{
+                accountId = (sessionStorage.getItem('tmr_last_user_id') || localStorage.getItem('tmr_last_user_id') || '').trim() || null;
+            }catch(e){}
+
+            const cache = getServerReminderCache();
+            if(cache[key] === whenMs) return;
+            if(serverReminderInFlight.get(key) === whenMs) return;
+            serverReminderInFlight.set(key, whenMs);
+
+            const payload = {
+                subscriptionId,
+                // userId is used by the server to broadcast to every device on the same account
+                userId: accountId || getDeviceId(),
+                title: title || '',
+                body: body || '',
+                deliverAt: Number(whenMs)
+            };
+
+            const res = await serverFetch('/reminder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if(res && res.ok){
+                cache[key] = whenMs;
+                setServerReminderCache(cache);
+                console.log('[ServerReminder] queued', { key, whenMs, subscriptionId });
+            } else {
+                console.warn('[ServerReminder] failed', res && res.status);
+            }
+        }catch(e){
+            console.warn('[ServerReminder] error', e);
+        }finally{
+            if(serverReminderInFlight.get(key) === whenMs) serverReminderInFlight.delete(key);
+        }
+    }
     function showSystemNotification(title, opts){
         console.log('[showSystemNotification] Attempting to show:', { title, opts, hasNotification: 'Notification' in window, permission: Notification.permission });
         if(!('Notification' in window)) { console.log('[showSystemNotification] Notifications not supported'); return; }
@@ -1431,8 +1502,11 @@ if (leaveBtn) {
         cancelScheduled(key);
         if(!isNotifyEnabled()) { console.log('[Schedule] Notifications disabled'); return; }
         if(Notification.permission !== 'granted') { console.log('[Schedule] Notification permission not granted:', Notification.permission); return; }
+        // If server push is enabled, queue a server-side reminder too (so it can fire when the page is closed).
+        // This is best-effort and depends on having a push subscription id.
+        try{ queueServerReminder(key, whenMs, title, body); }catch(e){}
+
         // Respect notification mode: if server-only mode, skip local scheduling
-        function getNotifyMode(){ return (localStorage.getItem('tmr_notify_mode') || 'both'); }
         if(getNotifyMode() === 'server') { console.log('[Schedule] Server-only mode, skipping local'); return; }
         const delay = whenMs - Date.now();
         console.log('[Schedule] Scheduling:', { key, title, body, whenMs: new Date(whenMs), delay, delayMin: Math.round(delay/60000) });
@@ -2175,6 +2249,25 @@ if (leaveBtn) {
                 }catch(e){ return null; }
             }
 
+            async function getSignedInAccountId(){
+                try{
+                    const cached = (sessionStorage.getItem('tmr_last_user_id') || localStorage.getItem('tmr_last_user_id') || '').trim();
+                    if(cached) return cached;
+                }catch(e){}
+
+                try{
+                    const res = await serverFetch('/auth/session');
+                    if(!res || !res.ok) return null;
+                    const j = await res.json();
+                    const id = (j && j.user && j.user.id != null) ? String(j.user.id) : null;
+                    if(id){
+                        try{ sessionStorage.setItem('tmr_last_user_id', id); }catch(e){}
+                        try{ localStorage.setItem('tmr_last_user_id', id); }catch(e){}
+                    }
+                    return id;
+                }catch(e){ return null; }
+            }
+
             async function subscribeForPush(silent=false){
                 if(!('serviceWorker' in navigator) || !('PushManager' in window)) { 
                     if(!silent) alert('Push not supported in this browser.'); 
@@ -2195,7 +2288,8 @@ if (leaveBtn) {
                                 deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
                                 localStorage.setItem('tmr_device_id', deviceId);
                             }
-                            await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: existing, userId: deviceId }) }); 
+                            const accountId = await getSignedInAccountId();
+                            await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: existing, userId: accountId || deviceId }) }); 
                         }catch(e){ console.debug('[TMR] Server already has subscription', e); }
                         return;
                     }
@@ -2220,7 +2314,8 @@ if (leaveBtn) {
                             deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
                             localStorage.setItem('tmr_device_id', deviceId);
                         }
-                        const res = await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub, userId: deviceId }) });
+                        const accountId = await getSignedInAccountId();
+                        const res = await serverFetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub, userId: accountId || deviceId }) });
                         if(res && res.ok){ 
                             const j = await res.json(); 
                             localStorage.setItem('tmr_push_sub_id', j.id || ''); 
@@ -2309,10 +2404,20 @@ if (leaveBtn) {
                             }
                         } catch (e) {}
 
-                        try { rescheduleAll(); } catch (e) {}
+                        // UX: if permission is granted, default push to enabled too (so background pushes work)
+                        // unless they explicitly turned it off before.
+                        try {
+                            if (localStorage.getItem('tmr_push_enabled') == null) {
+                                localStorage.setItem('tmr_push_enabled', '1');
+                                if (pushEnable) pushEnable.checked = true;
+                            }
+                        } catch (e) {}
 
                         console.log('[TMR] Permission granted, auto-subscribing for push...');
                         await subscribeForPush(true); // silent mode
+
+                        // Reschedule after subscription so server reminders can be queued with a subscription id.
+                        try { rescheduleAll(); } catch (e) {}
                     }
                 }catch(e){ console.warn('[TMR] Auto-subscribe failed', e); }
             });
