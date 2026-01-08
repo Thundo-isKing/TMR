@@ -1487,6 +1487,22 @@
     </div>
     </div>
 
+    <!-- Notifications permission prompt (shown when permission is "default") -->
+    <div id="notify-onboard-backdrop" class="mobile-modal-backdrop" hidden>
+        <div id="notify-onboard-modal" class="tmr-menu tmr-modal-panel" role="dialog" aria-modal="true" aria-labelledby="notify-onboard-title">
+            <div class="tmr-menu-item">
+                <strong id="notify-onboard-title">Enable notifications?</strong>
+            </div>
+            <div class="tmr-menu-item">
+                Allow notifications so reminders can alert you on this device.
+            </div>
+            <div class="tmr-menu-item" style="display:flex; gap:8px; justify-content:flex-end;">
+                <button id="notify-onboard-dismiss" class="small-tmr-btn" type="button">Not now</button>
+                <button id="notify-onboard-enable" class="small-tmr-btn" type="button">Enable</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Page Container -->
     <div class="calendar-page">
 

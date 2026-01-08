@@ -2514,6 +2514,88 @@ if (leaveBtn) {
             if(pushEnable){ pushEnable.checked = !!localStorage.getItem('tmr_push_enabled'); pushEnable.addEventListener('change', (e)=>{ localStorage.setItem('tmr_push_enabled', e.target.checked ? '1' : ''); }); }
             if(pushSubscribeBtn){ pushSubscribeBtn.addEventListener('click', async ()=>{ await subscribeForPush(false); }); }
 
+            // In-app notification onboarding prompt (used because most browsers block permission prompts
+            // unless triggered by a user gesture).
+            const NOTIFY_ONBOARD_DISMISSED_KEY = 'tmr_notify_onboard_dismissed';
+            const notifyOnboardBackdrop = document.getElementById('notify-onboard-backdrop');
+            const notifyOnboardEnableBtn = document.getElementById('notify-onboard-enable');
+            const notifyOnboardDismissBtn = document.getElementById('notify-onboard-dismiss');
+
+            function openNotifyOnboard() {
+                if (!notifyOnboardBackdrop) return;
+                notifyOnboardBackdrop.hidden = false;
+                notifyOnboardBackdrop.classList.add('active');
+                try { document.body.style.overflow = 'hidden'; } catch (_) {}
+            }
+
+            function closeNotifyOnboard() {
+                if (!notifyOnboardBackdrop) return;
+                notifyOnboardBackdrop.hidden = true;
+                notifyOnboardBackdrop.classList.remove('active');
+                try { document.body.style.overflow = ''; } catch (_) {}
+            }
+
+            if (!window.__tmrNotifyOnboardWired) {
+                window.__tmrNotifyOnboardWired = true;
+
+                if (notifyOnboardBackdrop) {
+                    notifyOnboardBackdrop.addEventListener('click', (e) => {
+                        if (e.target === notifyOnboardBackdrop) closeNotifyOnboard();
+                    });
+                }
+
+                if (notifyOnboardDismissBtn) {
+                    notifyOnboardDismissBtn.addEventListener('click', () => {
+                        try { localStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
+                        try { sessionStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
+                        closeNotifyOnboard();
+                    });
+                }
+
+                if (notifyOnboardEnableBtn) {
+                    notifyOnboardEnableBtn.addEventListener('click', async () => {
+                        try { localStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
+                        try { sessionStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
+
+                        if (!('Notification' in window)) {
+                            closeNotifyOnboard();
+                            return;
+                        }
+
+                        try {
+                            const perm = await Notification.requestPermission();
+                            if (perm !== 'granted') {
+                                closeNotifyOnboard();
+                                return;
+                            }
+
+                            // If permission granted, default both local + push notifications to enabled.
+                            try {
+                                localStorage.setItem(NOTIFY_KEY, 'true');
+                                if (notifyToggle) notifyToggle.checked = true;
+                            } catch (_) {}
+
+                            try {
+                                localStorage.setItem('tmr_push_enabled', '1');
+                                if (pushEnable) pushEnable.checked = true;
+                            } catch (_) {}
+
+                            await registerServiceWorkerIfNeeded();
+                            await subscribeForPush(true);
+                            try { rescheduleAll(); } catch (_) {}
+                        } catch (err) {
+                            console.warn('[TMR] Notification enable failed', err);
+                        } finally {
+                            closeNotifyOnboard();
+                        }
+                    });
+                }
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeNotifyOnboard();
+                });
+            }
+
             // Auto-initialize push on page load: register SW, request permission, subscribe silently
             window.addEventListener('load', async ()=>{
                 try{
@@ -2557,11 +2639,19 @@ if (leaveBtn) {
                     // Step 2: Check if Notification API is supported
                     if(!('Notification' in window)) return;
                     
-                    // Step 3: Request permission if not yet decided (first visit)
+                    // Step 3: If permission is not yet decided, show an in-app prompt.
+                    // Calling Notification.requestPermission() on page load is frequently blocked by browsers
+                    // and results in the user having to "manually" enable notifications later.
                     if(Notification.permission === 'default'){
-                        console.log('[TMR] Requesting notification permission...');
-                        const p = await Notification.requestPermission();
-                        if(p !== 'granted') return;
+                        const dismissed =
+                            (function(){
+                                try { return sessionStorage.getItem(NOTIFY_ONBOARD_DISMISSED_KEY) === '1'; } catch (_) { return false; }
+                            })() ||
+                            (function(){
+                                try { return localStorage.getItem(NOTIFY_ONBOARD_DISMISSED_KEY) === '1'; } catch (_) { return false; }
+                            })();
+                        if(!dismissed) openNotifyOnboard();
+                        return;
                     }
                     
                     // Step 4: Auto-subscribe silently if permission granted
