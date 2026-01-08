@@ -867,20 +867,6 @@ body.triangle-background .tmr-menu {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Mobile: give the todo modal much more vertical room (avoid the “squished” look). */
-@media (max-width: 600px) {
-    .todo-modal {
-        max-height: calc(100vh - 24px) !important;
-        height: calc(100vh - 24px);
-    }
-
-    .todo-modal .todo-list {
-        max-height: none !important;
-        flex: 1 1 auto;
-        overflow-y: auto;
-    }
-}
-
 /* To-do badge (small, non-intrusive). Do NOT change .todo-button positioning — it
    is intentionally absolute elsewhere in the stylesheet. Only the badge styles
    are applied so layout is preserved. */
