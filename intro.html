@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>TMR — Welcome</title>
     <link rel="stylesheet" href="page-transitions.css?v=20260106a">
     <link rel="stylesheet" href="TMR.css?v=20260106a">
@@ -70,6 +70,21 @@
             top: 18px;
             height: auto;
             padding: 12px 18px;
+            /* Slightly snugger than the default page header width. */
+            width: calc(100% - 44px);
+            max-width: 1320px;
+        }
+
+        /* TMR.css hides `.page-header` on mobile for the app UI.
+           On the landing page we still need the topbar and section containers visible. */
+        @media (max-width: 1024px) {
+            .intro-topbar.page-header {
+                display: flex !important;
+            }
+
+            .intro-snap-inner > .page-header.intro-card {
+                display: block !important;
+            }
         }
 
         .intro-topbar .brand {
@@ -84,25 +99,131 @@
             letter-spacing: 0.3px;
         }
 
+        .intro-sections {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .intro-sections-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 190px;
+            padding: 10px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(11, 15, 22, 0.92);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.30);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 4000;
+            gap: 6px;
+            display: none;
+        }
+
+        /* The author stylesheet can override the browser's default `[hidden]{display:none}`.
+           Make sure the menu is NEVER visible unless JS explicitly opens it.
+        */
+        .intro-sections-menu[hidden] {
+            display: none !important;
+        }
+
+        .intro-sections-menu:not([hidden]) {
+            display: grid;
+        }
+
+        /* TMR.css forces `.tmr-btn` to be ~85vw on mobile. Keep the landing header compact. */
+        .intro-topbar .tmr-btn {
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+
+        @media (max-width: 600px) {
+            .intro-topbar .tmr-btn {
+                padding: 9px 14px !important;
+                font-size: 15px !important;
+            }
+        }
+
+        .intro-sections-item {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.96);
+            font: inherit;
+            text-align: left;
+            padding: 10px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .intro-sections-item:hover {
+            background: rgba(255, 255, 255, 0.10);
+        }
+
+        .intro-sections-item:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22);
+        }
+
         body {
             overflow: hidden;
         }
 
+        /* TMR.css adds `body { padding-top: 300px !important; }` on small screens
+           for the main app layout. That breaks this landing page (pushes content down
+           and can cause scroll cutoffs). Override it here.
+        */
+        @media (max-width: 600px) {
+            body,
+            body.page-background {
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+            }
+        }
+
+            /* Intro should never allow horizontal drift/overflow (fixes mobile “shifted right” issues). */
+            html, body {
+                overflow-x: hidden;
+            }
+
         /* Replace the regular page scroll with a snap-scrolling container. */
         .intro-scroll {
-            height: 100vh;
+            height: 100vh; /* fallback */
             overflow-y: auto;
             overflow-x: hidden;
             scroll-snap-type: y mandatory;
             scroll-behavior: smooth;
             scroll-padding-top: 92px; /* keeps content below the fixed topbar */
             scrollbar-gutter: stable;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+        }
+
+        /* Modern mobile viewport units:
+           - 100svh: stable small viewport (reduces jump when bars show/hide)
+           - 100dvh: dynamic viewport (tracks bars)
+           We prefer svh when available.
+        */
+        @supports (height: 100dvh) {
+            .intro-scroll { height: 100dvh; }
+        }
+
+        @supports (height: 100svh) {
+            .intro-scroll { height: 100svh; }
+        }
+
+        /* Avoid scroll-snap fighting programmatic smooth scrolls (mobile bounce). */
+        .intro-scroll.intro-programmatic-scroll {
+            scroll-snap-type: none;
         }
 
         .intro-snap {
             scroll-snap-align: start;
             scroll-snap-stop: always;
-            min-height: 100vh;
+            min-height: 100vh; /* fallback */
             padding: 0 16px;
             display: flex;
             align-items: center;
@@ -116,6 +237,14 @@
             pointer-events: none;
         }
 
+        @supports (min-height: 100dvh) {
+            .intro-snap { min-height: 100dvh; }
+        }
+
+        @supports (min-height: 100svh) {
+            .intro-snap { min-height: 100svh; }
+        }
+
         .intro-snap.is-active {
             filter: none;
             opacity: 1;
@@ -127,7 +256,7 @@
             width: 100%;
             max-width: 1100px;
             margin: 0 auto;
-            min-height: 100vh;
+            min-height: 100vh; /* fallback */
             box-sizing: border-box;
             padding-top: 58px;
             padding-bottom: 28px;
@@ -136,10 +265,60 @@
             align-content: center;
         }
 
+        @supports (min-height: 100dvh) {
+            .intro-snap-inner { min-height: 100dvh; }
+        }
+
+        @supports (min-height: 100svh) {
+            .intro-snap-inner { min-height: 100svh; }
+        }
+
+        /* Mobile: avoid “bottom heavy” center alignment under the fixed header. */
+        @media (max-width: 900px) {
+            .intro-scroll {
+                scroll-padding-top: 104px;
+            }
+
+            .intro-snap {
+                align-items: flex-start;
+                padding-top: 86px;
+                padding-bottom: 22px;
+            }
+
+            .intro-snap-inner {
+                min-height: calc(100vh - 106px);
+                padding-top: 0;
+                padding-bottom: 0;
+                align-content: start;
+            }
+
+            /* Re-center only the first (hero) section on mobile. */
+            #intro-sec-hero.intro-snap {
+                align-items: center;
+            }
+
+            #intro-sec-hero .intro-snap-inner {
+                align-content: center;
+            }
+
+            /* Nudge the hero content up on phones (requested). */
+            #intro-sec-hero .intro-hero-outside {
+                /* Use margin instead of transform so the fade-in animation can't override it. */
+                margin-top: -75px !important;
+            }
+        }
+
         /* Section-specific tuning (per your notes). */
         #intro-sec-features .intro-snap-inner {
             max-width: 1220px;
             transform: translateY(-50px);
+        }
+
+        @media (max-width: 600px) {
+            /* On small phones the -50px shift makes the header feel squished. */
+            #intro-sec-features .intro-snap-inner {
+                transform: translateY(-18px);
+            }
         }
 
         /* Bigger cards section presence. */
@@ -153,7 +332,7 @@
             }
         }
 
-        /* Mobile tutorial row: keep iPhone + OR + Android aligned. */
+        /* Mobile tutorial area (phone preview + controls). */
         .intro-phones {
             display: flex;
             gap: 12px;
@@ -165,9 +344,19 @@
             margin: 0;
         }
 
+        /* New UX: show one phone at a time + switch button. */
+        .intro-phones.intro-phone-switcher {
+            display: grid;
+            justify-items: center;
+            align-items: start;
+            gap: 12px;
+            flex-wrap: nowrap;
+            transform: none !important;
+        }
+
         /* Desktop/tablet: keep the cluster centered and stable (no overlap). */
         @media (min-width: 901px) {
-            .intro-phones {
+            .intro-phones:not(.intro-phone-switcher) {
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -187,7 +376,7 @@
 
         /* If the viewport is too narrow for a single row, allow wrapping instead of stacking/overlap. */
         @media (min-width: 901px) and (max-width: 1180px) {
-            .intro-phones {
+            .intro-phones:not(.intro-phone-switcher) {
                 flex-wrap: wrap;
             }
         }
@@ -214,7 +403,7 @@
         }
 
         @media (max-width: 900px) {
-            .intro-phones {
+            .intro-phones:not(.intro-phone-switcher) {
                 flex-direction: column;
             }
             .intro-phone-group {
@@ -222,6 +411,29 @@
             }
         }
 
+
+        /* Mobile topbar: prevent squished layout by allowing wrap + smaller text. */
+        @media (max-width: 600px) {
+            .intro-topbar.page-header {
+                top: 10px;
+                gap: 10px;
+                padding: 8px 10px;
+            }
+
+            .intro-topbar .header-right {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 10px;
+            }
+
+            .intro-topbar .header-text-btn {
+                font-size: 14px;
+            }
+
+            .intro-topbar .brand-title {
+                font-size: 16px;
+            }
+        }
         .intro-or {
             color: rgba(255, 255, 255, 0.9);
             font-size: 31px;
@@ -300,9 +512,25 @@
             }
         }
 
-        /* Hide the inline instruction cards; they appear in the tutorial overlay instead. */
-        #intro-sec-mobile .intro-card.intro-section {
-            display: none;
+        /* Hide the inline instruction cards; they appear in the tutorial overlay instead.
+           NOTE: We must beat the intro mobile override that forces `.intro-snap-inner > .page-header.intro-card { display: block !important; }`.
+        */
+        #intro-sec-mobile .intro-snap-inner > .page-header.intro-card.intro-section {
+            display: none !important;
+        }
+
+        /* Make all setup/info cards readable on the dark landing background. */
+        .intro-card.intro-section {
+            color: rgba(255, 255, 255, 0.94);
+        }
+
+        .intro-card.intro-section h2 {
+            color: rgba(255, 255, 255, 0.98);
+        }
+
+        .intro-card.intro-section li,
+        .intro-card.intro-section .intro-note {
+            color: rgba(255, 255, 255, 0.90);
         }
 
         .intro-tutorial-overlay {
@@ -328,11 +556,13 @@
             position: relative;
             height: 100vh;
             width: 100%;
-            padding: 92px 16px 28px;
+            /* Center the content without shoving it down from the top. */
+            padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px);
             box-sizing: border-box;
             display: grid;
             place-items: center;
-            pointer-events: none;
+            /* Allow taps outside the grid to close the overlay. */
+            pointer-events: auto;
         }
 
         .intro-tutorial-grid {
@@ -345,9 +575,50 @@
             pointer-events: auto;
         }
 
+        /* Start with steps hidden; user taps the phone to reveal. */
+        .intro-tutorial-grid.is-steps-hidden {
+            grid-template-columns: 1fr;
+        }
+
+        .intro-tutorial-grid.is-steps-hidden .intro-tutorial-instructions {
+            display: none !important;
+        }
+
+        /* In the overlay, keep the phone a bit smaller so there's always tappable backdrop space. */
+        .intro-tutorial-overlay .intro-phone {
+            height: min(calc(40vh + 140px), 540px, calc(100vh - 220px));
+        }
+
+        /* Tutorial overlay: shrink the instruction “card” so the phone stays prominent. */
+        .intro-tutorial-grid .intro-card.intro-section {
+            padding: 16px !important;
+            border-radius: 18px;
+            background: rgba(17, 23, 34, 0.82) !important;
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+        }
+
+        .intro-tutorial-grid .intro-card.intro-section ul {
+            padding-left: 16px;
+        }
+
+        .intro-tutorial-grid .intro-card.intro-section li {
+            margin: 6px 0;
+            font-size: 15px;
+        }
+
         @media (max-width: 900px) {
             .intro-tutorial-grid {
                 grid-template-columns: 1fr;
+            }
+
+            /* On phones, show the phone preview first (avoid pushing it down under the instructions). */
+            .intro-tutorial-phone {
+                grid-row: 1;
+            }
+
+            .intro-tutorial-instructions {
+                grid-row: 2;
             }
         }
 
@@ -378,6 +649,16 @@
             animation-delay: 60ms;
         }
 
+        /* Ensure critical header/hero content is visible on touch devices
+           even if animations are disabled or not supported. */
+        @media (hover: none) {
+            .intro-topbar,
+            .intro-hero-outside {
+                opacity: 1;
+                animation: none;
+            }
+        }
+
         .intro-hero-outside h1 {
             margin: 0;
             font-size: 76px;
@@ -392,20 +673,35 @@
         }
 
         .intro-card.page-header {
-            position: relative;
-            top: auto;
-            left: auto;
-            transform: none;
-            width: 100%;
-            max-width: none;
-            height: auto;
-            z-index: 1;
+            /* IMPORTANT: override TMR.css .page-header (fixed + translateX) */
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: none !important;
 
-            display: block;
+            width: 100% !important;
+            max-width: none !important;
+            height: auto !important;
+            box-sizing: border-box;
+            margin: 0 auto;
+
+            display: block !important;
             padding: 22px;
             border-radius: 22px;
+            overflow: hidden;
 
-            /* Frosted-glass hover expand/return. */
+            /* Stop wallpaper “leak” from the global frosted header styling. */
+            background: rgba(11, 15, 22, 0.92) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+
+            z-index: 1;
+
+            /* Hover expand/return (desktop). */
             transition: transform 160ms ease-out;
             will-change: transform;
         }
@@ -478,8 +774,42 @@
             width: 100%;
         }
 
-        /* Desktop hover carousel (grid fallback remains for touch / reduced-motion). */
-        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+        /* Mobile swipe carousel: show 1 card at a time and swipe left/right. */
+        .intro-feature-stage.intro-swipe-carousel {
+            position: relative;
+            display: block;
+            overflow: hidden;
+            max-width: 100%;
+            clip-path: inset(0);
+            contain: paint;
+            touch-action: pan-y;
+        }
+
+        .intro-feature-stage.intro-swipe-carousel .intro-feature-track {
+            display: flex;
+            gap: 0;
+            width: 100%;
+            flex-wrap: nowrap;
+            will-change: transform;
+            transition: transform 260ms ease-out;
+        }
+
+        .intro-feature-stage.intro-swipe-carousel .intro-feature {
+            flex: 0 0 100%;
+            width: 100%;
+            min-width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+            justify-self: stretch;
+            margin: 0;
+        }
+
+        .intro-feature-stage.intro-swipe-carousel.is-dragging .intro-feature-track {
+            transition: none;
+        }
+
+        /* Desktop hover carousel (never on mobile/coarse pointers). */
+        @media (hover: hover) and (prefers-reduced-motion: no-preference) and (min-width: 901px) {
             .intro-feature-stage.intro-carousel {
                 position: relative;
                 display: block;
@@ -680,6 +1010,46 @@
             line-height: 1.5;
         }
 
+        /* Mobile sizing: make the feature cards shorter + reduce container borders so everything fits. */
+        @media (max-width: 900px) {
+            .intro-card.page-header {
+                padding: 16px !important;
+                border-radius: 18px;
+            }
+
+            .intro-features-header h2 {
+                font-size: 30px;
+            }
+
+            .intro-features-desc {
+                font-size: 18px;
+            }
+
+            .intro-feature {
+                padding: 14px;
+                border-radius: 16px;
+                /* Less tall than 3/4 so it fits inside the snap viewport. */
+                aspect-ratio: 7 / 8;
+                min-height: 190px;
+                max-width: 340px;
+            }
+
+            .intro-feature-media {
+                margin-bottom: 10px;
+                border-radius: 12px;
+            }
+
+            .intro-feature h3 {
+                font-size: 20px;
+                margin-bottom: 6px;
+            }
+
+            .intro-feature p {
+                font-size: 16px;
+                line-height: 1.45;
+            }
+        }
+
         .intro-section h2 {
             margin: 0 0 10px;
             font-size: 24px;
@@ -758,10 +1128,16 @@
             <div class="brand-title">TMR</div>
         </div>
         <div class="header-right">
-            <a class="header-text-btn" href="#intro-sec-cta">Pricing (free?)</a>
-            <a class="header-text-btn" href="#iphone">iPhone Setup</a>
-            <a class="header-text-btn" href="#Android">Android Setup</a>
-            <button id="continue-signin-top" class="tmr-btn small-tmr-btn" type="button">Sign In</button>
+            <div class="intro-sections">
+                <button id="intro-sections-toggle" class="header-text-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="intro-sections-menu">Sections</button>
+                <div id="intro-sections-menu" class="intro-sections-menu" role="menu" hidden>
+                    <button class="intro-sections-item" role="menuitem" type="button" data-intro-scroll="#features">Features</button>
+                    <button class="intro-sections-item" role="menuitem" type="button" data-intro-scroll="#intro-sec-cta">Pricing (free?)</button>
+                    <button class="intro-sections-item" role="menuitem" type="button" data-intro-scroll="#intro-sec-mobile" data-intro-phone="iphone">iPhone Setup</button>
+                    <button class="intro-sections-item" role="menuitem" type="button" data-intro-scroll="#intro-sec-mobile" data-intro-phone="android">Android Setup</button>
+                </div>
+            </div>
+            <button id="continue-signin-top" class="tmr-btn small-tmr-btn" type="button">Sign Up</button>
         </div>
     </div>
 
@@ -794,7 +1170,7 @@
                     <div id="features" class="intro-features-header">
                         <h2>See your future... control it</h2>
                         <p class="intro-features-desc">
-                            Built for planning fast: calendar, todos, reminders, notes, themes, and Meibot — all in one place. (click card to view)
+                            Built for planning fast: calendar, todos, reminders, notes, themes, and Meibot — all in one place. (click card to view ~ swipe to scroll)
                         </p>
                     </div>
 
@@ -849,29 +1225,15 @@
         <!-- Section 3: iPhone + Android info cards -->
         <section class="intro-snap" id="intro-sec-mobile" aria-label="Mobile info">
             <div class="intro-snap-inner">
-                <div class="intro-phones" aria-label="Mobile setup videos">
-                    <div class="intro-phone-group intro-phone-group--iphone" aria-label="iPhone tutorial">
-                        <button class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="iphone">Start using TMR tutorial (Iphone)</button>
+                <div class="intro-phones intro-phone-switcher" aria-label="Mobile setup videos">
+                    <button id="intro-phone-switch" class="tmr-btn intro-tutorial-cta" type="button">iPhone (switch to Android)</button>
+                    <button id="intro-phone-tutorial-btn" class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="iphone">Start using TMR tutorial (iPhone)</button>
 
-                        <div class="intro-phone" role="button" tabindex="0" data-tutorial="iphone" aria-label="Open iPhone tutorial">
-                            <div class="intro-phone-title">iPhone setup video</div>
-                            <div class="intro-phone-screen">
-                                <video class="intro-phone-video" data-src="assets/intro/iphone-tutorial.mp4" autoplay muted loop playsinline preload="none"></video>
-                            </div>
+                    <div id="intro-phone-preview" class="intro-phone" role="button" tabindex="0" data-tutorial="iphone" aria-label="Open iPhone tutorial">
+                        <div id="intro-phone-title" class="intro-phone-title">iPhone setup video</div>
+                        <div class="intro-phone-screen">
+                            <video id="intro-phone-video" class="intro-phone-video" data-src="assets/intro/iphone-tutorial.mp4" autoplay muted loop playsinline preload="none"></video>
                         </div>
-                    </div>
-
-                    <div class="intro-or" aria-hidden="true">or</div>
-
-                    <div class="intro-phone-group intro-phone-group--android" aria-label="Android tutorial">
-                        <div class="intro-phone" role="button" tabindex="0" data-tutorial="android" aria-label="Open Android tutorial">
-                            <div class="intro-phone-title">Android setup video</div>
-                            <div class="intro-phone-screen">
-                                <video class="intro-phone-video" data-src="assets/intro/android-tutorial.mp4" autoplay muted loop playsinline preload="none"></video>
-                            </div>
-                        </div>
-
-                        <button class="tmr-btn intro-tutorial-cta" type="button" data-tutorial-btn="android">Start using TMR tutorial (Android)</button>
                     </div>
                 </div>
 
@@ -903,7 +1265,7 @@
             <div class="intro-snap-inner">
                 <section class="page-header intro-card intro-section">
                     <h2>Ready to try it?</h2>
-                    <button id="continue-signin-bottom" class="tmr-btn" type="button" style="width: 100%;">Continue to Sign In</button>
+                    <button id="continue-signin-bottom" class="tmr-btn" type="button" style="width: 100%;">Continue to Sign Up</button>
                     <div class="intro-note">This will open the app where you can sign in or create an account.</div>
                 </section>
             </div>
@@ -936,15 +1298,113 @@
                 document.getElementById('continue-signin-bottom')
             ].filter(Boolean);
 
+            const scrollRoot = document.getElementById('intro-scroll');
+            const sectionsToggle = document.getElementById('intro-sections-toggle');
+            const sectionsMenu = document.getElementById('intro-sections-menu');
+
+            const closeMenu = () => {
+                if (!sectionsToggle || !sectionsMenu) return;
+                sectionsMenu.hidden = true;
+                sectionsToggle.setAttribute('aria-expanded', 'false');
+            };
+
+            const openMenu = () => {
+                if (!sectionsToggle || !sectionsMenu) return;
+                sectionsMenu.hidden = false;
+                sectionsToggle.setAttribute('aria-expanded', 'true');
+            };
+
+            const toggleMenu = () => {
+                if (!sectionsToggle || !sectionsMenu) return;
+                if (sectionsMenu.hidden) openMenu();
+                else closeMenu();
+            };
+
+            const setActiveSnapFor = (target) => {
+                try {
+                    const snap = target && target.classList && target.classList.contains('intro-snap')
+                        ? target
+                        : (target && target.closest ? target.closest('.intro-snap') : null);
+                    if (snap) {
+                        document.querySelectorAll('.intro-snap.is-active').forEach((el) => el.classList.remove('is-active'));
+                        snap.classList.add('is-active');
+                    }
+                } catch (_) {}
+            };
+
+            const scrollToTarget = (target) => {
+                if (!target) return;
+                setActiveSnapFor(target);
+
+                if (scrollRoot && scrollRoot.scrollTo) {
+                    const rootRect = scrollRoot.getBoundingClientRect();
+                    const targetRect = target.getBoundingClientRect();
+                    const isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+                    const inset = isMobile ? 104 : 92;
+                    const delta = targetRect.top - rootRect.top;
+                    const top = Math.max(0, scrollRoot.scrollTop + delta - inset);
+
+                    scrollRoot.classList.add('intro-programmatic-scroll');
+                    scrollRoot.scrollTo({ top, behavior: 'smooth' });
+                    window.setTimeout(() => {
+                        scrollRoot.classList.remove('intro-programmatic-scroll');
+                    }, 750);
+                    return;
+                }
+
+                if (target.scrollIntoView) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            };
+
+            if (sectionsToggle && sectionsMenu) {
+                sectionsToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    toggleMenu();
+                });
+
+                document.addEventListener('click', (e) => {
+                    const t = e.target;
+                    if (!t) return;
+                    if (sectionsMenu.hidden) return;
+                    if (sectionsMenu.contains(t) || sectionsToggle.contains(t)) return;
+                    closeMenu();
+                }, { capture: true });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Escape') return;
+                    if (!sectionsMenu.hidden) closeMenu();
+                });
+
+                sectionsMenu.addEventListener('click', (e) => {
+                    const btn = e.target && e.target.closest ? e.target.closest('[data-intro-scroll]') : null;
+                    if (!btn) return;
+                    e.preventDefault();
+                    const sel = btn.getAttribute('data-intro-scroll');
+                    const target = sel ? document.querySelector(sel) : null;
+                    const phoneKind = btn.getAttribute('data-intro-phone');
+                    closeMenu();
+                    scrollToTarget(target);
+
+                    // If the menu item is for mobile setup, also switch the phone preview.
+                    if (phoneKind && window.__introSetPhoneKind) {
+                        window.setTimeout(() => {
+                            try { window.__introSetPhoneKind(phoneKind); } catch (_) {}
+                        }, 260);
+                    }
+                });
+            }
+
             if (!getStartedBtn && !signinBtns.length) return;
 
             // Get started: scroll to the cards/features section (no sign-in modal yet).
             if (getStartedBtn) {
                 getStartedBtn.addEventListener('click', () => {
                     const target = document.getElementById('intro-sec-features') || document.getElementById('features');
-                    if (target && target.scrollIntoView) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
+
+                    if (!target) return;
+
+                    scrollToTarget(target);
                 });
             }
 
@@ -1137,7 +1597,9 @@
 
             const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const supportsHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
-            if (prefersReduced || !supportsHover) return; // keep the grid on touch / reduced-motion
+            const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+            const isWide = window.matchMedia && window.matchMedia('(min-width: 901px)').matches;
+            if (prefersReduced || !supportsHover || isCoarse || !isWide) return; // keep the grid on touch / small screens
 
             const cards = Array.prototype.slice.call(stage.querySelectorAll('.intro-feature'));
             if (cards.length < 2) return;
@@ -1153,6 +1615,15 @@
                 if (!active) return;
                 const h = Math.max(active.offsetHeight, 140);
                 stage.style.height = (h + 4) + 'px';
+            };
+
+            const getSlideWidth = () => {
+                const first = cards[0];
+                const slideW = first && first.getBoundingClientRect ? first.getBoundingClientRect().width : 0;
+                const stageW = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect().width : 0;
+                const viewportW = window.innerWidth || document.documentElement.clientWidth || 1;
+                const w = slideW || stageW || stage.clientWidth || 1;
+                return Math.max(1, Math.min(w, viewportW));
             };
 
             const render = () => {
@@ -1329,9 +1800,233 @@
         })();
 
         (function () {
+            // Touch devices: ensure the active snap section updates while scrolling.
+            // Without this, the non-active blur can stick in some mobile/devtools cases.
+            const scrollRoot = document.getElementById('intro-scroll');
+            if (!scrollRoot) return;
+
+            const supportsHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+            if (supportsHover) return;
+
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReduced) return;
+
+            const sections = Array.prototype.slice.call(scrollRoot.querySelectorAll('.intro-snap'));
+            if (!sections.length) return;
+
+            let active = sections.find(s => s.classList && s.classList.contains('is-active')) || sections[0];
+            const setActive = (el) => {
+                if (!el || el === active) return;
+                if (active) active.classList.remove('is-active');
+                active = el;
+                active.classList.add('is-active');
+            };
+
+            let raf = 0;
+            const pickActive = () => {
+                raf = 0;
+                const rootRect = scrollRoot.getBoundingClientRect();
+                const targetY = rootRect.top + Math.min(120, rootRect.height * 0.25);
+
+                // Prefer the section that actually contains the point.
+                for (const s of sections) {
+                    const r = s.getBoundingClientRect();
+                    if (r.top <= targetY && r.bottom >= targetY) {
+                        setActive(s);
+                        return;
+                    }
+                }
+
+                // Fallback: nearest section top.
+                let best = null;
+                let bestDist = Infinity;
+                for (const s of sections) {
+                    const r = s.getBoundingClientRect();
+                    const dist = Math.abs(r.top - targetY);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = s;
+                    }
+                }
+                if (best) setActive(best);
+            };
+
+            const onScroll = () => {
+                if (raf) return;
+                raf = window.requestAnimationFrame(pickActive);
+            };
+
+            scrollRoot.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll);
+            onScroll();
+        })();
+
+        (function () {
+            // Mobile swipe carousel for the feature cards.
+            const stage = document.querySelector('.intro-feature-stage');
+            if (!stage) return;
+
+            const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+            const isSmall = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+            if (!isCoarse && !isSmall) return;
+
+            const cards = Array.prototype.slice.call(stage.querySelectorAll('.intro-feature'));
+            if (cards.length < 2) return;
+
+            // Wrap cards into a track for horizontal translation.
+            const track = document.createElement('div');
+            track.className = 'intro-feature-track';
+            while (stage.firstChild) track.appendChild(stage.firstChild);
+            stage.appendChild(track);
+
+            stage.classList.add('intro-swipe-carousel');
+            stage.classList.remove('intro-grid');
+            stage.classList.remove('intro-carousel');
+
+            // Defensive: if desktop styles were ever applied (e.g., devtools emulation), clear them.
+            cards.forEach((card) => {
+                try { card.removeAttribute('data-pos'); } catch (_) {}
+                if (card && card.style) {
+                    card.style.position = '';
+                    card.style.left = '';
+                    card.style.top = '';
+                    card.style.transform = '';
+                    card.style.opacity = '';
+                    card.style.zIndex = '';
+                    card.style.pointerEvents = '';
+                }
+            });
+
+            let activeIndex = 0;
+            let startX = 0;
+            let startY = 0;
+            let dx = 0;
+            let isDown = false;
+            let isHorizontal = false;
+
+            const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+            const updateHeight = () => {
+                const active = cards[activeIndex];
+                if (!active) return;
+                const h = Math.max(active.offsetHeight, 140);
+                stage.style.height = (h + 4) + 'px';
+            };
+
+            const getSlideWidth = () => {
+                const first = cards[0];
+                const slideW = first && first.getBoundingClientRect ? first.getBoundingClientRect().width : 0;
+                const stageW = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect().width : 0;
+                const viewportW = window.innerWidth || document.documentElement.clientWidth || 1;
+                const w = slideW || stageW || stage.clientWidth || 1;
+                return Math.max(1, Math.min(w, viewportW));
+            };
+
+            const apply = (animate = true) => {
+                if (animate) stage.classList.remove('is-dragging');
+                const w = getSlideWidth();
+                const x = -activeIndex * w + dx;
+                track.style.transform = 'translate3d(' + x + 'px, 0, 0)';
+            };
+
+            const settle = () => {
+                const w = getSlideWidth();
+                const swipeThreshold = Math.max(42, w * 0.18);
+                if (Math.abs(dx) > swipeThreshold) {
+                    if (dx < 0) activeIndex = clamp(activeIndex + 1, 0, cards.length - 1);
+                    else activeIndex = clamp(activeIndex - 1, 0, cards.length - 1);
+                }
+                dx = 0;
+                apply(true);
+                updateHeight();
+            };
+
+            const onStart = (x, y) => {
+                isDown = true;
+                isHorizontal = false;
+                dx = 0;
+                startX = x;
+                startY = y;
+            };
+
+            const onMove = (x, y, ev) => {
+                if (!isDown) return;
+                const mx = x - startX;
+                const my = y - startY;
+
+                if (!isHorizontal) {
+                    // Decide intent after a small movement.
+                    if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+                    isHorizontal = Math.abs(mx) > Math.abs(my);
+                    if (isHorizontal) stage.classList.add('is-dragging');
+                }
+
+                if (!isHorizontal) return; // allow vertical scroll
+
+                // Prevent the page from horizontal scrolling while swiping.
+                if (ev && ev.cancelable) ev.preventDefault();
+                dx = mx;
+                apply(false);
+            };
+
+            const onEnd = () => {
+                if (!isDown) return;
+                isDown = false;
+                stage.classList.remove('is-dragging');
+                if (isHorizontal) settle();
+                dx = 0;
+                isHorizontal = false;
+            };
+
+            const hasPointer = !!window.PointerEvent;
+            if (hasPointer) {
+                stage.addEventListener('pointerdown', (e) => {
+                    if (e.button !== undefined && e.button !== 0) return;
+                    onStart(e.clientX, e.clientY);
+                    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+                });
+
+                stage.addEventListener('pointermove', (e) => {
+                    onMove(e.clientX, e.clientY, e);
+                }, { passive: false });
+
+                stage.addEventListener('pointerup', onEnd);
+                stage.addEventListener('pointercancel', onEnd);
+            } else {
+                stage.addEventListener('touchstart', (e) => {
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    onStart(t.clientX, t.clientY);
+                }, { passive: true });
+
+                stage.addEventListener('touchmove', (e) => {
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    onMove(t.clientX, t.clientY, e);
+                }, { passive: false });
+
+                stage.addEventListener('touchend', onEnd);
+                stage.addEventListener('touchcancel', onEnd);
+            }
+            window.addEventListener('resize', () => {
+                dx = 0;
+                apply(true);
+                updateHeight();
+            });
+
+            // Initial layout.
+            updateHeight();
+            apply(true);
+        })();
+
+        (function () {
             const overlay = document.getElementById('tutorial-overlay');
             const grid = document.getElementById('tutorial-grid');
             if (!overlay || !grid) return;
+
+            const revealSteps = () => {
+                grid.classList.remove('is-steps-hidden');
+            };
 
             const open = (kind) => {
                 const sourceId = kind === 'iphone' ? 'iphone' : 'Android';
@@ -1339,6 +2034,7 @@
                 if (!source) return;
 
                 grid.innerHTML = '';
+                grid.classList.add('is-steps-hidden');
 
                 const instructions = source.cloneNode(true);
                 instructions.removeAttribute('id');
@@ -1351,7 +2047,9 @@
 
                 const title = document.createElement('div');
                 title.className = 'intro-phone-title';
-                title.textContent = kind === 'iphone' ? 'iPhone tutorial video' : 'Android tutorial video';
+                title.textContent = kind === 'iphone'
+                    ? 'iPhone tutorial video (tap for steps)'
+                    : 'Android tutorial video (tap for steps)';
 
                 const screen = document.createElement('div');
                 screen.className = 'intro-phone-screen';
@@ -1373,12 +2071,65 @@
                 overlay.setAttribute('aria-hidden', 'true');
                 document.body.classList.remove('tmr-tutorial-open');
                 grid.innerHTML = '';
+                grid.classList.remove('is-steps-hidden');
             };
+
+            // Mobile-friendly dismissal: swipe down on the backdrop area.
+            (function () {
+                let startX = 0;
+                let startY = 0;
+                let tracking = false;
+
+                overlay.addEventListener('touchstart', (e) => {
+                    if (!overlay.classList.contains('is-open')) return;
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    // If the gesture starts inside the content grid, don't treat it as a dismiss.
+                    if (grid.contains(e.target)) return;
+                    tracking = true;
+                    startX = t.clientX;
+                    startY = t.clientY;
+                }, { passive: true });
+
+                overlay.addEventListener('touchmove', (e) => {
+                    if (!tracking) return;
+                    if (!overlay.classList.contains('is-open')) { tracking = false; return; }
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    const dx = t.clientX - startX;
+                    const dy = t.clientY - startY;
+                    // A clear downward swipe closes.
+                    if (dy > 70 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+                        tracking = false;
+                        close();
+                    }
+                }, { passive: true });
+
+                overlay.addEventListener('touchend', () => { tracking = false; }, { passive: true });
+                overlay.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+            })();
 
             document.addEventListener('click', (e) => {
                 const closeEl = e.target && e.target.closest ? e.target.closest('[data-tutorial-close]') : null;
                 if (closeEl) {
                     close();
+                    return;
+                }
+
+                // If the tutorial overlay is open, clicking outside the grid should close it.
+                // Clicking the phone inside the overlay reveals the steps.
+                if (overlay.classList.contains('is-open')) {
+                    const t = e.target;
+                    const clickedInsideGrid = !!(t && grid.contains(t));
+                    if (!clickedInsideGrid) {
+                        close();
+                        return;
+                    }
+
+                    const overlayPhone = t && t.closest ? t.closest('.intro-tutorial-phone') : null;
+                    if (overlayPhone) {
+                        revealSteps();
+                    }
                     return;
                 }
 
@@ -1391,8 +2142,6 @@
 
                 const phone = e.target && e.target.closest ? e.target.closest('[data-tutorial]') : null;
                 if (phone) {
-                    // Ignore clicks inside the overlay itself.
-                    if (overlay.classList.contains('is-open')) return;
                     open(phone.getAttribute('data-tutorial'));
                 }
             });
@@ -1413,6 +2162,54 @@
                     open(phone.getAttribute('data-tutorial'));
                 }
             });
+        })();
+
+        // One-phone switcher: avoid making users scroll to compare iPhone vs Android.
+        (function () {
+            const switchBtn = document.getElementById('intro-phone-switch');
+            const tutorialBtn = document.getElementById('intro-phone-tutorial-btn');
+            const phone = document.getElementById('intro-phone-preview');
+            const title = document.getElementById('intro-phone-title');
+            const video = document.getElementById('intro-phone-video');
+            if (!switchBtn || !tutorialBtn || !phone || !title || !video) return;
+
+            let kind = 'iphone';
+
+            const setKind = (next) => {
+                kind = next === 'android' ? 'android' : 'iphone';
+
+                const isIphone = kind === 'iphone';
+                const otherLabel = isIphone ? 'Android' : 'iPhone';
+                const thisLabel = isIphone ? 'iPhone' : 'Android';
+                const src = isIphone ? 'assets/intro/iphone-tutorial.mp4' : 'assets/intro/android-tutorial.mp4';
+
+                switchBtn.textContent = `${thisLabel} (switch to ${otherLabel})`;
+                tutorialBtn.textContent = isIphone ? 'Start using TMR tutorial (iPhone)' : 'Start using TMR tutorial (Android)';
+                tutorialBtn.setAttribute('data-tutorial-btn', kind);
+
+                phone.setAttribute('data-tutorial', kind);
+                phone.setAttribute('aria-label', isIphone ? 'Open iPhone tutorial' : 'Open Android tutorial');
+                title.textContent = isIphone ? 'iPhone setup video' : 'Android setup video';
+
+                try { video.pause(); } catch (_) {}
+                try {
+                    if (video.dataset) video.dataset.src = src;
+                    video.removeAttribute('src');
+                    video.src = src;
+                    video.load();
+                    const p = video.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
+                } catch (_) {}
+            };
+
+            switchBtn.addEventListener('click', () => {
+                setKind(kind === 'iphone' ? 'android' : 'iphone');
+            });
+
+            // Allow other UI (like the header dropdown) to switch the phone preview.
+            window.__introSetPhoneKind = setKind;
+
+            setKind('iphone');
         })();
     </script>
 </body>

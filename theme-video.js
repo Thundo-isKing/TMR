@@ -137,6 +137,20 @@
         } catch (_) {}
     }
 
+    function setVideoLoadingFlag(isOn) {
+        try {
+            if (isOn) document.documentElement.classList.add('tmr-bg-video-loading');
+            else document.documentElement.classList.remove('tmr-bg-video-loading');
+        } catch (_) {}
+    }
+
+    function setVideoReadyFlag(isOn) {
+        try {
+            if (isOn) document.documentElement.classList.add('tmr-bg-video-ready');
+            else document.documentElement.classList.remove('tmr-bg-video-ready');
+        } catch (_) {}
+    }
+
     function hideVideo(el) {
         try {
             if (currentObjectUrl) {
@@ -148,6 +162,8 @@
             el.style.display = 'none';
         } catch (_) {}
         setHasVideoFlag(false);
+        setVideoLoadingFlag(false);
+        setVideoReadyFlag(false);
     }
 
     async function applyFromStorage() {
@@ -158,6 +174,12 @@
             hideVideo(el);
             return null;
         }
+
+        // Mark as present/loading immediately so CSS can avoid white flashes
+        // while we fetch from IndexedDB and the <video> decodes the first frame.
+        setHasVideoFlag(true);
+        setVideoReadyFlag(false);
+        setVideoLoadingFlag(true);
 
         try {
             const blob = await getBlob(id);
@@ -175,7 +197,16 @@
             currentObjectUrl = url;
             el.src = url;
             el.style.display = 'block';
-            setHasVideoFlag(true);
+
+            // When the first frame is ready, switch to transparent body background.
+            try {
+                const onReady = () => {
+                    setVideoLoadingFlag(false);
+                    setVideoReadyFlag(true);
+                };
+                el.addEventListener('loadeddata', onReady, { once: true });
+                el.addEventListener('canplay', onReady, { once: true });
+            } catch (_) {}
 
             try {
                 const p = el.play();

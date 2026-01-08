@@ -70,15 +70,10 @@
   // Create action button with styling
   function createActionButton(label, color, onClick) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.textContent = label;
-    btn.style.marginTop = '8px';
-    btn.style.padding = '8px 12px';
+    btn.className = 'meibot-action-btn';
     btn.style.background = color;
-    btn.style.color = 'white';
-    btn.style.border = 'none';
-    btn.style.borderRadius = '6px';
-    btn.style.cursor = 'pointer';
-    btn.style.fontSize = '12px';
     btn.addEventListener('click', onClick);
     return btn;
   }

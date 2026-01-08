@@ -1,3 +1,25 @@
+  /**
+   * Show login UI (hide app, show login modal)
+   */
+  const isDesktopWidth = () => {
+    try {
+      if (window.matchMedia) return window.matchMedia('(min-width: 1025px)').matches;
+    } catch (e) {}
+    return typeof window.innerWidth === 'number' ? window.innerWidth >= 1025 : true;
+  };
+
+  const applyHeaderVisibilityForViewport = (headerEl) => {
+    if (!headerEl) return;
+    if (isDesktopWidth()) {
+      headerEl.style.setProperty('display', 'flex', 'important');
+      headerEl.hidden = false;
+      headerEl.removeAttribute('aria-hidden');
+    } else {
+      headerEl.style.setProperty('display', 'none', 'important');
+      headerEl.hidden = true;
+      headerEl.setAttribute('aria-hidden', 'true');
+    }
+  };
 /**
  * Client-side authentication management for TMR
  * Handles login, registration, logout, and session persistence
@@ -773,7 +795,7 @@ const AuthClient = (() => {
       console.error('[Auth] Cannot show login UI: #auth-modal-backdrop not found');
       // Fallback: if the modal is missing, don't leave the page blank.
       if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
-      if (header) header.style.setProperty('display', 'flex', 'important');
+      applyHeaderVisibilityForViewport(header);
       if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
       if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
       clearAuthPending();
@@ -892,7 +914,7 @@ const AuthClient = (() => {
       authModal.style.setProperty('z-index', '-1', 'important');
     }
     if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
-    if (header) header.style.setProperty('display', 'flex', 'important');
+    applyHeaderVisibilityForViewport(header);
     if (headerLoginBtn) headerLoginBtn.style.display = 'none';  // Hide login button when logged in
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'inline-block';
 
@@ -914,7 +936,7 @@ const AuthClient = (() => {
       authModal.style.setProperty('z-index', '-1', 'important');
     }
     if (appContainer) appContainer.style.setProperty('display', 'flex', 'important');
-    if (header) header.style.setProperty('display', 'flex', 'important');
+    applyHeaderVisibilityForViewport(header);
     if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
 

@@ -9,7 +9,18 @@ const webpush = require('web-push');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname))); // Serve static files from current directory
+// Serve static files from current directory.
+// Explicit cache-control helps prevent mobile browsers from sticking to stale HTML/CSS/JS.
+app.use(express.static(path.join(__dirname), {
+  setHeaders(res, filePath) {
+    const lower = String(filePath).toLowerCase();
+    if (lower.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    } else if (lower.endsWith('.css') || lower.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 app.use(cors({ origin: ['http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3002', 'http://192.168.1.218:3002', 'http://192.168.1.218:3001', '*'] })); // Allow local network access
 app.use(rateLimit({ windowMs: 60_000, max: 30 })); // 30 requests/min
 
@@ -29,6 +40,7 @@ const chatHistory = new Map();
 
 // Serve TMR.html as the root
 app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'TMR.html'));
 });
 

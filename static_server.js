@@ -23,7 +23,12 @@ const server = http.createServer((req, res) => {
     else if (ext === '.css') contentType = 'text/css';
     else if (ext === '.json') contentType = 'application/json';
 
-    res.writeHead(200, { 'Content-Type': contentType });
+    // Reduce the chance of stale assets on mobile browsers.
+    // HTML should never be cached; CSS/JS can revalidate.
+    const headers = { 'Content-Type': contentType };
+    if (ext === '.html') headers['Cache-Control'] = 'no-store, must-revalidate';
+    else if (ext === '.css' || ext === '.js') headers['Cache-Control'] = 'no-cache';
+    res.writeHead(200, headers);
     fs.createReadStream(filePath).pipe(res);
   });
 });

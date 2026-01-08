@@ -1,6 +1,45 @@
 ﻿// Note: AuthClient (auth-client.js) installs the per-user localStorage scoping.
 // Do not attempt to replace or proxy window.localStorage here.
 
+// Guarantee: desktop pill header is never shown on mobile/tablet widths.
+(function () {
+    const mq = window.matchMedia ? window.matchMedia('(max-width: 1024px)') : null;
+
+    function sync() {
+        const headers = document.querySelectorAll('.page-header');
+        if (!headers || headers.length === 0) return;
+
+        const shouldHide = (mq && mq.matches) || (typeof window.innerWidth === 'number' && window.innerWidth <= 1024);
+
+        headers.forEach((header) => {
+            if (!header) return;
+            if (shouldHide) {
+                header.style.setProperty('display', 'none', 'important');
+                header.hidden = true;
+                header.setAttribute('aria-hidden', 'true');
+            } else {
+                header.style.removeProperty('display');
+                header.hidden = false;
+                header.removeAttribute('aria-hidden');
+            }
+        });
+    }
+
+    if (mq) {
+        try {
+            if (typeof mq.addEventListener === 'function') mq.addEventListener('change', sync);
+            else if (typeof mq.addListener === 'function') mq.addListener(sync);
+        } catch (_) {}
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', sync, { once: true });
+    } else {
+        sync();
+    }
+    window.addEventListener('resize', sync);
+})();
+
 const displayClock = () => {
     const now = new Date();
     let hrs = now.getHours();
@@ -12,25 +51,67 @@ const displayClock = () => {
     
     // Update header clock
     const headerClock = document.getElementById('header-clock');
+    const mobileClock = document.getElementById('mobile-header-clock');
+    if (mobileClock) {
+        mobileClock.textContent = `${hrs}:${min} ${ampm}`;
+    }
+    // One-time mobile wiring guard
+    if (!window.__tmrMobileHeaderWired) {
+        window.__tmrMobileHeaderWired = true;
+        // Mobile search modal wiring
+        const mobileSearchBtn = document.getElementById('mobile-search-btn');
+        const mobileSearchBackdrop = document.getElementById('mobile-search-backdrop');
+        const mobileSearchClose = document.getElementById('mobile-search-close');
+        const mobileSearchInput = document.getElementById('mobile-search-input');
+        const mobileSearchClear = document.getElementById('mobile-search-clear');
+        const mobileSearchSuggestions = document.getElementById('mobile-search-suggestions');
+
+        function openMobileSearch() {
+            if (!mobileSearchBackdrop) return;
+            mobileSearchBackdrop.style.display = 'flex';
+            setTimeout(() => { try { mobileSearchInput && mobileSearchInput.focus(); } catch(_){} }, 50);
+        }
+        function closeMobileSearch() {
+            if (!mobileSearchBackdrop) return;
+            mobileSearchBackdrop.style.display = 'none';
+            try {
+                if (mobileSearchSuggestions) mobileSearchSuggestions.hidden = true;
+                if (mobileSearchInput) mobileSearchInput.value = '';
+            } catch (_) {}
+        }
+        if (mobileSearchBtn) mobileSearchBtn.addEventListener('click', openMobileSearch);
+        if (mobileSearchClose) mobileSearchClose.addEventListener('click', closeMobileSearch);
+        if (mobileSearchBackdrop) mobileSearchBackdrop.addEventListener('click', (e) => { if (e.target === mobileSearchBackdrop) closeMobileSearch(); });
+
+        // Search result rendering is wired by the shared search module below.
+
+        // Mobile More dropdown wiring
+        const mobileMoreBtn = document.getElementById('mobile-more-btn');
+        const mobileMoreMenu = document.getElementById('mobile-more-menu');
+        function openMobileMore() {
+            if (!mobileMoreMenu) return;
+            mobileMoreMenu.hidden = false;
+            try { mobileMoreBtn && mobileMoreBtn.setAttribute('aria-expanded', 'true'); } catch (_) {}
+        }
+        function closeMobileMore() {
+            if (!mobileMoreMenu) return;
+            mobileMoreMenu.hidden = true;
+            try { mobileMoreBtn && mobileMoreBtn.setAttribute('aria-expanded', 'false'); } catch (_) {}
+        }
+        if (mobileMoreBtn) mobileMoreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!mobileMoreMenu) return;
+            mobileMoreMenu.hidden ? openMobileMore() : closeMobileMore();
+        });
+        document.addEventListener('click', (e) => {
+            if (!mobileMoreMenu || !mobileMoreBtn) return;
+            if (mobileMoreMenu.hidden) return;
+            if (!mobileMoreMenu.contains(e.target) && !mobileMoreBtn.contains(e.target)) closeMobileMore();
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMobileMore(); });
+    }
     if (headerClock) {
         headerClock.textContent = `${hrs}:${min}:${sec} ${ampm}`;
-    }
-    
-    // Update portrait clock (if present)
-    const portraitClock = document.getElementById('clock');
-    if (portraitClock) {
-        portraitClock.textContent = `${hrs}:${min}:${sec} ${ampm}`;
-    }
-    
-    // Update landscape clock with vertical formatting (if present)
-    const landscapeClock = document.getElementById('landscape-clock');
-    if (landscapeClock) {
-        // Format: 11, . . (dots for seconds), 59, PM
-        const hourStr = String(hrs).padStart(2, '0');
-        const minStr = String(min).padStart(2, '0');
-        const dotStr = ' . . '; // Visual representation of seconds
-        
-        landscapeClock.innerHTML = `${hourStr}<br>${dotStr}<br>${minStr}<br>${ampm}`;
     }
 };
 
@@ -523,20 +604,40 @@ if (leaveBtn) {
 // Themes modal control
 (function(){
     function initThemesModal() {
-        const themesBtn = document.getElementById('header-themes-btn');
+        const themesButtons = [
+            document.getElementById('header-themes-btn'),
+            document.getElementById('menu-themes-btn')
+        ].filter(Boolean);
         const themesModal = document.getElementById('themes-modal-backdrop');
         const themesCloseBtn = document.getElementById('themes-modal-close');
         const themesCloseBtnFooter = document.getElementById('themes-close-btn');
         
-        console.log('[Themes] Initializing modal. Button:', !!themesBtn, 'Modal:', !!themesModal);
+        console.log('[Themes] Initializing modal. Buttons:', themesButtons.length, 'Modal:', !!themesModal);
         
-        if(!themesBtn || !themesModal) {
+        if(themesButtons.length === 0 || !themesModal) {
             console.warn('[Themes] Modal elements not found. Will retry on load.');
             return false;
+        }
+
+        function closeTmrMenuIfOpen() {
+            const backdrop = document.getElementById('tmr-menu-backdrop');
+            const menu = document.getElementById('tmr-header-menu');
+            if (!backdrop || backdrop.hidden) return;
+            try {
+                if (menu) menu.hidden = true;
+                backdrop.classList.remove('active');
+                backdrop.hidden = true;
+                // Best-effort: reset aria-expanded on known toggles.
+                const headerToggle = document.getElementById('tmr-header-btn');
+                const mobileToggle = document.getElementById('mobile-tmr-btn');
+                if (headerToggle) headerToggle.setAttribute('aria-expanded', 'false');
+                if (mobileToggle) mobileToggle.setAttribute('aria-expanded', 'false');
+            } catch (_) {}
         }
         
         function openThemesModal() {
             console.log('[Themes] Opening modal');
+            closeTmrMenuIfOpen();
             themesModal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -547,7 +648,9 @@ if (leaveBtn) {
             document.body.style.overflow = '';
         }
         
-        themesBtn.addEventListener('click', openThemesModal);
+        for (const btn of themesButtons) {
+            btn.addEventListener('click', openThemesModal);
+        }
         if(themesCloseBtn) themesCloseBtn.addEventListener('click', closeThemesModal);
         if(themesCloseBtnFooter) themesCloseBtnFooter.addEventListener('click', closeThemesModal);
         themesModal.addEventListener('click', (e) => {
@@ -864,69 +967,93 @@ if (leaveBtn) {
     }
 })();
 
-// Dropdown toggle for the TMR header menu (in page header - desktop only)
+// TMR menu as centered modal (shared by desktop header + mobile bottom bar)
 (function(){
-    const toggle = document.getElementById('tmr-header-btn');
+    const toggles = [
+        document.getElementById('tmr-header-btn'),
+        document.getElementById('mobile-tmr-btn')
+    ].filter(Boolean);
+
+    const backdrop = document.getElementById('tmr-menu-backdrop');
     const menu = document.getElementById('tmr-header-menu');
-    if(!toggle || !menu) return;
+    if(toggles.length === 0 || !menu || !backdrop) return;
+
+    function setExpanded(toggleEl, expanded){
+        if (!toggleEl) return;
+        toggleEl.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
+    function openMenu(toggleEl){
+        backdrop.hidden = false;
+        backdrop.classList.add('active');
+        menu.hidden = false;
+        for (const t of toggles) setExpanded(t, t === toggleEl);
+    }
 
     function closeMenu(){
         menu.hidden = true;
-        toggle.setAttribute('aria-expanded', 'false');
-    }
-    function openMenu(){
-        menu.hidden = false;
-        toggle.setAttribute('aria-expanded', 'true');
+        backdrop.classList.remove('active');
+        backdrop.hidden = true;
+        for (const t of toggles) setExpanded(t, false);
     }
 
-    toggle.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        if(menu.hidden) openMenu(); else closeMenu();
-    });
+    function toggleMenu(toggleEl){
+        if (backdrop.hidden) return openMenu(toggleEl);
+        return closeMenu();
+    }
 
-    // Close when clicking outside
-    document.addEventListener('click', (e)=>{
-        if(menu.hidden) return;
-        if(!menu.contains(e.target) && !toggle.contains(e.target)) closeMenu();
+    for (const toggleEl of toggles) {
+        toggleEl.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            toggleMenu(toggleEl);
+        });
+
+        // Keyboard support (Enter/Space to open)
+        toggleEl.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter' || e.key === ' '){
+                e.preventDefault();
+                toggleMenu(toggleEl);
+            }
+        });
+    }
+
+    // Click outside (on the backdrop) closes
+    backdrop.addEventListener('click', (e)=>{
+        if (e.target === backdrop) closeMenu();
     });
 
     // Close on Escape
     document.addEventListener('keydown', (e)=>{
-        if(e.key === 'Escape' && !menu.hidden) closeMenu();
-    });
-
-    // Keyboard support (Enter/Space to open)
-    toggle.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' || e.key === ' '){
-            e.preventDefault();
-            if(menu.hidden) openMenu(); else closeMenu();
-        }
+        if(e.key === 'Escape' && !backdrop.hidden) closeMenu();
     });
 })();
 
 // Header buttons: Notes (placeholder handler for now)
 (function(){
-    const notesBtn = document.getElementById('header-notes-btn');
+    const notesButtons = [
+        document.getElementById('header-notes-btn'),
+        document.getElementById('menu-notes-btn')
+    ].filter(Boolean);
 
-    if(notesBtn){
-        notesBtn.addEventListener('click', () => {
-            console.log('[Header] Notes button clicked - navigating to NotesHQ');
+    for (const btn of notesButtons) {
+        btn.addEventListener('click', () => {
+            console.log('[Header] Notes clicked - navigating to NotesHQ');
             window.location.href = 'NotesHQ.html';
         });
     }
 })();
 
 // Header: Display username
+
 (function(){
-    const usernameSpan = document.getElementById('header-username');
-    if (!usernameSpan) return; // Element doesn't exist on this page
+    const headerUsername = document.getElementById('header-username');
+    const menuUsername = document.getElementById('menu-username');
+    if (!headerUsername && !menuUsername) return;
 
     const update = (user) => {
-        if (user && user.username) {
-            usernameSpan.textContent = `👤 ${user.username}`;
-        } else {
-            usernameSpan.textContent = '👤 Guest';
-        }
+        const text = (user && user.username) ? `👤 ${user.username}` : '👤 Guest';
+        if (headerUsername) headerUsername.textContent = text;
+        if (menuUsername) menuUsername.textContent = text;
     };
 
     if (typeof AuthClient !== 'undefined' && AuthClient && AuthClient.ready) {
@@ -950,14 +1077,15 @@ if (leaveBtn) {
 
 // Header search functionality with fuzzy matching and debounce
 (function(){
-    const searchInput = document.getElementById('header-search-input');
-    const clearBtn = document.getElementById('search-clear-btn');
-    const suggestions = document.getElementById('search-suggestions');
+    const desktopSearchInput = document.getElementById('header-search-input');
+    const desktopClearBtn = document.getElementById('search-clear-btn');
+    const desktopSuggestions = document.getElementById('search-suggestions');
 
-    if(!searchInput) return;
+    const mobileSearchInput = document.getElementById('mobile-search-input');
+    const mobileClearBtn = document.getElementById('mobile-search-clear');
+    const mobileSuggestions = document.getElementById('mobile-search-suggestions');
 
-    let searchTimeout;
-    let selectedResultIndex = -1;
+    if(!desktopSearchInput && !mobileSearchInput) return;
 
     // ===== SEARCH HELPERS =====
     
@@ -1064,36 +1192,58 @@ if (leaveBtn) {
         }
     }
 
-    // Main search function
-    function performSearch(query) {
-        if (!query || query.trim().length === 0) {
-            suggestions.hidden = true;
-            suggestions.innerHTML = '';
-            selectedResultIndex = -1;
-            return;
+    function wireSearchUI(opts) {
+        const input = opts && opts.input;
+        const clearBtn = opts && opts.clearBtn;
+        const suggestions = opts && opts.suggestions;
+        const closeAfterSelect = !!(opts && opts.closeAfterSelect);
+
+        if (!input || !suggestions) return;
+
+        let searchTimeout;
+        let selectedResultIndex = -1;
+
+        function closeSuggestions() {
+            try {
+                suggestions.hidden = true;
+                selectedResultIndex = -1;
+            } catch (_) {}
         }
 
-        // Collect all results
-        const allResults = [
-            ...getCalendarEvents(),
-            ...getTodos(),
-            ...getNotes()
-        ];
+        function openSuggestions() {
+            try {
+                if (input.value.trim().length > 0 && suggestions.innerHTML.trim().length > 0) {
+                    suggestions.hidden = false;
+                }
+            } catch (_) {}
+        }
 
-        // Score and filter results
-        const scored = allResults
-            .map(item => ({
-                ...item,
-                score: calculateRelevance(query, item.title, item.content, item.date)
-            }))
-            .filter(item => item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5);  // Top 5 results
+        function performSearch(query) {
+            if (!query || query.trim().length === 0) {
+                suggestions.hidden = true;
+                suggestions.innerHTML = '';
+                selectedResultIndex = -1;
+                return;
+            }
 
-        // Display results
-        displayResults(scored, query);
-        selectedResultIndex = -1;
-    }
+            const allResults = [
+                ...getCalendarEvents(),
+                ...getTodos(),
+                ...getNotes()
+            ];
+
+            const scored = allResults
+                .map(item => ({
+                    ...item,
+                    score: calculateRelevance(query, item.title, item.content, item.date)
+                }))
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5);
+
+            displayResults(scored, query);
+            selectedResultIndex = -1;
+        }
 
     // Convert score to star rating with better visual distinction
     function scoreToStars(score) {
@@ -1107,47 +1257,54 @@ if (leaveBtn) {
     }
 
     // Display search results
-    function displayResults(results, query) {
-        if (results.length === 0) {
-            suggestions.innerHTML = '<div class="search-suggestion-item" style="text-align:center;color:#999;cursor:default;pointer-events:none;">No results found</div>';
+        function displayResults(results, query) {
+            if (results.length === 0) {
+                suggestions.innerHTML = '<div class="search-suggestion-item" style="text-align:center;color:#999;cursor:default;pointer-events:none;">No results found</div>';
+                suggestions.hidden = false;
+                return;
+            }
+
+            suggestions.innerHTML = results.map((item, idx) => {
+                const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                const timeStr = item.timeStr ? ` ${item.timeStr}` : '';
+                const subtitle = dateStr ? `${dateStr}${timeStr}` : (item.completed ? '(Completed)' : '');
+
+                return `
+                    <div class="search-suggestion-item" data-result-index="${idx}" data-id="${item.id}" data-type="${item.type}">
+                        <div class="suggestion-content">
+                            <div class="suggestion-title">${item.icon} ${escapeHtml(item.title)}</div>
+                            ${subtitle ? `<div class="suggestion-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+                        </div>
+                        <div class="suggestion-stars">${scoreToStars(item.score)}</div>
+                    </div>
+                `;
+            }).join('');
+
             suggestions.hidden = false;
-            return;
+
+            // Add click handlers (scoped to this suggestions container)
+            suggestions.querySelectorAll('.search-suggestion-item').forEach((el, idx) => {
+                el.addEventListener('click', () => selectResult(idx, results));
+            });
         }
 
-        suggestions.innerHTML = results.map((item, idx) => {
-            const dateStr = item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-            const timeStr = item.timeStr ? ` ${item.timeStr}` : '';
-            const subtitle = dateStr ? `${dateStr}${timeStr}` : (item.completed ? '(Completed)' : '');
-            
-            return `
-                <div class="search-suggestion-item" data-result-index="${idx}" data-id="${item.id}" data-type="${item.type}">
-                    <div class="suggestion-content">
-                        <div class="suggestion-title">${item.icon} ${escapeHtml(item.title)}</div>
-                        ${subtitle ? `<div class="suggestion-subtitle">${escapeHtml(subtitle)}</div>` : ''}
-                    </div>
-                    <div class="suggestion-stars">${scoreToStars(item.score)}</div>
-                </div>
-            `;
-        }).join('');
-
-        suggestions.hidden = false;
-
-        // Add click handlers
-        document.querySelectorAll('.search-suggestion-item').forEach((el, idx) => {
-            el.addEventListener('click', () => selectResult(idx, results));
-        });
-    }
-
     // Jump to result
-    function selectResult(idx, results) {
-        const result = results[idx];
-        if (!result) return;
+        function selectResult(idx, results) {
+            const result = results[idx];
+            if (!result) return;
 
-        suggestions.hidden = true;
-        searchInput.value = '';
+            suggestions.hidden = true;
+            input.value = '';
 
-        jumpToResult(result);
-    }
+            if (closeAfterSelect) {
+                try {
+                    const backdrop = document.getElementById('mobile-search-backdrop');
+                    if (backdrop) backdrop.style.display = 'none';
+                } catch (_) {}
+            }
+
+            jumpToResult(result);
+        }
 
     // Navigate to result (scroll/jump)
     function jumpToResult(result) {
@@ -1189,87 +1346,101 @@ if (leaveBtn) {
     }
 
     // Debounced search
-    function debounceSearch(query) {
-        clearTimeout(searchTimeout);
-        if (query.trim().length === 0) {
-            suggestions.hidden = true;
-            return;
+        function debounceSearch(query) {
+            clearTimeout(searchTimeout);
+            if (query.trim().length === 0) {
+                suggestions.hidden = true;
+                return;
+            }
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300);
         }
-        searchTimeout = setTimeout(() => {
-            performSearch(query);
-        }, 300);  // 300ms debounce
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                input.focus();
+                closeSuggestions();
+            });
+        }
+
+        // Search with debounce on input
+        input.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            debounceSearch(query);
+        });
+
+        // Keyboard navigation (arrow keys, enter, escape)
+        input.addEventListener('keydown', (e) => {
+            const items = suggestions.querySelectorAll('.search-suggestion-item');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedResultIndex = Math.min(selectedResultIndex + 1, items.length - 1);
+                updateHighlight(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedResultIndex = Math.max(selectedResultIndex - 1, -1);
+                updateHighlight(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedResultIndex >= 0 && selectedResultIndex < items.length) {
+                    items[selectedResultIndex].click();
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeSuggestions();
+            }
+        });
+
+        function updateHighlight(items) {
+            items.forEach((item, idx) => {
+                if (idx === selectedResultIndex) {
+                    item.classList.add('highlighted');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('highlighted');
+                }
+            });
+        }
+
+        // Close suggestions on blur
+        input.addEventListener('blur', () => {
+            setTimeout(() => {
+                closeSuggestions();
+            }, 200);
+        });
+
+        // Focus shows existing suggestions if not empty
+        input.addEventListener('focus', () => {
+            openSuggestions();
+        });
     }
 
-    // Clear search
-    clearBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        searchInput.focus();
-        suggestions.hidden = true;
-        selectedResultIndex = -1;
-    });
-
-    // Ctrl+F focus search
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-            e.preventDefault();
-            searchInput.focus();
-        }
-    });
-
-    // Search with debounce on input
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        debounceSearch(query);
-    });
-
-    // Keyboard navigation (arrow keys, enter, escape)
-    searchInput.addEventListener('keydown', (e) => {
-        const items = suggestions.querySelectorAll('.search-suggestion-item');
-        
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            selectedResultIndex = Math.min(selectedResultIndex + 1, items.length - 1);
-            updateHighlight(items);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            selectedResultIndex = Math.max(selectedResultIndex - 1, -1);
-            updateHighlight(items);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (selectedResultIndex >= 0 && selectedResultIndex < items.length) {
-                items[selectedResultIndex].click();
-            }
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            suggestions.hidden = true;
-            selectedResultIndex = -1;
-        }
-    });
-
-    function updateHighlight(items) {
-        items.forEach((item, idx) => {
-            if (idx === selectedResultIndex) {
-                item.classList.add('highlighted');
-                item.scrollIntoView({ block: 'nearest' });
-            } else {
-                item.classList.remove('highlighted');
+    // Ctrl+F focuses desktop search when available
+    if (desktopSearchInput) {
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                desktopSearchInput.focus();
             }
         });
     }
 
-    // Close suggestions on blur
-    searchInput.addEventListener('blur', () => {
-        setTimeout(() => {
-            suggestions.hidden = true;
-            selectedResultIndex = -1;
-        }, 200);
+    // Wire desktop + mobile search UIs
+    wireSearchUI({
+        input: desktopSearchInput,
+        clearBtn: desktopClearBtn,
+        suggestions: desktopSuggestions,
+        closeAfterSelect: false
     });
 
-    // Focus shows existing suggestions if not empty
-    searchInput.addEventListener('focus', () => {
-        if (searchInput.value.trim().length > 0 && !suggestions.hidden) {
-            suggestions.hidden = false;
-        }
+    wireSearchUI({
+        input: mobileSearchInput,
+        clearBtn: mobileClearBtn,
+        suggestions: mobileSuggestions,
+        closeAfterSelect: true
     });
 })();
 

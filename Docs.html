@@ -66,6 +66,7 @@
                 var bg = (typeof theme.backgroundImage === 'string') ? theme.backgroundImage : '';
                 var fontFamily = (typeof theme.fontFamily === 'string') ? theme.fontFamily.trim() : '';
                 var boldText = (typeof theme.boldText === 'string') ? theme.boldText.trim() : '';
+                var bgVideo = (typeof theme.backgroundVideo === 'string') ? theme.backgroundVideo.trim() : '';
 
                 if (!accent || accent === 'null' || accent === 'undefined') accent = '';
                 if (!accentRgb || accentRgb === 'null' || accentRgb === 'undefined') accentRgb = '';
@@ -73,6 +74,24 @@
 
                 if (!fontFamily || fontFamily === 'null' || fontFamily === 'undefined') fontFamily = '';
                 if (!boldText || boldText === 'null' || boldText === 'undefined') boldText = '';
+                if (!bgVideo || bgVideo === 'null' || bgVideo === 'undefined') bgVideo = '';
+
+                if (!bgVideo) {
+                    try {
+                        var lastUid2 = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('tmr_last_user_id') : null;
+                        if (lastUid2) {
+                            bgVideo = localStorage.getItem('tmr_user_' + lastUid2 + '_theme_bg_video') || '';
+                        }
+                        if (!bgVideo) bgVideo = localStorage.getItem('tmr_anon_theme_bg_video') || '';
+                        if (!bgVideo) bgVideo = localStorage.getItem('theme_bg_video') || '';
+                    } catch (_) {}
+                }
+                if (bgVideo) {
+                    try {
+                        root.classList.add('tmr-has-bg-video');
+                        root.classList.add('tmr-bg-video-loading');
+                    } catch (_) {}
+                }
 
                 if (fontFamily) {
                     root.style.setProperty('--font-family', fontFamily);
@@ -759,9 +778,62 @@
 
         function getAuthenticatedUserId() {
             try {
-                const uid = localStorage.getItem('tmr_last_user_id');
+                const uid =
+                    (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('tmr_last_user_id')) ||
+                    localStorage.getItem('tmr_last_user_id');
                 return uid ? String(uid) : null;
             } catch { return null; }
+        }
+
+        function getDraftStorageKey(noteId) {
+            const uid = getAuthenticatedUserId();
+            const safeId = String(noteId || '');
+            return uid ? `tmr_user_${uid}_note_draft_${safeId}` : `tmr_anon_note_draft_${safeId}`;
+        }
+
+        function saveLocalDraft() {
+            try {
+                if (!currentNoteId) return;
+                const key = getDraftStorageKey(currentNoteId);
+                const payload = {
+                    noteId: String(currentNoteId),
+                    title: noteTitle.value || 'Untitled',
+                    content: editorText.innerHTML,
+                    updatedAt: Date.now()
+                };
+                localStorage.setItem(key, JSON.stringify(payload));
+            } catch (_) {
+                // ignore quota / private mode errors
+            }
+        }
+
+        function clearLocalDraft() {
+            try {
+                if (!currentNoteId) return;
+                localStorage.removeItem(getDraftStorageKey(currentNoteId));
+            } catch (_) {}
+        }
+
+        function tryRestoreLocalDraft(serverNote) {
+            try {
+                if (!currentNoteId) return false;
+                const raw = localStorage.getItem(getDraftStorageKey(currentNoteId));
+                if (!raw) return false;
+                const draft = JSON.parse(raw);
+                if (!draft || typeof draft !== 'object') return false;
+
+                const draftUpdatedAt = typeof draft.updatedAt === 'number' ? draft.updatedAt : 0;
+                const serverUpdatedAt = serverNote && typeof serverNote.updatedAt === 'number' ? serverNote.updatedAt : 0;
+
+                // If draft is newer than what we got from the server, restore it.
+                if (draftUpdatedAt && draftUpdatedAt > (serverUpdatedAt || 0)) {
+                    noteTitle.value = draft.title || noteTitle.value;
+                    editorText.innerHTML = (typeof draft.content === 'string') ? draft.content : editorText.innerHTML;
+                    updateSaveStatus('unsaved');
+                    return true;
+                }
+            } catch (_) {}
+            return false;
         }
 
         function migrateDeviceNotesToUserNamespace() {
@@ -829,6 +901,25 @@
             setupEventListeners();
             resetFormattingButtons();
         });
+
+        function saveNoteKeepalive() {
+            try {
+                if (!currentNoteId) return;
+                // Save draft first so we never lose work even if the request fails.
+                saveLocalDraft();
+
+                fetch(`/notes/${currentNoteId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    keepalive: true,
+                    body: JSON.stringify({
+                        title: noteTitle.value || 'Untitled',
+                        content: editorText.innerHTML
+                    })
+                }).catch(() => {});
+            } catch (_) {}
+        }
 
         async function loadTheme() {
             let accentColor = null;
@@ -1035,6 +1126,23 @@
             // Content changes
             noteTitle.addEventListener('input', scheduleAutoSave);
             editorText.addEventListener('input', scheduleAutoSave);
+            // Extra events to reliably catch contenteditable changes across browsers/IME/tooling.
+            editorText.addEventListener('keyup', scheduleAutoSave);
+            editorText.addEventListener('paste', scheduleAutoSave);
+            editorText.addEventListener('cut', scheduleAutoSave);
+            editorText.addEventListener('drop', scheduleAutoSave);
+            editorText.addEventListener('blur', () => {
+                // Best effort immediate save when leaving the editor
+                saveNote();
+            });
+
+            // Flush a final save when navigating away.
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') saveNoteKeepalive();
+            });
+            window.addEventListener('beforeunload', () => {
+                saveNoteKeepalive();
+            });
 
             // Modal close on backdrop
             meibotModal.addEventListener('click', (e) => {
@@ -1046,7 +1154,7 @@
         }
 
         function loadNote() {
-            fetch(`/notes/${currentNoteId}`)
+            fetch(`/notes/${currentNoteId}`, { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.note) {
@@ -1058,19 +1166,27 @@
                         allElements.forEach(el => {
                             el.style.backgroundColor = 'transparent';
                         });
-                        
-                        updateSaveStatus('saved');
+
+                        // If we have a newer local draft (e.g., server save failed earlier), restore it.
+                        const restored = tryRestoreLocalDraft(data.note);
+
+                        // Only mark as saved if we didn't restore a newer draft.
+                        if (!restored) updateSaveStatus('saved');
                     }
                 })
                 .catch(err => {
                     console.error('[Docs] Load note error:', err);
-                    updateSaveStatus('error');
+                    // If server load fails, try to restore any local draft so the user doesn't lose work.
+                    if (!tryRestoreLocalDraft(null)) {
+                        updateSaveStatus('error');
+                    }
                 });
         }
 
         function scheduleAutoSave() {
             clearTimeout(autoSaveTimeout);
             updateSaveStatus('unsaved');
+            saveLocalDraft();
             autoSaveTimeout = setTimeout(saveNote, 2000);
         }
 
@@ -1085,6 +1201,7 @@
             fetch(`/notes/${currentNoteId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     title: noteTitle.value || 'Untitled',
                     content: editorText.innerHTML
@@ -1093,6 +1210,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
+                        clearLocalDraft();
                         updateSaveStatus('saved');
                     } else {
                         updateSaveStatus('error');

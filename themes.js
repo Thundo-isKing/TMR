@@ -29,7 +29,7 @@
 
     function init() {
         // Get all elements
-        const headerThemesBtn = document.getElementById('header-themes-btn');
+        const headerThemesBtn = document.getElementById('header-themes-btn') || document.getElementById('menu-themes-btn');
         const themeModal = document.getElementById('themes-modal-backdrop');
         
         console.log('[Themes] Initializing...');

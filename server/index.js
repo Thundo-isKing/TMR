@@ -129,6 +129,8 @@ const app = express();
 // Needed for correct client IP handling behind proxies (ngrok/vercel/reverse proxies)
 // and to satisfy express-rate-limit validation when X-Forwarded-For is present.
 app.set('trust proxy', 1);
+// Avoid client/proxy cache oddities while iterating UI via ngrok.
+app.disable('etag');
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
@@ -221,7 +223,32 @@ app.get(['/', '/index.html'], (req, res) => {
 });
 
 // IMPORTANT: disable automatic index.html serving so our custom '/' handler can run.
-app.use(express.static(staticRoot, { index: false }));
+// Also: avoid stale HTML during ngrok/mobile testing (force re-fetch of .html).
+app.use(express.static(staticRoot, {
+  index: false,
+  setHeaders: (res, filePath) => {
+    // Debug/provenance header to confirm which server build is serving assets.
+    // Safe to keep; helps diagnose caching issues during ngrok/mobile testing.
+    res.setHeader('X-TMR-Build', '20260108a');
+
+    const lower = (typeof filePath === 'string') ? filePath.toLowerCase() : '';
+
+    // HTML should never be cached (prevents stale layout / missing newest markup).
+    if (lower.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return;
+    }
+
+    // CSS/JS should revalidate so changes show up quickly on mobile browsers.
+    if (lower.endsWith('.css') || lower.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 const createSessionForUser = async (userId) => {
   const token = nodeCrypto.randomBytes(32).toString('hex');
@@ -884,9 +911,20 @@ app.post('/admin/cleanup', async (req, res) => {
   });
 });
 
-// Groq Meibot endpoint
+// AI Assistants: prefer Claude if configured, otherwise fall back to Groq
 const GroqAssistant = require('./groq-assistant');
+const ClaudeAssistant = require('./claude-assistant');
 let groqAssistant = null;
+let claudeAssistant = null;
+
+try {
+  if (process.env.ANTHROPIC_API_KEY) {
+    claudeAssistant = new ClaudeAssistant(process.env.ANTHROPIC_API_KEY, process.env.CLAUDE_MODEL);
+    console.log('[Meibot] Claude assistant initialized');
+  }
+} catch (err) {
+  console.warn('[Meibot] Claude initialization failed:', err.message);
+}
 
 try {
   groqAssistant = new GroqAssistant(process.env.GROQ_API_KEY);
@@ -901,8 +939,9 @@ app.post('/api/meibot-test', (req, res) => {
 });
 
 app.post('/api/meibot', async (req, res) => {
-  if (!groqAssistant) {
-    return res.status(503).json({ error: 'Groq assistant not initialized. Set GROQ_API_KEY in environment.' });
+  const assistant = claudeAssistant || groqAssistant;
+  if (!assistant) {
+    return res.status(503).json({ error: 'AI assistant not initialized. Set ANTHROPIC_API_KEY or GROQ_API_KEY in environment.' });
   }
 
   const { message, context, userId } = req.body;
@@ -921,8 +960,8 @@ app.post('/api/meibot', async (req, res) => {
 
   try {
     console.log('[Meibot] Processing message from user:', userId || 'anonymous', 'Length:', message.length);
-    
-    const response = await groqAssistant.chat(message.trim(), context || '', userId || 'anonymous');
+
+    const response = await assistant.chat(message.trim(), context || '', userId || 'anonymous', req.body && req.body.timezone);
     
     // Validate response structure
     if (!response || typeof response !== 'object') {
@@ -938,15 +977,15 @@ app.post('/api/meibot', async (req, res) => {
     // Differentiate between API errors and other errors
     if (err.status === 401 || err.status === 403) {
       return res.status(401).json({ 
-        error: 'Authentication failed with Groq API',
-        details: 'Check GROQ_API_KEY' 
+        error: 'Authentication failed with AI provider',
+        details: 'Check ANTHROPIC_API_KEY or GROQ_API_KEY' 
       });
     }
     
     if (err.status === 429) {
       return res.status(429).json({ 
         error: 'Rate limited - try again later',
-        details: 'Groq API rate limit exceeded' 
+        details: 'AI API rate limit exceeded' 
       });
     }
     
