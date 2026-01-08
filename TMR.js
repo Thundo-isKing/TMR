@@ -2520,6 +2520,22 @@ if (leaveBtn) {
             const notifyOnboardBackdrop = document.getElementById('notify-onboard-backdrop');
             const notifyOnboardEnableBtn = document.getElementById('notify-onboard-enable');
             const notifyOnboardDismissBtn = document.getElementById('notify-onboard-dismiss');
+            const notifyOpenOnboardBtn = document.getElementById('notify-open-onboard-btn');
+
+            function closeTmrMenuIfOpen() {
+                const backdrop = document.getElementById('tmr-menu-backdrop');
+                const menu = document.getElementById('tmr-header-menu');
+                if (!backdrop || backdrop.hidden) return;
+                try {
+                    if (menu) menu.hidden = true;
+                    backdrop.classList.remove('active');
+                    backdrop.hidden = true;
+                    const headerToggle = document.getElementById('tmr-header-btn');
+                    const mobileToggle = document.getElementById('mobile-tmr-btn');
+                    if (headerToggle) headerToggle.setAttribute('aria-expanded', 'false');
+                    if (mobileToggle) mobileToggle.setAttribute('aria-expanded', 'false');
+                } catch (_) {}
+            }
 
             function openNotifyOnboard() {
                 if (!notifyOnboardBackdrop) return;
@@ -2549,6 +2565,41 @@ if (leaveBtn) {
                         try { localStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
                         try { sessionStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
                         closeNotifyOnboard();
+                    });
+                }
+
+                if (notifyOpenOnboardBtn) {
+                    notifyOpenOnboardBtn.addEventListener('click', async () => {
+                        closeTmrMenuIfOpen();
+                        try { localStorage.removeItem(NOTIFY_ONBOARD_DISMISSED_KEY); } catch (_) {}
+                        try { sessionStorage.removeItem(NOTIFY_ONBOARD_DISMISSED_KEY); } catch (_) {}
+
+                        if (!('Notification' in window)) return;
+
+                        // If already granted, just make sure we're subscribed.
+                        if (Notification.permission === 'granted') {
+                            try {
+                                localStorage.setItem(NOTIFY_KEY, 'true');
+                                if (notifyToggle) notifyToggle.checked = true;
+                            } catch (_) {}
+
+                            try {
+                                localStorage.setItem('tmr_push_enabled', '1');
+                                if (pushEnable) pushEnable.checked = true;
+                            } catch (_) {}
+
+                            try {
+                                await registerServiceWorkerIfNeeded();
+                                await subscribeForPush(true);
+                                try { rescheduleAll(); } catch (_) {}
+                            } catch (err) {
+                                console.warn('[TMR] Enable notifications action failed', err);
+                            }
+                            return;
+                        }
+
+                        // Otherwise, show the onboarding prompt so the user can tap Enable.
+                        openNotifyOnboard();
                     });
                 }
 
