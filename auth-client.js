@@ -790,6 +790,7 @@ const AuthClient = (() => {
     const header = document.querySelector('.page-header');
     const headerLoginBtn = document.getElementById('header-login-btn');
     const headerLogoutBtn = document.getElementById('header-logout-btn');
+    const menuLogoutBtn = document.getElementById('menu-logout-btn');
 
     if (!authModal) {
       console.error('[Auth] Cannot show login UI: #auth-modal-backdrop not found');
@@ -807,6 +808,7 @@ const AuthClient = (() => {
     if (header) header.style.setProperty('display', 'none', 'important');
     if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
+    if (menuLogoutBtn) menuLogoutBtn.style.display = 'none';
 
     // Defensive: if the modal was moved into a hidden container or detached,
     // it can end up with a 0x0 rect even though its own display is "flex".
@@ -906,6 +908,7 @@ const AuthClient = (() => {
     const header = document.querySelector('.page-header');
     const headerLoginBtn = document.getElementById('header-login-btn');
     const headerLogoutBtn = document.getElementById('header-logout-btn');
+    const menuLogoutBtn = document.getElementById('menu-logout-btn');
 
     if (authModal) {
       authModal.style.setProperty('display', 'none', 'important');
@@ -917,6 +920,7 @@ const AuthClient = (() => {
     applyHeaderVisibilityForViewport(header);
     if (headerLoginBtn) headerLoginBtn.style.display = 'none';  // Hide login button when logged in
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'inline-block';
+    if (menuLogoutBtn) menuLogoutBtn.style.display = 'inline-block';
 
     console.log('[Auth] App UI shown');
   };
@@ -928,6 +932,7 @@ const AuthClient = (() => {
     const header = document.querySelector('.page-header');
     const headerLoginBtn = document.getElementById('header-login-btn');
     const headerLogoutBtn = document.getElementById('header-logout-btn');
+    const menuLogoutBtn = document.getElementById('menu-logout-btn');
 
     if (authModal) {
       authModal.style.setProperty('display', 'none', 'important');
@@ -939,6 +944,7 @@ const AuthClient = (() => {
     applyHeaderVisibilityForViewport(header);
     if (headerLoginBtn) headerLoginBtn.style.display = 'inline-block';
     if (headerLogoutBtn) headerLogoutBtn.style.display = 'none';
+    if (menuLogoutBtn) menuLogoutBtn.style.display = 'none';
 
     console.log('[Auth] Guest UI shown');
   };
