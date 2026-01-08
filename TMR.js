@@ -2596,8 +2596,12 @@ if (leaveBtn) {
                 });
             }
 
-            // Auto-initialize push on page load: register SW, request permission, subscribe silently
-            window.addEventListener('load', async ()=>{
+            // Auto-initialize push once per page view.
+            // Important: initTodoModal() can run after window.load (it waits for AuthClient.ready),
+            // so we must run immediately if the page already finished loading.
+            async function autoInitPushOnce(){
+                if (window.__tmrPushAutoInitRan) return;
+                window.__tmrPushAutoInitRan = true;
                 try{
                     // Check for pending actions from Docs.html or other pages
                     const pendingActions = JSON.parse(localStorage.getItem('meibot_pending_actions') || '[]');
@@ -2681,7 +2685,14 @@ if (leaveBtn) {
                         try { rescheduleAll(); } catch (e) {}
                     }
                 }catch(e){ console.warn('[TMR] Auto-subscribe failed', e); }
-            });
+
+            }
+
+            if (document.readyState === 'complete') {
+                autoInitPushOnce();
+            } else {
+                window.addEventListener('load', autoInitPushOnce, { once: true });
+            }
             
         // initial render (keeps sync with other pages)
         renderTodos();
