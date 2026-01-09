@@ -518,6 +518,7 @@
       }
     }
   }
+
   function getInitialAccent() {
     const root = document.documentElement;
     const inline = (root && root.style ? root.style.getPropertyValue('--accent-color') : '') || '';
