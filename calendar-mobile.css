@@ -139,9 +139,14 @@
     width: 100%;
     height: 100%;
     padding: 4px;
-    background: transparent;
-    color: #333;
-    border: none;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.26), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.18), transparent 55%),
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    color: #222;
+    border: 1px solid rgba(255,255,255,0.22);
     border-radius: 6px;
     cursor: pointer;
     display: flex;
@@ -155,17 +160,26 @@
 
 .mobile-calendar-day.other-month {
     background: transparent;
-    color: #ccc;
+    border-color: transparent;
+    color: #999;
 }
 
 .mobile-calendar-day:hover {
-    background: var(--accent-color, #0089f1);
-    color: white;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.32), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.22), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.12), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 30%, transparent);
+    border-color: rgba(255,255,255,0.26);
 }
 
 .mobile-calendar-day:active {
-    background: var(--accent-color, #0089f1);
-    color: white;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.36), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.26), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 38%, transparent);
+    border-color: rgba(255,255,255,0.30);
     transform: scale(1.05);
 }
 
@@ -178,12 +192,22 @@
 
 /* Current day styling */
 .mobile-calendar-day.today {
-    border: 2px solid var(--accent-color, #0089f1);
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.44), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 58%, transparent);
+    backdrop-filter: blur(16px) saturate(190%);
+    -webkit-backdrop-filter: blur(16px) saturate(190%);
+    border: 1px solid rgba(255,255,255,0.32);
+    color: white;
 }
 
 .mobile-calendar-day.today .mobile-day-number {
-    color: var(--accent-color, #0089f1);
-}.mobile-event-indicators {
+    color: white;
+}
+
+.mobile-event-indicators {
     display: flex;
     gap: 1px;
     flex-wrap: wrap;
