@@ -662,7 +662,9 @@
 
             /* TODO MODAL - full screen in landscape */
             .todo-modal {
-                background: white;
+                background: rgba(255, 255, 255, 0.45);
+                backdrop-filter: blur(16px) saturate(165%);
+                -webkit-backdrop-filter: blur(16px) saturate(165%);
                 border: none;
                 box-shadow: none;
                 height: auto;
@@ -680,11 +682,35 @@
                 margin: 0;
                 padding: 16px;
                 background: var(--accent-color, #0089f1);
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, transparent);
+                backdrop-filter: blur(20px) saturate(190%);
+                -webkit-backdrop-filter: blur(20px) saturate(190%);
+                position: relative;
+                overflow: hidden;
+                box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.22);
                 color: white;
                 display: flex;
                 align-items: center;
                 flex-shrink: 0;
                 border-radius: 12px 12px 0 0;
+            }
+
+            .todo-modal .todo-banner::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background:
+                    radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                    radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 55%),
+                    radial-gradient(140% 200% at 50% 120%, rgba(255,255,255,0.20), transparent 60%),
+                    linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%);
+                opacity: 0.98;
+                pointer-events: none;
+            }
+
+            .todo-modal .todo-banner > * {
+                position: relative;
+                z-index: 1;
             }
 
             .todo-modal .todo-banner h3 {
@@ -700,7 +726,7 @@
                 display: flex;
                 gap: 8px;
                 flex-wrap: wrap;
-                background: white;
+                background: rgba(255, 255, 255, 0.15);
                 flex-shrink: 0;
                 border-bottom: 1px solid #eee;
             }
@@ -1117,7 +1143,10 @@
 
             /* TODO MODAL - full screen in portrait */
             .todo-modal {
-                background: white;
+                background: rgba(255, 255, 255, 0.45);
+                backdrop-filter: blur(16px) saturate(165%);
+                -webkit-backdrop-filter: blur(16px) saturate(165%);
+                border: none;
                 box-shadow: none;
                 height: 100%;
                 max-height: none;
@@ -1134,11 +1163,35 @@
                 margin: 0;
                 padding: 16px;
                 background: var(--accent-color, #0089f1);
+                background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, transparent);
+                backdrop-filter: blur(20px) saturate(190%);
+                -webkit-backdrop-filter: blur(20px) saturate(190%);
+                position: relative;
+                overflow: hidden;
+                box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.22);
                 color: white;
                 display: flex;
                 align-items: center;
                 flex-shrink: 0;
                 border-radius: 12px 12px 0 0;
+            }
+
+            .todo-modal .todo-banner::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background:
+                    radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                    radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 55%),
+                    radial-gradient(140% 200% at 50% 120%, rgba(255,255,255,0.20), transparent 60%),
+                    linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%);
+                opacity: 0.98;
+                pointer-events: none;
+            }
+
+            .todo-modal .todo-banner > * {
+                position: relative;
+                z-index: 1;
             }
 
             .todo-modal .todo-banner h3 {
@@ -1154,7 +1207,7 @@
                 display: flex;
                 gap: 8px;
                 flex-wrap: wrap;
-                background: white;
+                background: rgba(255, 255, 255, 0.15);
                 flex-shrink: 0;
                 border-bottom: 1px solid #eee;
             }
@@ -1562,80 +1615,81 @@
                     <div class="mobile-calendar-grid" id="mobile-calendar-grid"></div>
                 </div>
 
-                <div id="mobile-modal-backdrop" class="mobile-modal-backdrop">
-                    <div class="mobile-modal-content">
-                        <div class="mobile-modal-header">
-                            <span id="mobile-modal-title">Events</span>
-                            <button id="mobile-modal-close" class="mobile-modal-close">&times;</button>
-                        </div>
-                        <div class="mobile-modal-body">
-                            <div id="mobile-event-list" class="mobile-event-list"></div>
-                            <form id="mobile-event-form" class="mobile-event-form">
-                                <div class="mobile-form-group">
-                                    <label>Title</label>
-                                    <input id="mobile-event-title" type="text" required />
-                                </div>
-                                <div class="mobile-form-group">
-                                    <label>Time</label>
-                                    <input id="mobile-event-time" type="time" />
-                                </div>
-                                <div class="mobile-form-group">
-                                    <label>Notes</label>
-                                    <textarea id="mobile-event-notes" rows="3"></textarea>
-                                </div>
-                                <div class="mobile-form-group">
-                                    <label>Color</label>
-                                    <div class="mobile-color-picker">
-                                        <button type="button" class="mobile-color-btn" data-color="#ff6b6b" title="Red" style="background: #ff6b6b;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#ff922b" title="Orange" style="background: #ff922b;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#ffd43b" title="Yellow" style="background: #ffd43b;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#51cf66" title="Green" style="background: #51cf66;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#0089f1" title="Blue" style="background: #0089f1;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#9775fa" title="Violet" style="background: #9775fa;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#1f1f1f" title="Black" style="background: #1f1f1f;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#999999" title="Grey" style="background: #999999;"></button>
-                                        <button type="button" class="mobile-color-btn" data-color="#8B4513" title="Brown" style="background: #8B4513;"></button>
-                                    </div>
-                                </div>
-                                <div class="mobile-form-actions">
-                                    <button type="submit" class="mobile-save-btn">Save</button>
-                                    <button type="button" id="mobile-delete-btn" class="mobile-delete-btn danger" style="display:none;">Delete</button>
-                                    <button type="button" class="mobile-cancel-btn">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+            </div>
 
-                <!-- Mobile Search Modal (uses existing search styles) -->
-                <div id="mobile-search-backdrop" class="mobile-modal-backdrop" style="display:none;">
-                    <div class="mobile-modal-content" style="max-width: 420px; width: 100%;">
-                        <div class="mobile-modal-header">
-                            <span>Search</span>
-                            <button id="mobile-search-close" class="mobile-modal-close" aria-label="Close">&times;</button>
-                        </div>
-                        <div class="mobile-modal-body">
-                            <div class="search-container">
-                                <input id="mobile-search-input" type="text" placeholder="Search events, notes..." class="search-input" aria-label="Search">
-                                <button id="mobile-search-clear" class="search-clear-btn" aria-label="Clear search" title="Clear search">✕</button>
-                                <div id="mobile-search-suggestions" class="search-suggestions" hidden></div>
+            <div id="mobile-modal-backdrop" class="mobile-modal-backdrop">
+                <div class="mobile-modal-content">
+                    <div class="mobile-modal-header">
+                        <span id="mobile-modal-title">Events</span>
+                        <button id="mobile-modal-close" class="mobile-modal-close">&times;</button>
+                    </div>
+                    <div class="mobile-modal-body">
+                        <div id="mobile-event-list" class="mobile-event-list"></div>
+                        <form id="mobile-event-form" class="mobile-event-form">
+                            <div class="mobile-form-group">
+                                <label>Title</label>
+                                <input id="mobile-event-title" type="text" required />
                             </div>
+                            <div class="mobile-form-group">
+                                <label>Time</label>
+                                <input id="mobile-event-time" type="time" />
+                            </div>
+                            <div class="mobile-form-group">
+                                <label>Notes</label>
+                                <textarea id="mobile-event-notes" rows="3"></textarea>
+                            </div>
+                            <div class="mobile-form-group">
+                                <label>Color</label>
+                                <div class="mobile-color-picker">
+                                    <button type="button" class="mobile-color-btn" data-color="#ff6b6b" title="Red" style="background: #ff6b6b;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#ff922b" title="Orange" style="background: #ff922b;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#ffd43b" title="Yellow" style="background: #ffd43b;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#51cf66" title="Green" style="background: #51cf66;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#0089f1" title="Blue" style="background: #0089f1;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#9775fa" title="Violet" style="background: #9775fa;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#1f1f1f" title="Black" style="background: #1f1f1f;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#999999" title="Grey" style="background: #999999;"></button>
+                                    <button type="button" class="mobile-color-btn" data-color="#8B4513" title="Brown" style="background: #8B4513;"></button>
+                                </div>
+                            </div>
+                            <div class="mobile-form-actions">
+                                <button type="submit" class="mobile-save-btn">Save</button>
+                                <button type="button" id="mobile-delete-btn" class="mobile-delete-btn danger" style="display:none;">Delete</button>
+                                <button type="button" class="mobile-cancel-btn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Search Modal (uses existing search styles) -->
+            <div id="mobile-search-backdrop" class="mobile-modal-backdrop" style="display:none;">
+                <div class="mobile-modal-content" style="max-width: 420px; width: 100%;">
+                    <div class="mobile-modal-header">
+                        <span>Search</span>
+                        <button id="mobile-search-close" class="mobile-modal-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="mobile-modal-body">
+                        <div class="search-container">
+                            <input id="mobile-search-input" type="text" placeholder="Search events, notes..." class="search-input" aria-label="Search">
+                            <button id="mobile-search-clear" class="search-clear-btn" aria-label="Clear search" title="Clear search">✕</button>
+                            <div id="mobile-search-suggestions" class="search-suggestions" hidden></div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Google Calendar Modal (Mobile) -->
-                <div id="gcal-mobile-modal-backdrop" class="gcal-mobile-modal-backdrop" style="display:none;">
-                    <div class="gcal-mobile-modal">
-                        <div class="gcal-mobile-modal-header">
-                            <span>Google Calendar</span>
-                            <button id="gcal-mobile-modal-close" class="gcal-mobile-modal-close">&times;</button>
-                        </div>
-                        <div class="gcal-mobile-modal-body">
-                            <button id="mobile-gcal-auth-btn" class="mobile-gcal-modal-btn" title="Connect to Google Calendar" style="display:none;">🔗 Connect to Google Calendar</button>
-                            <button id="mobile-gcal-sync-btn" class="mobile-gcal-modal-btn" title="Sync with Google Calendar" style="display:none;">🔄 Sync Calendar</button>
-                            <button id="mobile-gcal-logout-btn" class="mobile-gcal-modal-btn danger" title="Disconnect Google Calendar" style="display:none;">⛔ Disconnect</button>
-                        </div>
+            <!-- Google Calendar Modal (Mobile) -->
+            <div id="gcal-mobile-modal-backdrop" class="gcal-mobile-modal-backdrop" style="display:none;">
+                <div class="gcal-mobile-modal">
+                    <div class="gcal-mobile-modal-header">
+                        <span>Google Calendar</span>
+                        <button id="gcal-mobile-modal-close" class="gcal-mobile-modal-close">&times;</button>
+                    </div>
+                    <div class="gcal-mobile-modal-body">
+                        <button id="mobile-gcal-auth-btn" class="mobile-gcal-modal-btn" title="Connect to Google Calendar" style="display:none;">🔗 Connect to Google Calendar</button>
+                        <button id="mobile-gcal-sync-btn" class="mobile-gcal-modal-btn" title="Sync with Google Calendar" style="display:none;">🔄 Sync Calendar</button>
+                        <button id="mobile-gcal-logout-btn" class="mobile-gcal-modal-btn danger" title="Disconnect Google Calendar" style="display:none;">⛔ Disconnect</button>
                     </div>
                 </div>
             </div>

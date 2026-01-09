@@ -693,7 +693,7 @@ body.triangle-background .tmr-menu {
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 3000;
+    z-index: 4000;
     backdrop-filter: blur(4px);
 }
 .modal-backdrop.active, .todo-modal-backdrop.active { display: flex; }
@@ -1118,7 +1118,7 @@ body.triangle-background .tmr-menu {
     align-items: center;
     justify-content: center;
     background: rgba(0,0,0,0.35);
-    z-index: 3000;
+    z-index: 4000;
     backdrop-filter: blur(4px);
 }
 .modal.hidden { display: none; }
@@ -1192,44 +1192,47 @@ body.triangle-background .tmr-menu {
 }
 
 .modal .modal-events {
-    max-height: 180px;
+    max-height: 220px;
     overflow: auto;
-    margin-bottom: 8px;
+    margin: 12px 0 12px;
+    padding: 0 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
 .modal .modal-event-item {
-    padding: 12px;
-    border-radius: 8px;
+    padding: 8px;
+    background: #f5f5f5;
+    border-radius: 6px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
-    border: 1px solid #e0e8f0;
-    background: linear-gradient(135deg, #f8f9fa, #f0f3f7);
-    transition: all 0.2s ease;
+    font-size: 12px;
 }
 
-.modal .modal-event-item:hover {
-    background: linear-gradient(135deg, #f0f3f7, #e8ecf2);
-    border-color: var(--accent-color, #0089f1);
-    box-shadow: 0 2px 8px rgba(0,137,241,0.1);
+.modal .modal-event-item > div:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .modal .modal-event-item button {
-    background: transparent;
-    border: none;
-    color: #e74c3c;
-    cursor: pointer;
     padding: 4px 8px;
+    background: var(--accent-color, #0089f1);
+    color: white;
+    border: none;
     border-radius: 4px;
-    transition: background 0.2s ease;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 8px;
 }
 
 .modal .modal-event-item button:hover {
-    background: rgba(231, 76, 60, 0.1);
+    background: color-mix(in srgb, var(--accent-color, #0089f1) 70%, black);
 }
 
 .modal-close {
@@ -1809,7 +1812,7 @@ body.currentschedules-page #clock {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 3000;
+    z-index: 4000;
 }
 
 .todo-modal-backdrop.active {
@@ -1822,6 +1825,7 @@ body.currentschedules-page #clock {
     max-width: 500px;
     max-height: 80vh;
     background: white;
+    border: none;
     border-radius: 12px;
     display: flex;
     flex-direction: column;
