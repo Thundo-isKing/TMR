@@ -41,7 +41,13 @@
 @media (max-width: 600px) {
     .mobile-calendar-header {
         padding: 8px;
-        background: rgba(255, 255, 255, 0.18);
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.34), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.22), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.12), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 48%, transparent);
+        backdrop-filter: blur(18px) saturate(180%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
         border-bottom: 1px solid rgba(255,255,255,0.22);
         display: flex;
         justify-content: space-between;
@@ -59,6 +65,7 @@
     font-size: 16px;
     flex: 1;
     text-align: center;
+    color: #fff;
 }
 
 .mobile-calendar-header button {
@@ -302,10 +309,14 @@
         right: calc(env(safe-area-inset-right, 0px) + 6px);
         bottom: 8px;
         height: 50px;
-        background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.42));
-        backdrop-filter: blur(18px) saturate(160%);
-        -webkit-backdrop-filter: blur(18px) saturate(160%);
-        border: 1px solid rgba(255,255,255,0.35);
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 55%, transparent);
+        backdrop-filter: blur(20px) saturate(190%);
+        -webkit-backdrop-filter: blur(20px) saturate(190%);
+        border: 1px solid rgba(255,255,255,0.32);
         border-radius: 9999px;
         display: flex;
         align-items: center;
@@ -324,7 +335,7 @@
 
     .mobile-header-btn {
         background: transparent;
-        color: var(--accent-color, #0089f1);
+        color: #fff;
         border: none;
         border-radius: 0;
         padding: 8px 8px;
@@ -345,7 +356,7 @@
         font-family: var(--font-family, 'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif);
         font-weight: 700;
         font-size: 16px;
-        color: var(--accent-color, #0089f1);
+        color: #fff;
         letter-spacing: 0.5px;
     }
 
