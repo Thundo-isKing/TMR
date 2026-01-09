@@ -10,3 +10,12 @@ annotated_files/
 # Large intro videos (kept out of git)
 assets/intro/*.mp4
 assets/intro/*.MP4
+
+# But keep the two tutorial clips that intro.html expects
+!assets/intro/iphone-tutorial.mp4
+!assets/intro/android-tutorial.mp4
+
+# Raw/source captures should never be committed
+assets/intro/raw/
+assets/lv_0_*.mp4
+assets/intro/encoded/Android Notif Tut.mp4
