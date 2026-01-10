@@ -874,6 +874,71 @@ body.triangle-background .tmr-menu {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
+/* Mobile create/edit todo modal: white frosted + colored-glass header/buttons */
+@media (max-width: 900px) {
+    #todo-create-edit-modal-backdrop.todo-modal-backdrop {
+        background: rgba(0,0,0,0.36);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        padding: 12px;
+    }
+
+    #todo-create-edit-modal-backdrop .todo-modal {
+        width: min(420px, calc(100% - 24px)) !important;
+        max-width: min(420px, calc(100% - 24px)) !important;
+        max-height: 85vh !important;
+        border-radius: 12px !important;
+        overflow-y: auto !important;
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.70), transparent 60%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.52), transparent 62%),
+            linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.42));
+        backdrop-filter: blur(22px) saturate(135%);
+        -webkit-backdrop-filter: blur(22px) saturate(135%);
+        border: 1px solid rgba(255,255,255,0.34);
+        box-shadow: 0 16px 44px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.42);
+    }
+
+    /* Header (h3 is used as the header bar in this modal) */
+    #todo-create-edit-modal-backdrop .todo-modal > h3 {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 62%, transparent);
+        backdrop-filter: blur(18px) saturate(190%);
+        -webkit-backdrop-filter: blur(18px) saturate(190%);
+        border-bottom: 1px solid rgba(255,255,255,0.18);
+        color: #fff;
+    }
+
+    /* Inputs: more opaque (less clear) than the modal background */
+    #todo-create-edit-modal-backdrop input,
+    #todo-create-edit-modal-backdrop select,
+    #todo-create-edit-modal-backdrop textarea {
+        background: rgba(255,255,255,0.78) !important;
+        backdrop-filter: blur(12px) saturate(125%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(125%) !important;
+        border: 1px solid rgba(255,255,255,0.55) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.55) !important;
+        color: rgba(15,15,15,0.95) !important;
+    }
+
+    /* Buttons: colored glass (including Bullet/Checkbox + Save/Cancel) */
+    #todo-create-edit-modal-backdrop .small-tmr-btn {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 68%, transparent) !important;
+        backdrop-filter: blur(14px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(190%) !important;
+        border: 1px solid rgba(255,255,255,0.26) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20) !important;
+        color: #fff !important;
+    }
+}
+
 /* To-do badge (small, non-intrusive). Do NOT change .todo-button positioning — it
    is intentionally absolute elsewhere in the stylesheet. Only the badge styles
    are applied so layout is preserved. */
@@ -1357,6 +1422,131 @@ body.triangle-background .tmr-menu {
 
 .modal .danger:hover {
     background: #c0392b;
+}
+
+/* Desktop calendar day/event edit modal: tinted glass experiment (desktop only) */
+@media (min-width: 1025px) {
+    #event-modal.modal {
+        background: rgba(0,0,0,0.38);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+
+    /* Modal panel: slightly clearer (more see-through) than the input fields */
+    #event-modal .modal-content {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.70), transparent 60%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.52), transparent 62%),
+            linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.42));
+        backdrop-filter: blur(26px) saturate(135%);
+        -webkit-backdrop-filter: blur(26px) saturate(135%);
+        border: 1px solid rgba(255,255,255,0.34);
+        box-shadow: 0 18px 56px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.42);
+    }
+
+    /* Header: colored glass */
+    #event-modal .modal-content > h3 {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 62%, transparent);
+        backdrop-filter: blur(18px) saturate(190%);
+        -webkit-backdrop-filter: blur(18px) saturate(190%);
+        border-bottom: 1px solid rgba(255,255,255,0.18);
+        color: #fff;
+    }
+
+    /* Close button: colored glass chip */
+    #event-modal .modal-close {
+        color: #fff;
+        border-radius: 10px;
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.34), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.12), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 48%, transparent);
+        backdrop-filter: blur(14px) saturate(180%);
+        -webkit-backdrop-filter: blur(14px) saturate(180%);
+        border: 1px solid rgba(255,255,255,0.22);
+    }
+
+    /* Body typography on glass */
+    #event-modal .modal-content {
+        color: rgba(20,20,20,0.92);
+    }
+
+    #event-modal .modal-content label {
+        color: rgba(20,20,20,0.85);
+    }
+
+    /* Inputs: slightly less clear (more opaque) than the modal background */
+    #event-modal .modal-content input[type="text"],
+    #event-modal .modal-content input[type="date"],
+    #event-modal .modal-content input[type="time"],
+    #event-modal .modal-content textarea {
+        background: rgba(255,255,255,0.78);
+        backdrop-filter: blur(14px) saturate(125%);
+        -webkit-backdrop-filter: blur(14px) saturate(125%);
+        border: 1px solid rgba(255,255,255,0.55);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+        color: rgba(15,15,15,0.95);
+    }
+
+    #event-modal .modal-content input:focus,
+    #event-modal .modal-content textarea:focus {
+        border-color: rgba(255,255,255,0.46);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, #0089f1) 24%, transparent);
+    }
+
+    /* Existing events list item: subtle glass */
+    #event-modal .modal-event-item {
+        background: rgba(255,255,255,0.55);
+        border: 1px solid rgba(255,255,255,0.32);
+        backdrop-filter: blur(16px) saturate(135%);
+        -webkit-backdrop-filter: blur(16px) saturate(135%);
+    }
+
+    /* Buttons inside modal: colored glass */
+    #event-modal .modal-event-item button,
+    #event-modal .modal-actions button.tmr-btn {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 68%, transparent);
+        backdrop-filter: blur(16px) saturate(190%);
+        -webkit-backdrop-filter: blur(16px) saturate(190%);
+        border: 1px solid rgba(255,255,255,0.26);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+        color: #fff;
+    }
+
+    #event-modal .modal-event-item button:hover,
+    #event-modal .modal-actions button.tmr-btn:hover {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.48), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%),
+            color-mix(in srgb, var(--accent-color, #0089f1) 74%, transparent);
+        color: #fff;
+    }
+
+    /* Danger button: keep red but still glassy */
+    #event-modal .modal-actions .danger,
+    #event-modal .modal-actions .danger:hover {
+        background:
+            radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+            radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+            linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+            color-mix(in srgb, #e74c3c 70%, transparent);
+        border: 1px solid rgba(255,255,255,0.26);
+        color: #fff;
+    }
+
+    /* Divider line on glass */
+    #event-modal .modal-actions {
+        border-top: 1px solid rgba(255,255,255,0.22);
+    }
 }
 
 
