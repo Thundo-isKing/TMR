@@ -279,8 +279,16 @@
 
         .add-category-btn {
             padding: 10px 16px;
-            background: var(--accent-color, #667eea);
-            color: white;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 68%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+            color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 14px;
@@ -329,8 +337,16 @@
             width: 100%;
             padding: 12px 16px;
             margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.6);
-            border: 2px solid transparent;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.40), transparent 60%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.28), transparent 62%),
+                linear-gradient(180deg, rgba(255,255,255,0.30), rgba(255,255,255,0.22));
+            backdrop-filter: blur(16px) saturate(135%);
+            -webkit-backdrop-filter: blur(16px) saturate(135%);
+            border: 1px solid rgba(255,255,255,0.22);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.34);
+            outline: 2px solid transparent;
+            outline-offset: -1px;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 500;
@@ -344,14 +360,28 @@
         }
 
         .category-btn:hover {
-            background: rgba(255, 255, 255, 0.8);
-            border-color: var(--accent-color, #667eea);
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.48), transparent 60%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 62%),
+                linear-gradient(180deg, rgba(255,255,255,0.36), rgba(255,255,255,0.26));
+            border-color: rgba(255,255,255,0.26);
+            outline-color: color-mix(in srgb, var(--accent-color, #667eea) 42%, transparent);
+            box-shadow: 0 14px 32px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.40);
         }
 
         .category-btn.active {
-            background: var(--accent-color, #667eea);
-            color: white;
-            border-color: var(--accent-color, #667eea);
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 68%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+            color: #fff;
+            border-color: rgba(255,255,255,0.26);
+            outline: none;
         }
 
         .category-edit-btn {
@@ -403,21 +433,26 @@
         }
 
         .note-card {
-            background: white;
-            border: 1px solid #e0e0e0;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.55), transparent 60%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.38), transparent 62%),
+                linear-gradient(180deg, rgba(255,255,255,0.40), rgba(255,255,255,0.28));
+            backdrop-filter: blur(18px) saturate(135%);
+            -webkit-backdrop-filter: blur(18px) saturate(135%);
+            border: 1px solid rgba(255,255,255,0.26);
             border-radius: 12px;
             padding: 16px;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 14px 34px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.38);
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
 
         .note-card:hover {
-            border-color: var(--accent-color, #667eea);
-            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+            border-color: color-mix(in srgb, var(--accent-color, #667eea) 45%, rgba(255,255,255,0.26));
+            box-shadow: 0 18px 44px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.42);
             transform: translateY(-2px);
         }
 
@@ -476,8 +511,16 @@
         .create-note-btn {
             align-self: flex-start;
             padding: 12px 20px;
-            background: var(--accent-color, #667eea);
-            color: white;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 68%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+            color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 14px;
@@ -503,14 +546,21 @@
 
         .back-btn {
             padding: 10px 16px;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 62%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            color: var(--accent-color, #667eea);
+            color: #fff;
             white-space: nowrap;
             flex-shrink: 0;
         }
@@ -527,10 +577,12 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.45);
             z-index: 2000;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
         }
 
         .modal.active {
@@ -538,30 +590,51 @@
         }
 
         .modal-content {
-            background: white;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.70), transparent 60%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.52), transparent 62%),
+                linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.42));
+            backdrop-filter: blur(22px) saturate(135%);
+            -webkit-backdrop-filter: blur(22px) saturate(135%);
+            border: 1px solid rgba(255,255,255,0.34);
             border-radius: 12px;
             padding: 32px;
             max-width: 400px;
             width: 90%;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 16px 44px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.42);
         }
 
         .modal-content h2 {
-            margin: 0 0 16px 0;
-            font-size: 24px;
+            margin: -32px -32px 16px -32px;
+            padding: 18px 20px;
+            font-size: 20px;
             font-weight: 700;
-            color: #333;
+            color: #fff;
+            border-radius: 12px 12px 0 0;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 62%, transparent);
+            backdrop-filter: blur(18px) saturate(190%);
+            -webkit-backdrop-filter: blur(18px) saturate(190%);
+            border-bottom: 1px solid rgba(255,255,255,0.18);
         }
 
         .modal-content input {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e0e0e0;
+            background: rgba(255,255,255,0.78);
+            backdrop-filter: blur(12px) saturate(125%);
+            -webkit-backdrop-filter: blur(12px) saturate(125%);
+            border: 1px solid rgba(255,255,255,0.55);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
             border-radius: 8px;
             font-size: 14px;
             margin-bottom: 16px;
             box-sizing: border-box;
             transition: border-color 0.2s ease;
+            color: rgba(15,15,15,0.95);
         }
 
         .modal-content input:focus {
@@ -587,8 +660,16 @@
         }
 
         .modal-btn.cancel {
-            background: #f5f5f5;
-            color: #333;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 58%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+            color: #fff;
         }
 
         .modal-btn.cancel:hover {
@@ -596,8 +677,16 @@
         }
 
         .modal-btn.submit {
-            background: var(--accent-color, #667eea);
-            color: white;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, var(--accent-color, #667eea) 68%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+            color: #fff;
         }
 
         .modal-btn.submit:hover {
@@ -606,8 +695,16 @@
         }
 
         .modal-btn.delete {
-            background: #ff4757;
-            color: white;
+            background:
+                radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+                radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+                linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+                color-mix(in srgb, #ff4757 70%, transparent);
+            backdrop-filter: blur(14px) saturate(190%);
+            -webkit-backdrop-filter: blur(14px) saturate(190%);
+            border: 1px solid rgba(255,255,255,0.26);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(255,255,255,0.20);
+            color: #fff;
         }
 
         .modal-btn.delete:hover {
