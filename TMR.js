@@ -2604,8 +2604,9 @@ if (leaveBtn) {
                 }
 
                 if (notifyOnboardEnableBtn) {
-                    notifyOnboardEnableBtn.addEventListener('click', async () => {
-                        try { localStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
+                    notifyOnboardEnableBtn.addEventListener('click', () => {
+                        // Avoid re-opening the prompt in this tab if something fails.
+                        // Only persist dismissal across sessions once the user actually grants permission.
                         try { sessionStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
 
                         if (!('Notification' in window)) {
@@ -2613,32 +2614,53 @@ if (leaveBtn) {
                             return;
                         }
 
-                        try {
-                            const perm = await Notification.requestPermission();
-                            if (perm !== 'granted') {
-                                closeNotifyOnboard();
-                                return;
-                            }
-
-                            // If permission granted, default both local + push notifications to enabled.
-                            try {
-                                localStorage.setItem(NOTIFY_KEY, 'true');
-                                if (notifyToggle) notifyToggle.checked = true;
-                            } catch (_) {}
-
-                            try {
-                                localStorage.setItem('tmr_push_enabled', '1');
-                                if (pushEnable) pushEnable.checked = true;
-                            } catch (_) {}
-
-                            await registerServiceWorkerIfNeeded();
-                            await subscribeForPush(true);
-                            try { rescheduleAll(); } catch (_) {}
-                        } catch (err) {
-                            console.warn('[TMR] Notification enable failed', err);
-                        } finally {
+                        if (!window.isSecureContext) {
+                            alert('Notifications require HTTPS (a secure connection).');
                             closeNotifyOnboard();
+                            return;
                         }
+
+                        const before = Notification.permission;
+                        console.log('[TMR] Requesting notification permission. Before:', before);
+
+                        // Keep the permission request directly in the click gesture.
+                        Promise.resolve(Notification.requestPermission())
+                            .then(async (perm) => {
+                                console.log('[TMR] Notification permission result:', perm, 'Current:', Notification.permission);
+                                if (perm !== 'granted') {
+                                    // If the browser auto-blocks or the user denies, we can't re-prompt.
+                                    alert(
+                                        'Notifications are not enabled in the browser.\n\n' +
+                                        'If you see "Blocked" in site permissions, you must manually switch it to "Allow" for this site.'
+                                    );
+                                    return;
+                                }
+
+                                // Permission granted: stop showing onboarding on future visits.
+                                try { localStorage.setItem(NOTIFY_ONBOARD_DISMISSED_KEY, '1'); } catch (_) {}
+
+                                // If permission granted, default both local + push notifications to enabled.
+                                try {
+                                    localStorage.setItem(NOTIFY_KEY, 'true');
+                                    if (notifyToggle) notifyToggle.checked = true;
+                                } catch (_) {}
+
+                                try {
+                                    localStorage.setItem('tmr_push_enabled', '1');
+                                    if (pushEnable) pushEnable.checked = true;
+                                } catch (_) {}
+
+                                await registerServiceWorkerIfNeeded();
+                                await subscribeForPush(true);
+                                try { rescheduleAll(); } catch (_) {}
+                            })
+                            .catch((err) => {
+                                console.warn('[TMR] Notification enable failed', err);
+                                alert('Failed to enable notifications. Check console for details.');
+                            })
+                            .finally(() => {
+                                closeNotifyOnboard();
+                            });
                     });
                 }
 
