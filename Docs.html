@@ -250,6 +250,20 @@
             align-items: center;
         }
 
+        /* The markup uses .save-status (not .save-status-badge). Style it as the badge. */
+        .save-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--accent-color, #667eea);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .save-status-badge {
             display: inline-flex;
             align-items: center;
@@ -647,6 +661,27 @@
             .docs-container {
                 padding: 8px;
                 gap: 8px;
+                width: 100%;
+                margin: 0;
+            }
+
+            /* Prevent long titles from pushing the Back button off-screen on mobile.
+               Stack the title and controls into separate rows. */
+            .editor-header {
+                flex-wrap: wrap;
+                align-items: stretch;
+            }
+
+            .editor-title-input {
+                flex: 1 0 100%;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .editor-header-controls {
+                width: 100%;
+                justify-content: flex-end;
+                gap: 12px;
             }
 
             .editor-header {
@@ -674,8 +709,37 @@
             }
 
             .modal-content {
-                width: 95%;
-                max-height: 90vh;
+                width: calc(100vw - 24px);
+                max-width: none;
+                max-height: calc(100vh - 24px);
+            }
+
+            /* On mobile, the save indicator moves into the toolbar so the Back button stays visible. */
+            .editor-toolbar #save-status {
+                margin-left: auto;
+            }
+
+            .editor-toolbar .save-status {
+                order: 999;
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            /* DocsHQ loads TMR.css, which includes a mobile-only padding-top meant for the main TMR page.
+               Override it here so DocsHQ isn't pushed off-screen on phones. */
+            body {
+                padding-top: 12px !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding-top: 12px !important;
+            }
+
+            .docs-container {
+                width: 100%;
+                margin: 0;
             }
         }
     </style>
@@ -900,6 +964,29 @@
 
             setupEventListeners();
             resetFormattingButtons();
+
+            // Mobile UX: move the save indicator into the toolbar so Back isn't squished.
+            (function () {
+                const homeParent = saveStatus && saveStatus.parentElement;
+                const homeBefore = backBtn || null;
+                function placeSaveStatusForViewport() {
+                    if (!saveStatus) return;
+                    const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+                    const toolbar = document.querySelector('.editor-toolbar');
+                    if (isMobile) {
+                        if (toolbar && saveStatus.parentElement !== toolbar) {
+                            toolbar.appendChild(saveStatus);
+                        }
+                    } else {
+                        if (homeParent && saveStatus.parentElement !== homeParent) {
+                            homeParent.insertBefore(saveStatus, homeBefore);
+                        }
+                    }
+                }
+                placeSaveStatusForViewport();
+                window.addEventListener('resize', placeSaveStatusForViewport);
+                window.addEventListener('orientationchange', placeSaveStatusForViewport);
+            })();
         });
 
         function saveNoteKeepalive() {

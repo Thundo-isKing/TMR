@@ -746,6 +746,28 @@
                 height: calc(100vh - 40px);
             }
 
+            /* Mobile: put the search bar on its own row (full width),
+               with Back and +Add Category on a row below. */
+            .search-bar {
+                flex-wrap: wrap;
+                align-items: stretch;
+            }
+
+            .search-container {
+                order: 1;
+                flex: 1 0 100%;
+                width: 100%;
+            }
+
+            .back-btn {
+                order: 2;
+            }
+
+            .add-category-btn {
+                order: 3;
+                margin-left: auto;
+            }
+
             .notes-content {
                 flex-direction: column;
             }
@@ -769,6 +791,33 @@
                 flex: 0 0 auto;
                 width: auto;
                 margin-bottom: 0;
+            }
+
+            /* NotesHQ loads TMR.css, which includes a mobile-only padding-top meant for the main TMR page.
+               Override it here so NotesHQ isn't pushed off-screen on phones. */
+            body {
+                padding-top: 12px !important;
+            }
+
+            /* Make modals usable on mobile by allowing near full-screen sizing. */
+            .modal-content {
+                width: calc(100vw - 24px);
+                max-width: none;
+                max-height: calc(100vh - 24px);
+                overflow: auto;
+                padding: 20px;
+            }
+
+            .modal-content h2 {
+                margin: -20px -20px 12px -20px;
+                padding: 16px 16px;
+            }
+        }
+
+        /* Extra safety for very small phones */
+        @media (max-width: 600px) {
+            body {
+                padding-top: 12px !important;
             }
         }
     </style>
