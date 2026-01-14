@@ -555,6 +555,64 @@ app.get('/debug/diagnostics', async (req, res) => {
   }
 });
 
+app.post('/debug/user-lookup', async (req, res) => {
+  if (!debugEnabled || !debugToken) return res.sendStatus(404);
+  const token = req.get('x-tmr-debug-token');
+  if (token !== debugToken) return res.sendStatus(403);
+
+  try {
+    const username = req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    if (!username) return res.status(400).json({ ok: false, error: 'username_required' });
+
+    const user = await dbAsync(db.getUserByUsername, username);
+    if (!user) return res.json({ ok: true, exists: false });
+
+    res.json({
+      ok: true,
+      exists: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (err) {
+    logError('[Debug] User lookup error', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(500).json({ ok: false, error: 'user_lookup_failed' });
+  }
+});
+
+app.post('/debug/reset-password', async (req, res) => {
+  if (!debugEnabled || !debugToken) return res.sendStatus(404);
+  const token = req.get('x-tmr-debug-token');
+  if (token !== debugToken) return res.sendStatus(403);
+
+  try {
+    const username = req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const newPassword = req && req.body && typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
+    if (!username) return res.status(400).json({ ok: false, error: 'username_required' });
+    if (!newPassword || newPassword.length < 8) return res.status(400).json({ ok: false, error: 'password_too_short' });
+
+    const user = await dbAsync(db.getUserByUsername, username);
+    if (!user) return res.status(404).json({ ok: false, error: 'user_not_found' });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await dbAsync(db.updateUserPasswordHash, user.id, hash);
+    res.json({ ok: true, user: { id: user.id, username: user.username } });
+  } catch (err) {
+    logError('[Debug] Reset password error', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(500).json({ ok: false, error: 'reset_password_failed' });
+  }
+});
+
 app.post('/auth/logout', (req, res) => {
   const token = req.cookies ? req.cookies[SESSION_COOKIE] : null;
   if (token) {
