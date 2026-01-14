@@ -9,5 +9,10 @@ const usePostgres = backend === 'postgres' || (backend !== 'sqlite' && hasDataba
 // eslint-disable-next-line import/no-dynamic-require
 const impl = usePostgres ? require('./db-postgres') : require('./db-sqlite');
 
+// Non-sensitive metadata for debugging (do not include secrets).
+try {
+	impl.__tmrBackend = usePostgres ? 'postgres' : 'sqlite';
+} catch (_) {}
+
 module.exports = impl;
 

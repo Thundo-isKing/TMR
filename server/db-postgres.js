@@ -8,6 +8,22 @@ if (!connectionString) {
 const sslMode = String(process.env.TMR_PG_SSL || '').trim().toLowerCase();
 const useSsl = sslMode === 'true' || (sslMode !== 'false' && process.env.NODE_ENV === 'production');
 
+const getSanitizedConnectionInfo = () => {
+  try {
+    const u = new URL(connectionString);
+    const dbName = (u.pathname || '').replace(/^\//, '') || null;
+    return {
+      host: u.hostname || null,
+      port: u.port ? Number(u.port) : null,
+      database: dbName,
+      user: u.username || null,
+      ssl: useSsl
+    };
+  } catch (e) {
+    return { ssl: useSsl };
+  }
+};
+
 const pool = new Pool({
   connectionString,
   ssl: useSsl ? { rejectUnauthorized: false } : false,
@@ -183,7 +199,25 @@ function cbWrap(promise, cb, mapper) {
 }
 
 module.exports = {
+  __tmrConnectionInfo: getSanitizedConnectionInfo(),
+  __tmrUseSsl: useSsl,
   runTransaction,
+
+  diagnostics: function (cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const r = await query('SELECT current_database() AS database, current_user AS user');
+        return {
+          ok: true,
+          connection: getSanitizedConnectionInfo(),
+          currentDatabase: r.rows[0] && r.rows[0].database,
+          currentUser: r.rows[0] && r.rows[0].user
+        };
+      })(),
+      cb
+    );
+  },
 
   // Users
   createUser: function (username, passwordHash, cb) {

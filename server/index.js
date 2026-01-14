@@ -22,6 +22,42 @@ process.on('uncaughtException', (error) => {
   console.error('[FATAL] Uncaught Exception:', error);
 });
 
+const buildErrorInfo = (err) => {
+  if (!err) return { message: 'Unknown error' };
+  const info = {
+    message: err.message,
+    name: err.name,
+    code: err.code,
+    errno: err.errno,
+    syscall: err.syscall,
+    address: err.address,
+    port: err.port,
+    detail: err.detail,
+    hint: err.hint,
+    where: err.where,
+    schema: err.schema,
+    table: err.table,
+    column: err.column,
+    constraint: err.constraint,
+    routine: err.routine
+  };
+
+  // Avoid dumping huge objects in logs.
+  if (err.stack) info.stack = err.stack;
+  return info;
+};
+
+const logError = (label, err, extra) => {
+  try {
+    console.error(label, {
+      ...(extra || {}),
+      error: buildErrorInfo(err)
+    });
+  } catch (_) {
+    console.error(label, err && err.message ? err.message : err);
+  }
+};
+
 // Load environment variables from the project root (.env)
 // so local development works without manually exporting env vars.
 const envPath = path.join(__dirname, '..', '.env');
@@ -192,7 +228,7 @@ const attachUser = async (req, res, next) => {
     req.user = { id: user.id, username: user.username };
     req.sessionToken = token;
   } catch (err) {
-    console.error('[Auth] Failed to attach user:', err.message);
+    logError('[Auth] Failed to attach user', err);
   }
   return next();
 };
@@ -414,7 +450,12 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 
     res.json({ user: { id: userId, username: normalizedUsername } });
   } catch (err) {
-    console.error('[Auth] Register error:', err.message);
+    logError('[Auth] Register error', err, {
+      username: req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : undefined,
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
     res.status(500).json({ error: 'register_failed' });
   }
 });
@@ -465,8 +506,52 @@ app.post('/auth/login', authLimiter, async (req, res) => {
     setSessionCookie(res, token);
     res.json({ user: { id: user.id, username: user.username } });
   } catch (err) {
-    console.error('[Auth] Login error:', err.message);
+    logError('[Auth] Login error', err, {
+      username: req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : undefined,
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
     res.status(500).json({ error: 'login_failed' });
+  }
+});
+
+// Diagnostics endpoint (opt-in)
+// Enable by setting:
+// - TMR_DEBUG=true
+// - TMR_DEBUG_TOKEN=<random secret>
+// Then call with header: x-tmr-debug-token: <token>
+const debugEnabled = String(process.env.TMR_DEBUG || '').trim().toLowerCase() === 'true';
+const debugToken = process.env.TMR_DEBUG_TOKEN;
+
+app.get('/debug/diagnostics', async (req, res) => {
+  if (!debugEnabled || !debugToken) return res.sendStatus(404);
+  const token = req.get('x-tmr-debug-token');
+  if (token !== debugToken) return res.sendStatus(403);
+
+  try {
+    const dbDiag = db && typeof db.diagnostics === 'function'
+      ? await dbAsync(db.diagnostics)
+      : { ok: false, note: 'db.diagnostics not implemented' };
+
+    res.json({
+      ok: true,
+      now: Date.now(),
+      nodeEnv: process.env.NODE_ENV,
+      build: '20260108a',
+      db: {
+        backend: db && db.__tmrBackend,
+        info: db && db.__tmrConnectionInfo,
+        diagnostics: dbDiag
+      }
+    });
+  } catch (err) {
+    logError('[Debug] Diagnostics error', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(500).json({ ok: false, error: 'diagnostics_failed' });
   }
 });
 

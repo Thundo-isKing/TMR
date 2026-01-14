@@ -186,7 +186,19 @@ db.serialize(() => {
 });
 
 module.exports = {
+  __tmrConnectionInfo: { path: dbPath, backend: 'sqlite' },
   runTransaction,
+
+  diagnostics: function (cb) {
+    try {
+      db.get('SELECT 1 AS ok', [], (err, row) => {
+        if (err) return cb && cb(err);
+        cb && cb(null, { ok: true, path: dbPath, probe: row && row.ok });
+      });
+    } catch (e) {
+      cb && cb(e);
+    }
+  },
 
   // User accounts
   createUser: function (username, passwordHash, cb) {
