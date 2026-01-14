@@ -613,6 +613,50 @@ app.post('/debug/reset-password', async (req, res) => {
   }
 });
 
+app.post('/debug/verify-credentials', async (req, res) => {
+  if (!debugEnabled || !debugToken) return res.sendStatus(404);
+  const token = req.get('x-tmr-debug-token');
+  if (token !== debugToken) return res.sendStatus(403);
+
+  try {
+    const username = req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = req && req.body && typeof req.body.password === 'string' ? req.body.password : '';
+    if (!username) return res.status(400).json({ ok: false, error: 'username_required' });
+    if (!password) return res.status(400).json({ ok: false, error: 'password_required' });
+
+    const user = await dbAsync(db.getUserByUsername, username);
+    if (!user) return res.json({ ok: true, exists: false });
+
+    const storedHash = String(user.passwordHash || '');
+    const looksLikeBcrypt = /^\$2[aby]?\$/.test(storedHash);
+    const looksLikeSha256 = /^[0-9a-fA-F]{64}$/.test(storedHash);
+    const hashFormat = looksLikeBcrypt ? 'bcrypt' : (looksLikeSha256 ? 'sha256' : 'unknown');
+
+    let matches = false;
+    if (looksLikeBcrypt) {
+      matches = await bcrypt.compare(password, storedHash);
+    } else if (looksLikeSha256) {
+      const sha = nodeCrypto.createHash('sha256').update(String(password)).digest('hex');
+      matches = (sha.toLowerCase() === storedHash.toLowerCase());
+    }
+
+    res.json({
+      ok: true,
+      exists: true,
+      user: { id: user.id, username: user.username },
+      hashFormat,
+      matches
+    });
+  } catch (err) {
+    logError('[Debug] Verify credentials error', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(500).json({ ok: false, error: 'verify_credentials_failed' });
+  }
+});
+
 app.post('/auth/logout', (req, res) => {
   const token = req.cookies ? req.cookies[SESSION_COOKIE] : null;
   if (token) {
