@@ -1417,6 +1417,10 @@ app.delete('/events/:eventId', requireAuth, (req, res) => {
 app.post('/todos/create', requireAuth, (req, res) => {
   try {
     const { todo } = req.body;
+    if (todo && !todo.text && todo.title) {
+      // Back-compat for older clients that used `title`.
+      todo.text = todo.title;
+    }
     if (!todo || !todo.text) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -1453,6 +1457,13 @@ app.put('/todos/:todoId', requireAuth, (req, res) => {
   try {
     const { todoId } = req.params;
     const { todo } = req.body;
+
+    if (todo && !todo.text && todo.title) {
+      todo.text = todo.title;
+    }
+    if (!todo || !todo.text) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
 
     db.getTodoById(todoId, (err, existing) => {
       if (err) return res.status(500).json({ error: 'Failed to load todo' });

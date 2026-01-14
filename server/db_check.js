@@ -1,6 +1,10 @@
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const db = new sqlite3.Database('tmr_server.db');
+const dbFile = process.env.TMR_DB_PATH
+  ? path.resolve(process.env.TMR_DB_PATH)
+  : path.join(__dirname, 'tmr_server.db');
+const db = new sqlite3.Database(dbFile);
 
 function all(sql, params = []) {
   return new Promise((resolve, reject) => {

@@ -1,10 +1,19 @@
 const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
-const dbPath = path.join(__dirname, 'tmr_server.db');
 
-if(!fs.existsSync(dbPath)){
-  // ensure dir exists (should exist)
+// IMPORTANT (Render/containers): the default filesystem is ephemeral.
+// Set TMR_DB_PATH to a persistent disk mount (e.g. /var/data/tmr_server.db)
+// to keep users/notes/todos across deploys and restarts.
+const dbPath = process.env.TMR_DB_PATH
+  ? path.resolve(process.env.TMR_DB_PATH)
+  : path.join(__dirname, 'tmr_server.db');
+
+try {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+} catch (_) {}
+
+if (!fs.existsSync(dbPath)) {
   fs.writeFileSync(dbPath, '');
 }
 
@@ -156,6 +165,7 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId INTEGER NOT NULL,
     text TEXT NOT NULL,
+    notes TEXT DEFAULT '',
     completed INTEGER DEFAULT 0,
     reminderMinutes INTEGER DEFAULT 0,
     reminderAt INTEGER,
@@ -163,6 +173,16 @@ db.serialize(() => {
     updatedAt INTEGER NOT NULL,
     FOREIGN KEY (userId) REFERENCES users(id)
   )`);
+
+  // Lightweight migrations (SQLite): add missing columns.
+  // Render/hosted deployments often keep an existing DB file; this prevents crashes and preserves data.
+  db.all(`PRAGMA table_info(user_todos)`, [], (err, rows) => {
+    if (err || !Array.isArray(rows)) return;
+    const names = new Set(rows.map(r => r && r.name).filter(Boolean));
+    if (!names.has('notes')) {
+      db.run(`ALTER TABLE user_todos ADD COLUMN notes TEXT DEFAULT ''`);
+    }
+  });
 });
 
 module.exports = {
@@ -733,9 +753,9 @@ module.exports = {
   // User Todos
   createTodo: function(userId, todo, cb) {
     const now = Date.now();
-    db.run(`INSERT INTO user_todos (userId, text, completed, reminderMinutes, reminderAt, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-           [userId, todo.text, todo.completed ? 1 : 0, todo.reminderMinutes || 0, todo.reminderAt || null, now, now],
+    db.run(`INSERT INTO user_todos (userId, text, notes, completed, reminderMinutes, reminderAt, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           [userId, todo.text, todo.notes || '', todo.completed ? 1 : 0, todo.reminderMinutes || 0, todo.reminderAt || null, now, now],
            function(err) {
              if (err) return cb && cb(err);
              cb && cb(null, this.lastID);
@@ -743,7 +763,7 @@ module.exports = {
   },
 
   getTodosByUserId: function(userId, cb) {
-    db.all(`SELECT id, text, completed, reminderMinutes, reminderAt, createdAt, updatedAt FROM user_todos WHERE userId = ? ORDER BY createdAt DESC`,
+    db.all(`SELECT id, text, notes, completed, reminderMinutes, reminderAt, createdAt, updatedAt FROM user_todos WHERE userId = ? ORDER BY createdAt DESC`,
            [userId],
            (err, rows) => {
              if (err) return cb && cb(err);
@@ -752,7 +772,7 @@ module.exports = {
   },
 
   getTodoById: function(todoId, cb) {
-    db.get(`SELECT id, userId, text, completed, reminderMinutes, reminderAt, createdAt, updatedAt FROM user_todos WHERE id = ?`,
+    db.get(`SELECT id, userId, text, notes, completed, reminderMinutes, reminderAt, createdAt, updatedAt FROM user_todos WHERE id = ?`,
            [todoId],
            (err, row) => {
              if (err) return cb && cb(err);
@@ -762,8 +782,8 @@ module.exports = {
 
   updateTodo: function(todoId, todo, cb) {
     const now = Date.now();
-    db.run(`UPDATE user_todos SET text=?, completed=?, reminderMinutes=?, reminderAt=?, updatedAt=? WHERE id=?`,
-           [todo.text, todo.completed ? 1 : 0, todo.reminderMinutes || 0, todo.reminderAt || null, now, todoId],
+    db.run(`UPDATE user_todos SET text=?, notes=?, completed=?, reminderMinutes=?, reminderAt=?, updatedAt=? WHERE id=?`,
+           [todo.text, todo.notes || '', todo.completed ? 1 : 0, todo.reminderMinutes || 0, todo.reminderAt || null, now, todoId],
            function(err) {
              if (err) return cb && cb(err);
              cb && cb(null, this.changes);

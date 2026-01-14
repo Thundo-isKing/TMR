@@ -216,7 +216,7 @@ async function deleteEvent(eventId) {
 // Todos API
 async function fetchTodos() {
     try {
-        const res = await fetch('/todos');
+        const res = await fetch('/todos', { credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
             return data.todos || [];
@@ -232,6 +232,7 @@ async function createTodo(todo) {
         const res = await fetch('/todos/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ todo })
         });
         if (res.ok) {
@@ -249,6 +250,7 @@ async function updateTodo(todoId, todo) {
         const res = await fetch(`/todos/${todoId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ todo })
         });
         return res.ok;
@@ -260,7 +262,7 @@ async function updateTodo(todoId, todo) {
 
 async function deleteTodo(todoId) {
     try {
-        const res = await fetch(`/todos/${todoId}`, { method: 'DELETE' });
+        const res = await fetch(`/todos/${todoId}`, { method: 'DELETE', credentials: 'include' });
         return res.ok;
     } catch (err) {
         console.error('[TMR] Delete todo error:', err);
@@ -1582,6 +1584,70 @@ if (leaveBtn) {
     }
     function generateId(){ return 'td_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
+    function isNumericId(id){
+        if (typeof id === 'number') return Number.isFinite(id);
+        if (typeof id === 'string' && id.trim() !== '') {
+            const n = Number(id);
+            return Number.isFinite(n) && String(n) === id.trim();
+        }
+        return false;
+    }
+
+    async function syncTodosFromServerIfAuthed(){
+        // Only sync when signed in. AuthClient.ready has already resolved when this module runs.
+        try {
+            if (typeof AuthClient === 'undefined' || !AuthClient || typeof AuthClient.getCurrentUser !== 'function') return false;
+            const u = AuthClient.getCurrentUser();
+            if (!u || !u.id) return false;
+        } catch (_) {
+            return false;
+        }
+
+        // Best-effort: upload any legacy local-only todos (string ids) so they don't get lost.
+        try {
+            const local = loadTodos();
+            const legacy = (local || []).filter(t => t && !isNumericId(t.id) && (t.text || t.title));
+            for (const t of legacy) {
+                const payload = {
+                    text: String((t.text || t.title || '')).trim(),
+                    notes: String((t.notes || t.details || '') || ''),
+                    completed: !!t.completed,
+                    reminderMinutes: t.reminderMinutes || 0,
+                    reminderAt: t.reminderAt || null
+                };
+                if (!payload.text) continue;
+                const newId = await createTodo(payload);
+                if (newId != null) {
+                    const after = loadTodos().filter(x => x && x.id !== t.id);
+                    after.push({ ...t, id: newId, text: payload.text, notes: payload.notes, title: payload.text, details: payload.notes });
+                    saveTodos(after);
+                }
+            }
+        } catch (_) {}
+
+        try {
+            const serverTodos = await fetchTodos();
+            if (!Array.isArray(serverTodos)) return false;
+            const normalized = serverTodos.map(t => ({
+                id: t.id,
+                text: t.text || '',
+                notes: t.notes || '',
+                // Back-compat for older modules
+                title: t.text || '',
+                details: t.notes || '',
+                completed: !!t.completed,
+                reminderMinutes: t.reminderMinutes || 0,
+                reminderAt: t.reminderAt || null,
+                createdAt: t.createdAt,
+                updatedAt: t.updatedAt
+            }));
+            saveTodos(normalized);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
     // Expose Meibot todo creator
     // --- Notification scheduling helpers ---
     const scheduled = new Map(); // key -> timeout id
@@ -1946,12 +2012,23 @@ if (leaveBtn) {
                     cb.style.width = '18px';
                     cb.style.height = '18px';
                     cb.style.marginRight = '8px';
-                    cb.addEventListener('change', ()=>{ 
+                    cb.addEventListener('change', async ()=>{ 
                         const todos = loadTodos(); 
                         const idx = todos.findIndex(x=>x.id===t.id); 
                         if(idx>=0){ 
                             todos[idx].completed = cb.checked; 
                             saveTodos(todos); 
+                            if (isNumericId(t.id)) {
+                                try {
+                                    await updateTodo(t.id, {
+                                        text: todos[idx].text || todos[idx].title || '',
+                                        notes: todos[idx].notes || todos[idx].details || '',
+                                        completed: !!todos[idx].completed,
+                                        reminderMinutes: todos[idx].reminderMinutes || 0,
+                                        reminderAt: todos[idx].reminderAt || null
+                                    });
+                                } catch (_) {}
+                            }
                             renderTodos(); 
                         } 
                     });
@@ -1977,8 +2054,11 @@ if (leaveBtn) {
                     delBtn.className='small-tmr-btn'; 
                     delBtn.textContent='Delete'; 
                     delBtn.style.marginLeft = '8px';
-                    delBtn.addEventListener('click', ()=>{ 
+                    delBtn.addEventListener('click', async ()=>{ 
                         if(!confirm('Delete this todo?')) return; 
+                        if (isNumericId(t.id)) {
+                            try { await deleteTodo(t.id); } catch (_) {}
+                        }
                         const remaining = loadTodos().filter(x=>x.id!==t.id); 
                         saveTodos(remaining); 
                         renderTodos(); 
@@ -2024,6 +2104,19 @@ if (leaveBtn) {
                             todos[idx].completed = e.target.checked;
                             saveTodos(todos);
                             renderTodos();
+                            if (isNumericId(t.id)) {
+                                (async ()=>{
+                                    try {
+                                        await updateTodo(t.id, {
+                                            text: todos[idx].text || todos[idx].title || '',
+                                            notes: todos[idx].notes || todos[idx].details || '',
+                                            completed: !!todos[idx].completed,
+                                            reminderMinutes: todos[idx].reminderMinutes || 0,
+                                            reminderAt: todos[idx].reminderAt || null
+                                        });
+                                    } catch (_) {}
+                                })();
+                            }
                         }
                     });
                     
@@ -2048,9 +2141,14 @@ if (leaveBtn) {
                     deleteBtn.addEventListener('click', (e)=>{
                         e.stopPropagation();
                         if(!confirm('Delete this todo?')) return;
-                        const remaining = loadTodos().filter(x=>x.id!==t.id);
-                        saveTodos(remaining);
-                        renderTodos();
+                        (async ()=>{
+                            if (isNumericId(t.id)) {
+                                try { await deleteTodo(t.id); } catch (_) {}
+                            }
+                            const remaining = loadTodos().filter(x=>x.id!==t.id);
+                            saveTodos(remaining);
+                            renderTodos();
+                        })();
                     });
                     
                     li.appendChild(checkbox);
@@ -2073,10 +2171,21 @@ if (leaveBtn) {
 
         // When account changes/restores, re-render from the correct per-user storage.
         window.addEventListener('tmr:auth-changed', () => {
-            try { renderTodos(); } catch (e) {}
-            try { updateBadge(); } catch (e) {}
-            try { rescheduleAll(); } catch (e) {}
+            (async ()=>{
+                try { await syncTodosFromServerIfAuthed(); } catch (_) {}
+                try { renderTodos(); } catch (e) {}
+                try { updateBadge(); } catch (e) {}
+                try { rescheduleAll(); } catch (e) {}
+            })();
         });
+
+        // Initial best-effort sync so this device loads the account's todos.
+        (async ()=>{
+            try { await syncTodosFromServerIfAuthed(); } catch (_) {}
+            try { renderTodos(); } catch (_) {}
+            try { updateBadge(); } catch (_) {}
+            try { rescheduleAll(); } catch (_) {}
+        })();
 
 // Desktop "+ Create Todo" button
         if(desktopCreateBtn){
@@ -2116,7 +2225,7 @@ if (leaveBtn) {
         
         // Create/Edit Modal: Save button
         if(createEditSaveBtn){
-            createEditSaveBtn.addEventListener('click', ()=>{
+            createEditSaveBtn.addEventListener('click', async ()=>{
                 const title = createEditTitle.value.trim();
                 if(!title) {
                     alert('Title is required');
@@ -2140,7 +2249,24 @@ if (leaveBtn) {
                     const reminderType = createEditReminderType.value;
                     const reminderTimestamp = getReminderTimestamp(reminderType, createEditReminderMinutes.value, createEditReminderTime.value);
                     if(reminderTimestamp) item.reminderAt = reminderTimestamp;
-                    
+
+                    // If authenticated, create on server first and adopt numeric id for cross-device sync.
+                    try {
+                        if (typeof AuthClient !== 'undefined' && AuthClient && typeof AuthClient.getCurrentUser === 'function') {
+                            const u = AuthClient.getCurrentUser();
+                            if (u && u.id) {
+                                const newId = await createTodo({
+                                    text: item.text,
+                                    notes: item.notes || '',
+                                    completed: !!item.completed,
+                                    reminderMinutes: 0,
+                                    reminderAt: item.reminderAt || null
+                                });
+                                if (newId != null) item.id = newId;
+                            }
+                        }
+                    } catch (_) {}
+
                     todos.push(item);
                     
                     // Schedule reminder and post to server if needed
@@ -2172,6 +2298,19 @@ if (leaveBtn) {
                             todos[idx].reminderAt = reminderTimestamp;
                         } else {
                             delete todos[idx].reminderAt;
+                        }
+
+                        // Best-effort: keep server in sync.
+                        if (isNumericId(todoId)) {
+                            try {
+                                await updateTodo(todoId, {
+                                    text: todos[idx].text || '',
+                                    notes: todos[idx].notes || '',
+                                    completed: !!todos[idx].completed,
+                                    reminderMinutes: todos[idx].reminderMinutes || 0,
+                                    reminderAt: todos[idx].reminderAt || null
+                                });
+                            } catch (_) {}
                         }
                     }
                 }

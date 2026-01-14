@@ -23,3 +23,15 @@ Notes:
 - The scheduler checks for due reminders every minute and sends web-push to
   stored subscriptions.
 - The server writes VAPID keys to project root .env if they don't exist.
+
+Production / Render persistence (important):
+- This server uses SQLite by default at `server/tmr_server.db`.
+- On Render (and most container hosts), the filesystem inside the service is ephemeral.
+  That means users/notes/todos will appear to "reset" after deploys/restarts.
+- Fix: attach a Render Persistent Disk and set `TMR_DB_PATH` to that mount.
+
+Example (Render):
+- Add a disk mounted at `/var/data`
+- Set env var: `TMR_DB_PATH=/var/data/tmr_server.db`
+
+After that, your notes and other data should persist.
