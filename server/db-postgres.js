@@ -45,7 +45,69 @@ const runTransaction = (callback) => {
 };
 
 async function query(text, params) {
-  return pool.query(text, params);
+  const result = await pool.query(text, params);
+  if (result && Array.isArray(result.rows)) {
+    result.rows = result.rows.map((row) => normalizeRowKeys(row));
+  }
+  return result;
+}
+
+const LOWER_TO_CAMEL = Object.freeze({
+  // Users / sessions
+  passwordhash: 'passwordHash',
+  createdat: 'createdAt',
+  updatedat: 'updatedAt',
+  userid: 'userId',
+  expiresat: 'expiresAt',
+
+  // Reminders / subscriptions
+  subscriptionid: 'subscriptionId',
+  deliverat: 'deliverAt',
+  deliveredat: 'deliveredAt',
+
+  // Google calendar tokens
+  accesstoken: 'accessToken',
+  refreshtoken: 'refreshToken',
+
+  // Sync mapping/log
+  tmreventid: 'tmrEventId',
+  googleeventid: 'googleEventId',
+  googlecalendarid: 'googleCalendarId',
+  lastsyncedat: 'lastSyncedAt',
+  synctype: 'syncType',
+  eventcount: 'eventCount',
+  errormessage: 'errorMessage',
+
+  // Themes
+  accentcolor: 'accentColor',
+  backgroundimage: 'backgroundImage',
+  backgroundimagename: 'backgroundImageName',
+  animationspeed: 'animationSpeed',
+  animationintensity: 'animationIntensity',
+
+  // Notes
+  categoryname: 'categoryName',
+  categoryid: 'categoryId',
+  noteid: 'noteId',
+  todoid: 'todoId',
+  tasktitle: 'taskTitle',
+
+  // Events / todos
+  starttime: 'startTime',
+  endtime: 'endTime',
+  reminderminutes: 'reminderMinutes',
+  reminderat: 'reminderAt',
+  syncid: 'syncId'
+});
+
+function normalizeRowKeys(row) {
+  if (!row || typeof row !== 'object') return row;
+  for (const [lower, camel] of Object.entries(LOWER_TO_CAMEL)) {
+    if (row[camel] === undefined && row[lower] !== undefined) {
+      row[camel] = row[lower];
+    }
+  }
+  return row;
 }
 
 async function ensureSchema() {
