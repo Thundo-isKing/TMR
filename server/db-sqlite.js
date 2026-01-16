@@ -46,6 +46,13 @@ db.serialize(() => {
     createdAt INTEGER NOT NULL
   )`);
 
+  // Metrics / analytics (lightweight)
+  db.run(`CREATE TABLE IF NOT EXISTS metrics_daily_users (
+    day TEXT PRIMARY KEY,
+    totalUsers INTEGER NOT NULL,
+    createdAt INTEGER NOT NULL
+  )`);
+
   // User sessions
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -238,6 +245,52 @@ module.exports = {
       [passwordHash, userId],
       function (err) {
         cb && cb(err, this && this.changes);
+      }
+    );
+  },
+
+  getUserCount: function (cb) {
+    db.get('SELECT COUNT(1) AS count FROM users', [], (err, row) => {
+      if (err) return cb && cb(err);
+      const count = row && row.count != null ? Number(row.count) : 0;
+      cb && cb(null, count);
+    });
+  },
+
+  getUserCountSince: function (sinceMs, cb) {
+    const since = Number(sinceMs);
+    if (!Number.isFinite(since)) return cb && cb(new Error('sinceMs must be a number'));
+    db.get('SELECT COUNT(1) AS count FROM users WHERE createdAt >= ?', [since], (err, row) => {
+      if (err) return cb && cb(err);
+      const count = row && row.count != null ? Number(row.count) : 0;
+      cb && cb(null, count);
+    });
+  },
+
+  upsertDailyUserCount: function (day, totalUsers, cb) {
+    const dayKey = typeof day === 'string' ? day.trim() : '';
+    if (!dayKey) return cb && cb(new Error('day is required'));
+    const total = Number(totalUsers);
+    if (!Number.isFinite(total) || total < 0) return cb && cb(new Error('totalUsers must be a non-negative number'));
+    const now = Date.now();
+    db.run(
+      'INSERT OR REPLACE INTO metrics_daily_users (day, totalUsers, createdAt) VALUES (?, ?, ?)',
+      [dayKey, total, now],
+      function (err) {
+        cb && cb(err, this && this.changes);
+      }
+    );
+  },
+
+  getDailyUserCounts: function (limit, cb) {
+    const n = Number(limit);
+    const safeLimit = Number.isFinite(n) ? Math.max(1, Math.min(365, Math.floor(n))) : 30;
+    db.all(
+      'SELECT day, totalUsers, createdAt FROM metrics_daily_users ORDER BY day DESC LIMIT ?',
+      [safeLimit],
+      (err, rows) => {
+        if (err) return cb && cb(err);
+        cb && cb(null, Array.isArray(rows) ? rows : []);
       }
     );
   },

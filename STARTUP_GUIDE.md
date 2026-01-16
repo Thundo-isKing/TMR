@@ -80,7 +80,7 @@ TMR push server listening on port 3002
 
 **Troubleshooting:**
 
-**Issue: "Port 3001 already in use"**
+**Issue: "Port 3002 already in use"**
 - Kill the existing process:
   ```powershell
   ```powershell
@@ -113,6 +113,10 @@ cd c:\Users\akenj\TMR_Project\TMR_redo
 ngrok http 3002
 ```
 
+**Important:** ngrok is great for development/testing, but it is not a reliable production URL.
+- Push subscriptions are **origin-specific** (the exact site URL matters). If you subscribe while using an ngrok URL, that subscription will not apply to your Render domain.
+- For real users, use a stable HTTPS domain (Render/custom domain) and have users subscribe from that URL.
+
 **Expected output:**
 ```
 ngrok by @inconshrevat                          (Ctrl+C to quit)
@@ -136,8 +140,29 @@ Forwarding                      https://sensationistic-taunya-palingenesian.ngro
   1. Add ngrok to PATH (see ngrok install docs), or
   2. Run ngrok from its installation directory:
      ```powershell
-     & 'C:\Program Files\ngrok\ngrok.exe' http 3001
+    & 'C:\Program Files\ngrok\ngrok.exe' http 3002
      ```
+
+  ---
+
+  ## Production (Render) Notes (Push Reliability)
+
+  If push works on ngrok but is flaky/broken on Render, the most common causes are:
+
+  1) **VAPID keys changing between restarts/deploys**
+  - In production you must set these as persistent Render environment variables:
+    - `VAPID_PUBLIC_KEY`
+    - `VAPID_PRIVATE_KEY`
+    - (recommended) `VAPID_SUBJECT=mailto:your-email@example.com`
+  - If the VAPID keypair changes, existing browser subscriptions will start failing and users must re-subscribe.
+
+  2) **Render instance sleeping (Free plans)**
+  - Scheduled reminders are sent by the server scheduler. If the service sleeps, reminders may not fire on time.
+  - For reliable scheduled notifications, use an "always on" service plan or move scheduling to an external worker/cron.
+
+  3) **Subscriptions created on the wrong URL**
+  - Make sure you open the app at your Render URL (not ngrok/local) and click "Enable Push Notifications" from there.
+  - If needed: clear site data for the domain and re-subscribe.
 
 **Issue: ngrok shows "ERR_NGROK_6024" or interstitial page**
 - On first access to the public URL, ngrok may show a browser interstitial. Click "Visit Site" in your browser to accept, then the tunneling will work normally.
@@ -237,7 +262,39 @@ https://sensationistic-taunya-palingenesian.ngrok-free.dev/admin.html
 - **Send to Specific**: Click the **Send** button next to a subscription ID to push to that device only.
 - **Run Cleanup**: Probes all subscriptions and removes stale/invalid ones (HTTP 401/403/404 errors).
 
+**Note:** Admin + debug endpoints are disabled by default. To use them, set:
+- `TMR_DEBUG=true`
+- `TMR_DEBUG_TOKEN=<random secret>`
+Then in `admin.html`, paste the token into **Admin Debug Token**.
+
 ### PowerShell Commands (Alternative to Admin UI):
+
+**Check how many accounts exist (and recent signups):**
+
+This is a debug-protected endpoint (requires `TMR_DEBUG=true` + `TMR_DEBUG_TOKEN`).
+
+```powershell
+$token = '<your-debug-token>'
+
+Invoke-RestMethod -Uri 'http://127.0.0.1:3002/debug/user-stats?limit=30' -Method Get -UseBasicParsing `
+  -Headers @{ 'x-tmr-debug-token' = $token }
+```
+
+Response includes:
+- `users.total` (all-time accounts)
+- `users.last24h`, `users.last7d`, `users.last30d`
+- `daily[]` (daily snapshots, if enabled)
+
+**Enable daily tracking (optional, server-side):**
+
+The server writes a daily snapshot of total users to the DB. Defaults:
+- runs daily at `00:05` UTC
+- also takes one snapshot shortly after startup
+
+You can override with env vars:
+- `TMR_METRICS_SNAPSHOT_CRON` (node-cron format)
+- `TMR_METRICS_TZ` (timezone, default `UTC`)
+- `TMR_METRICS_SNAPSHOT_ON_STARTUP=false` to disable startup snapshot
 
 **Send a test push to all subscriptions:**
 ```powershell
@@ -253,7 +310,7 @@ node send_targeted_push.js 11
 
 **Run cleanup via API:**
 ```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:3001/admin/cleanup' -Method Post -UseBasicParsing
+Invoke-RestMethod -Uri 'http://127.0.0.1:3002/admin/cleanup' -Method Post -UseBasicParsing
 ```
 
 **Send a custom push via API:**
@@ -264,7 +321,7 @@ $payload = @{
     url = "/TMR.html"
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri 'http://127.0.0.1:3001/admin/send/11' -Method Post `
+Invoke-RestMethod -Uri 'http://127.0.0.1:3002/admin/send/11' -Method Post `
   -ContentType 'application/json' `
   -Body $payload
 ```
@@ -364,9 +421,9 @@ ngrok http 3002
 | Open admin panel (local) | Browser: `http://127.0.0.1:3002/admin.html` |
 | Send test push to all | `cd server; node send_test_push.js` |
 | Send push to ID 11 | `cd server; node send_targeted_push.js 11` |
-| Run cleanup | `Invoke-RestMethod -Uri 'http://127.0.0.1:3001/admin/cleanup' -Method Post` |
+| Run cleanup | `Invoke-RestMethod -Uri 'http://127.0.0.1:3002/admin/cleanup' -Method Post` |
 | Kill running Node process | `Get-Process node -ErrorAction SilentlyContinue \| Stop-Process -Force` |
-| Check if server is responding | `Invoke-RestMethod -Uri 'http://127.0.0.1:3002/debug/subscriptions' -Method Get` |
+| Check if server is responding | `Invoke-RestMethod -Uri 'http://127.0.0.1:3002/healthz' -Method Get` |
 
 ---
 

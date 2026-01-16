@@ -1,6 +1,28 @@
 const cron = require('node-cron');
 
 module.exports = function({ db, webpush }){
+  const dayKeyUtc = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+
+  const takeDailyUserSnapshot = () => {
+    if (!db || typeof db.getUserCount !== 'function' || typeof db.upsertDailyUserCount !== 'function') {
+      return;
+    }
+    db.getUserCount((err, totalUsers) => {
+      if (err) {
+        console.warn('[Metrics] Failed to read user count', err && err.message ? err.message : err);
+        return;
+      }
+      const day = dayKeyUtc();
+      db.upsertDailyUserCount(day, Number(totalUsers) || 0, (err2) => {
+        if (err2) {
+          console.warn('[Metrics] Failed to write daily user snapshot', err2 && err2.message ? err2.message : err2);
+          return;
+        }
+        console.log('[Metrics] Daily user snapshot saved', { day, totalUsers: Number(totalUsers) || 0 });
+      });
+    });
+  };
+
   // schedule: run every 10 seconds for faster notification delivery
   cron.schedule('*/10 * * * * *', async () => {
     const now = Date.now();
@@ -93,4 +115,15 @@ module.exports = function({ db, webpush }){
   });
 
   console.log('Scheduler started (checking every 10 seconds)');
+
+  // Metrics snapshot (daily, UTC by default)
+  const metricsCron = String(process.env.TMR_METRICS_SNAPSHOT_CRON || '').trim() || '5 0 * * *';
+  const metricsTz = String(process.env.TMR_METRICS_TZ || '').trim() || 'UTC';
+  cron.schedule(metricsCron, takeDailyUserSnapshot, { timezone: metricsTz });
+  console.log('[Metrics] Daily user snapshot scheduled', { cron: metricsCron, timezone: metricsTz });
+
+  const snapshotOnStartup = String(process.env.TMR_METRICS_SNAPSHOT_ON_STARTUP || '').trim().toLowerCase() !== 'false';
+  if (snapshotOnStartup) {
+    setTimeout(takeDailyUserSnapshot, 15_000);
+  }
 };

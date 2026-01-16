@@ -120,6 +120,12 @@ async function ensureSchema() {
     createdAt BIGINT NOT NULL
   )`);
 
+  await query(`CREATE TABLE IF NOT EXISTS metrics_daily_users (
+    day TEXT PRIMARY KEY,
+    totalUsers BIGINT NOT NULL,
+    createdAt BIGINT NOT NULL
+  )`);
+
   await query(`CREATE TABLE IF NOT EXISTS sessions (
     id BIGSERIAL PRIMARY KEY,
     userId BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -331,6 +337,70 @@ module.exports = {
         await ensureReady();
         const r = await query(`UPDATE users SET passwordHash = $1 WHERE id = $2`, [passwordHash, userId]);
         return r.rowCount || 0;
+      })(),
+      cb
+    );
+  },
+
+  getUserCount: function (cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const r = await query('SELECT COUNT(1) AS count FROM users');
+        const raw = r.rows[0] && r.rows[0].count != null ? r.rows[0].count : 0;
+        return Number(raw) || 0;
+      })(),
+      cb
+    );
+  },
+
+  getUserCountSince: function (sinceMs, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const since = Number(sinceMs);
+        if (!Number.isFinite(since)) throw new Error('sinceMs must be a number');
+        const r = await query('SELECT COUNT(1) AS count FROM users WHERE createdAt >= $1', [since]);
+        const raw = r.rows[0] && r.rows[0].count != null ? r.rows[0].count : 0;
+        return Number(raw) || 0;
+      })(),
+      cb
+    );
+  },
+
+  upsertDailyUserCount: function (day, totalUsers, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const dayKey = typeof day === 'string' ? day.trim() : '';
+        if (!dayKey) throw new Error('day is required');
+        const total = Number(totalUsers);
+        if (!Number.isFinite(total) || total < 0) throw new Error('totalUsers must be a non-negative number');
+        const now = Date.now();
+        const r = await query(
+          `INSERT INTO metrics_daily_users (day, totalUsers, createdAt)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (day)
+           DO UPDATE SET totalUsers = EXCLUDED.totalUsers, createdAt = EXCLUDED.createdAt`,
+          [dayKey, total, now]
+        );
+        return r.rowCount || 0;
+      })(),
+      cb
+    );
+  },
+
+  getDailyUserCounts: function (limit, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const n = Number(limit);
+        const safeLimit = Number.isFinite(n) ? Math.max(1, Math.min(365, Math.floor(n))) : 30;
+        const r = await query(
+          'SELECT day, totalUsers, createdAt FROM metrics_daily_users ORDER BY day DESC LIMIT $1',
+          [safeLimit]
+        );
+        return Array.isArray(r.rows) ? r.rows : [];
       })(),
       cb
     );

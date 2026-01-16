@@ -9,6 +9,17 @@ const cookieParser = require('cookie-parser');
 const webpush = require('web-push');
 const db = require('./db');
 
+// In-memory push receipt tracking (debug helper)
+// Used to determine whether a push event reached the service worker.
+const pushReceipts = new Map();
+const PUSH_RECEIPT_TTL_MS = 10 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [rid, r] of pushReceipts.entries()) {
+    if (!r || (now - r.createdAt) > PUSH_RECEIPT_TTL_MS) pushReceipts.delete(rid);
+  }
+}, 60 * 1000).unref?.();
+
 // ADD: Import security modules
 const SessionStore = require('./session-store');
 const TokenRefreshManager = require('./token-refresh');
@@ -67,23 +78,38 @@ try {
   // Non-fatal: fall back to process.env
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Ensure VAPID keys exist; if not, generate and write to .env
 let VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 let VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
-if(!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY){
-  console.log('VAPID keys not found in env — generating new keys (saved to .env)');
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  if (isProduction) {
+    console.error('[Startup] Missing VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY in production.');
+    console.error('[Startup] Set them as environment variables on your host (Render) so they persist across deploys/restarts.');
+    process.exit(1);
+  }
+
+  console.log('VAPID keys not found in env — generating new keys (saved to .env for local dev)');
   const keys = webpush.generateVAPIDKeys();
   VAPID_PUBLIC_KEY = keys.publicKey;
   VAPID_PRIVATE_KEY = keys.privateKey;
-  // append to .env in project root; mark generated
-  try{
+  // append to .env in project root
+  try {
     fs.appendFileSync(envPath, `VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}\nVAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}\n`);
     console.log('Wrote VAPID keys to .env (project root)');
-  }catch(e){ console.warn('Failed to write .env:', e); }
+  } catch (e) {
+    console.warn('Failed to write .env:', e);
+  }
 }
 
-webpush.setVapidDetails('mailto:you@example.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || process.env.VAPID_CONTACT || 'mailto:you@example.com';
+if (isProduction && VAPID_SUBJECT === 'mailto:you@example.com') {
+  console.warn('[Startup] VAPID_SUBJECT not set. Consider setting VAPID_SUBJECT=mailto:your-email@example.com');
+}
+
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 // Initialize Google Calendar Manager
 const GoogleCalendarManager = require('./google-calendar');
@@ -122,7 +148,7 @@ require('./scheduler')({ db, webpush });
 
 const SESSION_COOKIE = 'tmr_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const secureCookie = process.env.NODE_ENV === 'production';
+const secureCookie = isProduction;
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -169,6 +195,112 @@ app.set('trust proxy', 1);
 app.disable('etag');
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+
+// Push receipt endpoint (no auth; receiptId is unguessable and short-lived)
+app.post('/push/receipt', (req, res) => {
+  const receiptId = req && req.body && typeof req.body.receiptId === 'string' ? req.body.receiptId : '';
+  if (!receiptId) return res.status(400).json({ ok: false, error: 'missing_receiptId' });
+
+  const rec = pushReceipts.get(receiptId);
+  if (rec) {
+    rec.seenAt = Date.now();
+    rec.seenIp = req.ip;
+    pushReceipts.set(receiptId, rec);
+  }
+  res.json({ ok: true });
+});
+
+// Allow cross-origin/no-cors receipt pings via GET (used by service worker)
+app.get('/push/receipt', (req, res) => {
+  const receiptId = (req.query && typeof req.query.rid === 'string') ? req.query.rid : '';
+  if (!receiptId) return res.status(400).send('missing rid');
+  const rec = pushReceipts.get(receiptId);
+  if (rec) {
+    rec.seenAt = Date.now();
+    rec.seenIp = req.ip;
+    pushReceipts.set(receiptId, rec);
+  }
+  // Plain text response keeps this endpoint simple
+  res.setHeader('Cache-Control', 'no-store');
+  res.send('ok');
+});
+
+// Diagnostics/debug gating (opt-in)
+// Enable by setting:
+// - TMR_DEBUG=true
+// - TMR_DEBUG_TOKEN=<random secret>
+//   (or legacy/mistyped: TMR_DEBUG_TOKENS, can be comma/space separated)
+// Then call with header: x-tmr-debug-token: <token>
+const debugEnabled = String(process.env.TMR_DEBUG || '').trim().toLowerCase() === 'true';
+const rawDebugTokens = String(process.env.TMR_DEBUG_TOKEN || process.env.TMR_DEBUG_TOKENS || '').trim();
+const debugTokens = rawDebugTokens
+  ? rawDebugTokens.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean)
+  : [];
+
+const hasDebugTokens = debugTokens.length > 0;
+
+const requireDebugToken = (req, res) => {
+  if (!debugEnabled || !hasDebugTokens) {
+    res.sendStatus(404);
+    return false;
+  }
+  const token = req.get('x-tmr-debug-token');
+  if (!token || !debugTokens.includes(token)) {
+    res.sendStatus(403);
+    return false;
+  }
+  return true;
+};
+
+// Basic request correlation + latency logging (safe for production)
+app.use((req, res, next) => {
+  const requestId = req.get('x-request-id') || nodeCrypto.randomBytes(12).toString('hex');
+  req.requestId = requestId;
+  res.setHeader('X-Request-Id', requestId);
+
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    try {
+      console.log(JSON.stringify({
+        ts: new Date().toISOString(),
+        requestId,
+        method: req.method,
+        path: req.originalUrl,
+        status: res.statusCode,
+        durationMs: Math.round(durationMs),
+        ip: req.ip,
+        userId: req.user ? req.user.id : null
+      }));
+    } catch (_) {
+      // ignore
+    }
+  });
+
+  next();
+});
+
+// Liveness and readiness probes for hosting platforms
+app.get('/healthz', (req, res) => {
+  res.json({ ok: true, now: Date.now(), build: '20260108a' });
+});
+
+app.get('/readyz', async (req, res) => {
+  try {
+    const dbDiag = db && typeof db.diagnostics === 'function'
+      ? await dbAsync(db.diagnostics)
+      : { ok: false, note: 'db.diagnostics not implemented' };
+    if (!dbDiag || dbDiag.ok !== true) return res.status(503).json({ ok: false, db: dbDiag });
+    res.json({ ok: true, db: dbDiag, now: Date.now(), build: '20260108a' });
+  } catch (err) {
+    logError('[Ready] Readiness probe failed', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(503).json({ ok: false, error: 'ready_failed' });
+  }
+});
 
 // First-visit routing:
 // - First-time visitors hitting the bare domain (/) should see intro.html.
@@ -297,8 +429,10 @@ app.get('/vapidPublicKey', (req, res) => {
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
 
-// Debug endpoints (development only) to inspect stored subscriptions and reminders
+// Debug endpoints (opt-in) to inspect stored subscriptions and reminders
 app.get('/debug/subscriptions', (req, res) => {
+  if (!requireDebugToken(req, res)) return;
+
   db.getAllSubscriptions((err, subs) => {
     if(err) return res.status(500).json({ error: 'db error' });
     res.json({ ok: true, subscriptions: subs });
@@ -306,6 +440,8 @@ app.get('/debug/subscriptions', (req, res) => {
 });
 
 app.get('/debug/reminders', (req, res) => {
+  if (!requireDebugToken(req, res)) return;
+
   // optional query ?pending=1 to return pending reminders only
   const pendingOnly = req.query && (req.query.pending === '1' || req.query.pending === 'true');
   if(pendingOnly){
@@ -570,18 +706,8 @@ app.post('/auth/login', authLimiter, async (req, res) => {
   }
 });
 
-// Diagnostics endpoint (opt-in)
-// Enable by setting:
-// - TMR_DEBUG=true
-// - TMR_DEBUG_TOKEN=<random secret>
-// Then call with header: x-tmr-debug-token: <token>
-const debugEnabled = String(process.env.TMR_DEBUG || '').trim().toLowerCase() === 'true';
-const debugToken = process.env.TMR_DEBUG_TOKEN;
-
 app.get('/debug/diagnostics', async (req, res) => {
-  if (!debugEnabled || !debugToken) return res.sendStatus(404);
-  const token = req.get('x-tmr-debug-token');
-  if (token !== debugToken) return res.sendStatus(403);
+  if (!requireDebugToken(req, res)) return;
 
   try {
     const dbDiag = db && typeof db.diagnostics === 'function'
@@ -609,10 +735,52 @@ app.get('/debug/diagnostics', async (req, res) => {
   }
 });
 
+app.get('/debug/user-stats', async (req, res) => {
+  if (!requireDebugToken(req, res)) return;
+
+  try {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    const totalUsers = await dbAsync(db.getUserCount);
+    const last24h = await dbAsync(db.getUserCountSince, now - dayMs);
+    const last7d = await dbAsync(db.getUserCountSince, now - 7 * dayMs);
+    const last30d = await dbAsync(db.getUserCountSince, now - 30 * dayMs);
+
+    const rawLimit = req && req.query && req.query.limit != null ? Number(req.query.limit) : 30;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(365, Math.floor(rawLimit))) : 30;
+
+    const daily = (db && typeof db.getDailyUserCounts === 'function')
+      ? await dbAsync(db.getDailyUserCounts, limit)
+      : [];
+
+    res.json({
+      ok: true,
+      now,
+      db: {
+        backend: db && db.__tmrBackend,
+        info: db && db.__tmrConnectionInfo,
+      },
+      users: {
+        total: totalUsers,
+        last24h,
+        last7d,
+        last30d,
+      },
+      daily
+    });
+  } catch (err) {
+    logError('[Debug] User stats error', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(500).json({ ok: false, error: 'user_stats_failed' });
+  }
+});
+
 app.post('/debug/user-lookup', async (req, res) => {
-  if (!debugEnabled || !debugToken) return res.sendStatus(404);
-  const token = req.get('x-tmr-debug-token');
-  if (token !== debugToken) return res.sendStatus(403);
+  if (!requireDebugToken(req, res)) return;
 
   try {
     const username = req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : '';
@@ -641,9 +809,7 @@ app.post('/debug/user-lookup', async (req, res) => {
 });
 
 app.post('/debug/reset-password', async (req, res) => {
-  if (!debugEnabled || !debugToken) return res.sendStatus(404);
-  const token = req.get('x-tmr-debug-token');
-  if (token !== debugToken) return res.sendStatus(403);
+  if (!requireDebugToken(req, res)) return;
 
   try {
     const username = req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : '';
@@ -668,9 +834,7 @@ app.post('/debug/reset-password', async (req, res) => {
 });
 
 app.post('/debug/verify-credentials', async (req, res) => {
-  if (!debugEnabled || !debugToken) return res.sendStatus(404);
-  const token = req.get('x-tmr-debug-token');
-  if (token !== debugToken) return res.sendStatus(403);
+  if (!requireDebugToken(req, res)) return;
 
   try {
     const username = req && req.body && typeof req.body.username === 'string' ? req.body.username.trim() : '';
@@ -1111,25 +1275,89 @@ app.get('/sync/google-calendar/fetch', requireAuth, async (req, res) => {
 
 // Admin: send a targeted push to a subscription id (development helper)
 app.post('/admin/send/:id', (req, res) => {
+  if (!requireDebugToken(req, res)) return;
+
   const id = Number(req.params.id);
   if(!id) return res.status(400).json({ error: 'invalid id' });
   db.getAllSubscriptions((err, subs) => {
     if(err) return res.status(500).json({ error: 'db error' });
     const s = (subs || []).find(x => Number(x.id) === id);
     if(!s) return res.status(404).json({ error: 'subscription not found' });
+    let endpointHost = null;
+    let endpointProvider = null;
+    try {
+      endpointHost = new URL(String(s.subscription && s.subscription.endpoint ? s.subscription.endpoint : '')).host;
+      const h = String(endpointHost || '').toLowerCase();
+      if (h.includes('wns')) endpointProvider = 'wns';
+      else if (h.includes('fcm') || h.includes('googleapis')) endpointProvider = 'fcm';
+      else endpointProvider = 'unknown';
+    } catch (_) {}
     const payload = req.body && Object.keys(req.body).length ? req.body : { title: 'TMR Targeted Test', body: 'Targeted push (admin)' };
-    webpush.sendNotification(s.subscription, JSON.stringify(payload)).then(() => {
-      res.json({ ok: true, id });
+
+    const receiptId = nodeCrypto.randomBytes(12).toString('hex');
+    if (!payload.data || typeof payload.data !== 'object') payload.data = {};
+    payload.data.receiptId = receiptId;
+
+    // Absolute URL so a service worker running on another origin can still ping back.
+    // Uses trust proxy so req.protocol reflects https behind ngrok/render.
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    payload.data.receiptUrl = `${baseUrl}/push/receipt?rid=${encodeURIComponent(receiptId)}`;
+
+    pushReceipts.set(receiptId, {
+      receiptId,
+      subscriptionId: id,
+      createdAt: Date.now(),
+      seenAt: null
+    });
+
+    webpush.sendNotification(s.subscription, JSON.stringify(payload)).then((r) => {
+      let headers = null;
+      try {
+        if (r && r.headers && typeof r.headers.entries === 'function') {
+          headers = {};
+          for (const [k, v] of r.headers.entries()) headers[k] = v;
+        }
+      } catch (_) {
+        // ignore
+      }
+
+      // web-push typically returns a Node response with `headers` as a plain object.
+      if (!headers && r && r.headers && typeof r.headers === 'object') {
+        headers = {};
+        for (const [k, v] of Object.entries(r.headers)) {
+          if (!k) continue;
+          headers[String(k).toLowerCase()] = v;
+        }
+      }
+
+      const diag = headers ? {
+        notificationStatus: headers['x-wns-notificationstatus'] || headers['x-ms-notificationstatus'] || null,
+        deviceConnectionStatus: headers['x-wns-deviceconnectionstatus'] || null,
+        wnsStatus: headers['x-wns-status'] || null
+      } : null;
+
+      res.json({ ok: true, id, receiptId, pushStatus: r && r.statusCode ? r.statusCode : null, endpointHost, endpointProvider, diag, headers });
     }).catch(e => {
       const status = e && (e.statusCode || e.status) ? (e.statusCode || e.status) : null;
-      res.status(500).json({ ok: false, id, status, error: String(e) });
+      res.status(500).json({ ok: false, id, status, receiptId, error: String(e) });
     });
   });
+});
+
+// Debug: inspect recent push receipts
+app.get('/debug/push-receipts', (req, res) => {
+  if (!requireDebugToken(req, res)) return;
+  const items = Array.from(pushReceipts.values())
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, 200);
+  res.json({ ok: true, receipts: items, now: Date.now() });
 });
 
 // Admin: cleanup stale subscriptions by attempting a push and removing those
 // that return permanent errors (410, 404) or 401 (unauthorized/stale).
 app.post('/admin/cleanup', async (req, res) => {
+  if (!requireDebugToken(req, res)) return;
+
   db.getAllSubscriptions(async (err, subs) => {
     if(err) return res.status(500).json({ error: 'db error' });
     const results = [];
