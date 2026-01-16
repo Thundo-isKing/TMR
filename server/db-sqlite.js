@@ -299,26 +299,82 @@ module.exports = {
     const now = Date.now();
     // Ensure stable stringified JSON for uniqueness checks.
     const subscriptionStr = JSON.stringify(subscription);
+    const desiredUserId = userId != null ? String(userId) : null;
+    const endpoint = subscription && typeof subscription.endpoint === 'string' ? subscription.endpoint : null;
 
-    // We don't have a dedicated unique constraint here; emulate the original behavior
-    // by trying an insert and letting the app handle duplicates if a constraint exists.
-    db.get(
-      `SELECT id FROM subscriptions WHERE subscription = ?`,
-      [subscriptionStr],
-      (err, row) => {
-        if (err) return cb && cb(err);
-        if (row && row.id) return cb && cb(null, row.id);
-
+    function updateExistingRow(rowId, existingUserId) {
+      // Update binding to account when we have a user id.
+      const shouldUpdateUser = desiredUserId && String(existingUserId || '') !== desiredUserId;
+      if (shouldUpdateUser) {
         db.run(
-          `INSERT INTO subscriptions (userId, subscription, createdAt) VALUES (?, ?, ?)`,
-          [userId || null, subscriptionStr, now],
-          function (err2) {
-            if (err2) return cb && cb(err2);
-            cb && cb(null, this && this.lastID);
+          `UPDATE subscriptions SET userId = ?, subscription = ? WHERE id = ?`,
+          [desiredUserId, subscriptionStr, rowId],
+          function (err) {
+            if (err) return cb && cb(err);
+            cb && cb(null, rowId);
           }
         );
+        return;
       }
-    );
+
+      // Always refresh subscription JSON (keys can change over time).
+      db.run(
+        `UPDATE subscriptions SET subscription = ? WHERE id = ?`,
+        [subscriptionStr, rowId],
+        function (err) {
+          if (err) return cb && cb(err);
+          cb && cb(null, rowId);
+        }
+      );
+    }
+
+    // Prefer matching by endpoint (stable across JSON ordering/token updates).
+    if (endpoint) {
+      const like = '%"endpoint":"' + endpoint.replace(/%/g, '') + '"%';
+      db.get(
+        `SELECT id, userId FROM subscriptions WHERE subscription LIKE ? LIMIT 1`,
+        [like],
+        (err, row) => {
+          if (err) return cb && cb(err);
+          if (row && row.id) return updateExistingRow(row.id, row.userId);
+
+          // Fallback: match by exact JSON string.
+          db.get(
+            `SELECT id, userId FROM subscriptions WHERE subscription = ?`,
+            [subscriptionStr],
+            (err2, row2) => {
+              if (err2) return cb && cb(err2);
+              if (row2 && row2.id) return updateExistingRow(row2.id, row2.userId);
+
+              db.run(
+                `INSERT INTO subscriptions (userId, subscription, createdAt) VALUES (?, ?, ?)`,
+                [desiredUserId, subscriptionStr, now],
+                function (err3) {
+                  if (err3) return cb && cb(err3);
+                  cb && cb(null, this && this.lastID);
+                }
+              );
+            }
+          );
+        }
+      );
+      return;
+    }
+
+    // Legacy path when endpoint is missing.
+    db.get(`SELECT id, userId FROM subscriptions WHERE subscription = ?`, [subscriptionStr], (err, row) => {
+      if (err) return cb && cb(err);
+      if (row && row.id) return updateExistingRow(row.id, row.userId);
+
+      db.run(
+        `INSERT INTO subscriptions (userId, subscription, createdAt) VALUES (?, ?, ?)`,
+        [desiredUserId, subscriptionStr, now],
+        function (err2) {
+          if (err2) return cb && cb(err2);
+          cb && cb(null, this && this.lastID);
+        }
+      );
+    });
   },
 
   getSubscriptionsByUserId: function (userId, cb) {

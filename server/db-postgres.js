@@ -406,13 +406,44 @@ module.exports = {
         await ensureReady();
         const now = Date.now();
         const sub = subscription || {};
+        const desiredUserId = userId != null ? String(userId) : null;
+        const endpoint = sub && typeof sub.endpoint === 'string' ? sub.endpoint : null;
 
-        const existing = await query(`SELECT id FROM subscriptions WHERE subscription = $1::jsonb`, [sub]);
-        if (existing.rows[0] && existing.rows[0].id) return existing.rows[0].id;
+        // Prefer matching by endpoint (stable) instead of full JSON equality.
+        if (endpoint) {
+          const existingByEndpoint = await query(
+            `SELECT id, userId FROM subscriptions WHERE subscription->>'endpoint' = $1 LIMIT 1`,
+            [endpoint]
+          );
+          const row = existingByEndpoint.rows[0];
+          if (row && row.id) {
+            // Refresh stored subscription JSON + bind to account when userId is known.
+            if (desiredUserId && String(row.userId || '') !== desiredUserId) {
+              await query(`UPDATE subscriptions SET userId = $1, subscription = $2::jsonb WHERE id = $3`, [
+                desiredUserId,
+                sub,
+                row.id
+              ]);
+            } else {
+              await query(`UPDATE subscriptions SET subscription = $1::jsonb WHERE id = $2`, [sub, row.id]);
+            }
+            return row.id;
+          }
+        }
+
+        // Fallback: match by full JSON (legacy behavior)
+        const existing = await query(`SELECT id, userId FROM subscriptions WHERE subscription = $1::jsonb LIMIT 1`, [sub]);
+        const existingRow = existing.rows[0];
+        if (existingRow && existingRow.id) {
+          if (desiredUserId && String(existingRow.userId || '') !== desiredUserId) {
+            await query(`UPDATE subscriptions SET userId = $1 WHERE id = $2`, [desiredUserId, existingRow.id]);
+          }
+          return existingRow.id;
+        }
 
         const r = await query(
           `INSERT INTO subscriptions (userId, subscription, createdAt) VALUES ($1, $2::jsonb, $3) RETURNING id`,
-          [userId || null, sub, now]
+          [desiredUserId, sub, now]
         );
         return r.rows[0] && r.rows[0].id;
       })(),
