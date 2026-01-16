@@ -20,7 +20,11 @@ module.exports = function({ db, webpush }){
                 }
                 for(const s of subs){
                   try{
-                    await webpush.sendNotification(s.subscription, JSON.stringify({ title: r.title || 'Reminder', body: r.body || '', data: { reminderId: r.id } }));
+                    await webpush.sendNotification(s.subscription, JSON.stringify({
+                      title: r.title || 'Reminder',
+                      body: r.body || '',
+                      data: { reminderId: r.id, url: '/TMR.html' }
+                    }));
                     if(failureCounts[s.id]) failureCounts[s.id] = 0;
                   }catch(e){
                     console.warn('push send fail', e && e.statusCode ? ('status:' + e.statusCode) : e);
@@ -53,7 +57,11 @@ module.exports = function({ db, webpush }){
                 }
 
                 try{
-                  await webpush.sendNotification(sub.subscription, JSON.stringify({ title: r.title || 'Reminder', body: r.body || '', data: { reminderId: r.id } }));
+                  await webpush.sendNotification(sub.subscription, JSON.stringify({
+                    title: r.title || 'Reminder',
+                    body: r.body || '',
+                    data: { reminderId: r.id, url: '/TMR.html' }
+                  }));
                   console.log('[Scheduler] Sent reminder to subscriptionId:', r.subscriptionId);
                   if(failureCounts[sub.id]) failureCounts[sub.id] = 0;
                 }catch(e){

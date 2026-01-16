@@ -412,6 +412,60 @@ app.post('/reminder', (req, res) => {
   });
 });
 
+function computeEventReminderAtMs(event) {
+  if (!event || typeof event !== 'object') return null;
+  const dateStr = typeof event.date === 'string' ? event.date : null;
+  const timeStr = typeof event.startTime === 'string'
+    ? event.startTime
+    : (typeof event.time === 'string' ? event.time : null);
+
+  // Explicit reminderAt wins (if provided by client).
+  if (event.reminderAt != null) {
+    const explicit = Number(event.reminderAt);
+    if (Number.isFinite(explicit)) return explicit;
+  }
+
+  if (!dateStr || !timeStr) return null;
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3) return null;
+  const [y, mo, d] = parts;
+  const tparts = timeStr.split(':').map(Number);
+  if (tparts.length < 2) return null;
+  const [hh, mm] = tparts;
+  if (![y, mo, d, hh, mm].every(Number.isFinite)) return null;
+
+  const startMs = new Date(y, mo - 1, d, hh || 0, mm || 0, 0, 0).getTime();
+  if (!Number.isFinite(startMs)) return null;
+
+  const mins = Number(event.reminderMinutes || 0);
+  if (Number.isFinite(mins) && mins > 0) {
+    return startMs - mins * 60 * 1000;
+  }
+  return startMs;
+}
+
+function scheduleEventReminderForUser(userId, event, eventId) {
+  const deliverAt = computeEventReminderAtMs(event);
+  if (!deliverAt) return;
+  const now = Date.now();
+  if (deliverAt < now - 60_000) return;
+
+  const title = 'Event: ' + (event && event.title ? String(event.title) : 'Reminder');
+  const timeStr = (event && (event.startTime || event.time)) ? String(event.startTime || event.time) : '';
+  const body = (event && (event.description || event.notes))
+    ? String(event.description || event.notes)
+    : (event && event.date ? `Starts ${event.date}${timeStr ? ' ' + timeStr : ''}` : '');
+
+  // userId-based reminder: scheduler will broadcast to all subscriptions for the account.
+  db.addReminder(null, String(userId), title, body, Number(deliverAt), (err, id) => {
+    if (err) {
+      console.warn('[Events] Failed to schedule reminder', { eventId, deliverAt, err: err.message });
+      return;
+    }
+    console.log('[Events] Scheduled reminder', { reminderId: id, eventId, deliverAt });
+  });
+}
+
 // ========== AUTHENTICATION ==========
 
 app.get('/auth/session', (req, res) => {
@@ -1529,6 +1583,9 @@ app.post('/events/create', requireAuth, (req, res) => {
         console.error('[Events] Create error:', err);
         return res.status(500).json({ error: 'Failed to create event' });
       }
+
+      // Best-effort push reminder scheduling for events with a start time.
+      try { scheduleEventReminderForUser(req.user.id, event, eventId); } catch (_) {}
       res.json({ ok: true, eventId });
     });
   } catch (err) {
@@ -1567,6 +1624,9 @@ app.put('/events/:eventId', requireAuth, (req, res) => {
           console.error('[Events] Update error:', err2);
           return res.status(500).json({ error: 'Failed to update event' });
         }
+
+        // Best-effort: schedule a reminder based on updated event fields.
+        try { scheduleEventReminderForUser(req.user.id, event, eventId); } catch (_) {}
         res.json({ ok: true, changes });
       });
     });
