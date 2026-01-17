@@ -791,7 +791,7 @@ if (leaveBtn) {
 
                 const password = passwordInput ? String(passwordInput.value || '').trim() : '';
                 if (!password) {
-                    setStatus('Password required');
+                    setStatus('Input password');
                     return;
                 }
                 const rawLimit = limitInput ? Number(limitInput.value) : 200;
