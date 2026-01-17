@@ -239,6 +239,38 @@ const debugTokens = rawDebugTokens
 
 const hasDebugTokens = debugTokens.length > 0;
 
+// Admin password gating (opt-in)
+// Set TMR_ADMIN_PASSWORD in environment.
+// Client can send it via header: x-tmr-admin-password or JSON body: { password }
+const adminPassword = String(process.env.TMR_ADMIN_PASSWORD || '').trim();
+const adminEnabled = adminPassword.length > 0;
+
+const safeEqual = (a, b) => {
+  try {
+    const sa = String(a);
+    const sb = String(b);
+    const ba = Buffer.from(sa, 'utf8');
+    const bb = Buffer.from(sb, 'utf8');
+    if (ba.length !== bb.length) return false;
+    return nodeCrypto.timingSafeEqual(ba, bb);
+  } catch (_) {
+    return false;
+  }
+};
+
+const requireAdminPassword = (req, res) => {
+  if (!adminEnabled) {
+    res.sendStatus(404);
+    return false;
+  }
+  const token = req.get('x-tmr-admin-password') || (req && req.body && req.body.password);
+  if (!token || !safeEqual(token, adminPassword)) {
+    res.sendStatus(403);
+    return false;
+  }
+  return true;
+};
+
 const requireDebugToken = (req, res) => {
   if (!debugEnabled || !hasDebugTokens) {
     res.sendStatus(404);
@@ -776,6 +808,29 @@ app.get('/debug/user-stats', async (req, res) => {
       nodeEnv: process.env.NODE_ENV
     });
     res.status(500).json({ ok: false, error: 'user_stats_failed' });
+  }
+});
+
+app.post('/admin/accounts', async (req, res) => {
+  if (!requireAdminPassword(req, res)) return;
+
+  try {
+    const rawLimit = req && req.body && req.body.limit != null ? Number(req.body.limit) : 200;
+    const rawOffset = req && req.body && req.body.offset != null ? Number(req.body.offset) : 0;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(5000, Math.floor(rawLimit))) : 200;
+    const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.floor(rawOffset)) : 0;
+
+    const users = await dbAsync(db.listUsers, limit, offset);
+    const total = await dbAsync(db.getUserCount);
+
+    res.json({ ok: true, total, limit, offset, users });
+  } catch (err) {
+    logError('[Admin] Accounts list error', err, {
+      dbBackend: db && db.__tmrBackend,
+      dbInfo: db && db.__tmrConnectionInfo,
+      nodeEnv: process.env.NODE_ENV
+    });
+    res.status(500).json({ ok: false, error: 'accounts_list_failed' });
   }
 });
 

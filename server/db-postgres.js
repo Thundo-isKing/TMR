@@ -368,6 +368,24 @@ module.exports = {
     );
   },
 
+  listUsers: function (limit, offset, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const n = Number(limit);
+        const safeLimit = Number.isFinite(n) ? Math.max(1, Math.min(5000, Math.floor(n))) : 200;
+        const o = Number(offset);
+        const safeOffset = Number.isFinite(o) ? Math.max(0, Math.floor(o)) : 0;
+        const r = await query(
+          'SELECT id, username, createdAt FROM users ORDER BY createdAt DESC LIMIT $1 OFFSET $2',
+          [safeLimit, safeOffset]
+        );
+        return Array.isArray(r.rows) ? r.rows : [];
+      })(),
+      cb
+    );
+  },
+
   upsertDailyUserCount: function (day, totalUsers, cb) {
     cbWrap(
       (async () => {

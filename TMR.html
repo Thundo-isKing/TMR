@@ -1638,7 +1638,41 @@
         <div class="tmr-menu-item">
             <button id="fullscreen-btn-tmr" type="button" class="small-tmr-btn">Fullscreen</button>
         </div>
+
+        <div class="tmr-menu-item" style="border-top:1px solid #ccc; padding-top:8px; margin-top:8px;">
+            <button id="accounts-tracker-btn" type="button" class="small-tmr-btn">🔒 Admin Only</button>
+        </div>
     </div>
+    </div>
+
+    <!-- Accounts Tracker (Admin Only) -->
+    <div id="accounts-tracker-backdrop" class="mobile-modal-backdrop" hidden>
+        <div class="tmr-menu tmr-modal-panel" role="dialog" aria-modal="true" aria-labelledby="accounts-tracker-title" style="max-width: 680px;">
+            <div class="tmr-menu-item" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <strong id="accounts-tracker-title">Accounts Tracker</strong>
+                <button id="accounts-tracker-close" class="small-tmr-btn" type="button">Close</button>
+            </div>
+            <div class="tmr-menu-item small" style="opacity:0.9;">
+                Shows account usernames and when they were created.
+            </div>
+            <div class="tmr-menu-item">
+                <label style="display:block;">
+                    Admin password
+                    <input id="accounts-tracker-password" type="password" autocomplete="off" placeholder="Enter admin password" style="width:100%; margin-top:6px;" />
+                </label>
+                <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+                    <label class="small" style="display:flex; align-items:center; gap:8px;">
+                        Limit
+                        <input id="accounts-tracker-limit" type="number" min="1" max="5000" value="200" style="width:96px;" />
+                    </label>
+                    <button id="accounts-tracker-load" class="small-tmr-btn" type="button">Load</button>
+                    <span id="accounts-tracker-status" class="small" style="opacity:0.9;"></span>
+                </div>
+            </div>
+            <div class="tmr-menu-item" style="max-height: 55vh; overflow:auto;">
+                <div id="accounts-tracker-results" class="small"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Notifications permission prompt (shown when permission is "default") -->

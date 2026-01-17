@@ -672,6 +672,168 @@ if (leaveBtn) {
     }
 })();
 
+// Accounts tracker (Admin Only)
+(function(){
+    function initAccountsTracker() {
+        const openBtn = document.getElementById('accounts-tracker-btn');
+        const backdrop = document.getElementById('accounts-tracker-backdrop');
+        const closeBtn = document.getElementById('accounts-tracker-close');
+        const loadBtn = document.getElementById('accounts-tracker-load');
+        const passwordInput = document.getElementById('accounts-tracker-password');
+        const limitInput = document.getElementById('accounts-tracker-limit');
+        const statusEl = document.getElementById('accounts-tracker-status');
+        const resultsEl = document.getElementById('accounts-tracker-results');
+
+        if (!openBtn || !backdrop || !resultsEl) return false;
+
+        function closeTmrMenuIfOpen() {
+            const tmrBackdrop = document.getElementById('tmr-menu-backdrop');
+            const menu = document.getElementById('tmr-header-menu');
+            if (!tmrBackdrop || tmrBackdrop.hidden) return;
+            try {
+                if (menu) menu.hidden = true;
+                tmrBackdrop.classList.remove('active');
+                tmrBackdrop.hidden = true;
+                const headerToggle = document.getElementById('tmr-header-btn');
+                const mobileToggle = document.getElementById('mobile-tmr-btn');
+                if (headerToggle) headerToggle.setAttribute('aria-expanded', 'false');
+                if (mobileToggle) mobileToggle.setAttribute('aria-expanded', 'false');
+            } catch (_) {}
+        }
+
+        function openModal() {
+            closeTmrMenuIfOpen();
+            backdrop.hidden = false;
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            try { passwordInput && passwordInput.focus(); } catch (_) {}
+        }
+
+        function closeModal() {
+            backdrop.classList.remove('active');
+            backdrop.hidden = true;
+            document.body.style.overflow = '';
+        }
+
+        function setStatus(text) {
+            if (!statusEl) return;
+            statusEl.textContent = text || '';
+        }
+
+        function fmtWhen(ms) {
+            const n = Number(ms);
+            if (!Number.isFinite(n) || n <= 0) return '';
+            try {
+                return new Date(n).toLocaleString();
+            } catch (_) {
+                return String(n);
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function render(users, meta) {
+            const rows = Array.isArray(users) ? users : [];
+            const total = meta && meta.total != null ? meta.total : null;
+
+            if (rows.length === 0) {
+                resultsEl.innerHTML = '<div class="small">No accounts found.</div>';
+                return;
+            }
+
+            let header = '';
+            if (total != null) {
+                header = `<div class="small" style="margin-bottom:8px;">Total accounts: <strong>${escapeHtml(total)}</strong> (showing ${rows.length})</div>`;
+            }
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:6px; border-bottom:1px solid rgba(0,0,0,0.15);">ID</th>
+                        <th style="text-align:left; padding:6px; border-bottom:1px solid rgba(0,0,0,0.15);">Username</th>
+                        <th style="text-align:left; padding:6px; border-bottom:1px solid rgba(0,0,0,0.15);">Created</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+            for (const u of rows) {
+                const tr = document.createElement('tr');
+                const id = u && u.id != null ? u.id : '';
+                const username = u && u.username != null ? u.username : '';
+                const createdAt = u && u.createdAt != null ? u.createdAt : '';
+                tr.innerHTML = `
+                    <td style="padding:6px; border-bottom:1px solid rgba(0,0,0,0.08);">${escapeHtml(id)}</td>
+                    <td style="padding:6px; border-bottom:1px solid rgba(0,0,0,0.08);">${escapeHtml(username)}</td>
+                    <td style="padding:6px; border-bottom:1px solid rgba(0,0,0,0.08);">${escapeHtml(fmtWhen(createdAt))}</td>
+                `;
+                tbody && tbody.appendChild(tr);
+            }
+
+            resultsEl.innerHTML = header;
+            resultsEl.appendChild(table);
+        }
+
+        async function loadAccounts() {
+            try {
+                setStatus('Loading…');
+                resultsEl.innerHTML = '';
+
+                const password = passwordInput ? String(passwordInput.value || '').trim() : '';
+                if (!password) {
+                    setStatus('Password required');
+                    return;
+                }
+                const rawLimit = limitInput ? Number(limitInput.value) : 200;
+                const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(5000, Math.floor(rawLimit))) : 200;
+
+                const res = await fetch('/admin/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, limit, offset: 0 })
+                });
+                if (!res.ok) {
+                    if (res.status === 403) throw new Error('Forbidden (bad password)');
+                    if (res.status === 404) throw new Error('Not available (admin password not configured)');
+                    throw new Error(`${res.status} ${res.statusText}`);
+                }
+                const data = await res.json();
+                render(data && data.users ? data.users : [], { total: data && data.total != null ? data.total : null });
+                setStatus('');
+            } catch (err) {
+                setStatus(err && err.message ? err.message : 'Failed to load accounts');
+            }
+        }
+
+        openBtn.addEventListener('click', openModal);
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
+        document.addEventListener('keydown', (e) => {
+            if (!backdrop.hidden && e.key === 'Escape') closeModal();
+            if (!backdrop.hidden && e.key === 'Enter' && document.activeElement === passwordInput) loadAccounts();
+        });
+        if (loadBtn) loadBtn.addEventListener('click', loadAccounts);
+
+        return true;
+    }
+
+    if (!initAccountsTracker()) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAccountsTracker);
+        }
+    }
+})();
+
 // Background Image Handler
 (function(){
     // Use the theme system key as primary so NotesHQ/Docs/TMR all agree.

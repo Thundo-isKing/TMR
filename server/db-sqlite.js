@@ -267,6 +267,21 @@ module.exports = {
     });
   },
 
+  listUsers: function (limit, offset, cb) {
+    const n = Number(limit);
+    const safeLimit = Number.isFinite(n) ? Math.max(1, Math.min(5000, Math.floor(n))) : 200;
+    const o = Number(offset);
+    const safeOffset = Number.isFinite(o) ? Math.max(0, Math.floor(o)) : 0;
+    db.all(
+      'SELECT id, username, createdAt FROM users ORDER BY createdAt DESC LIMIT ? OFFSET ?',
+      [safeLimit, safeOffset],
+      (err, rows) => {
+        if (err) return cb && cb(err);
+        cb && cb(null, Array.isArray(rows) ? rows : []);
+      }
+    );
+  },
+
   upsertDailyUserCount: function (day, totalUsers, cb) {
     const dayKey = typeof day === 'string' ? day.trim() : '';
     if (!dayKey) return cb && cb(new Error('day is required'));
