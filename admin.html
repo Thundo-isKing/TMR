@@ -11,7 +11,19 @@
   <main>
     <h1>TMR Admin</h1>
 
+    <section class="small">
+      <div><strong>Tip:</strong> For push debugging, open the app on this same origin: <a href="/TMR.html" target="_blank" rel="noopener">/TMR.html</a></div>
+      <div>Service worker script: <a href="/sw.js" target="_blank" rel="noopener">/sw.js</a></div>
+    </section>
+
     <section id="controls">
+      <label for="debugToken">Admin Debug Token (TMR_DEBUG_TOKEN)</label>
+      <input id="debugToken" type="password" placeholder="paste token" autocomplete="off" />
+      <div class="buttons">
+        <button id="saveToken">Save Token</button>
+        <span class="small">Required for admin/debug endpoints</span>
+      </div>
+
       <label for="payload">Payload JSON</label>
       <textarea id="payload" rows="4">{"title":"Test","body":"Hello from admin","url":"/TMR.html"}</textarea>
       <div class="buttons">
@@ -24,6 +36,15 @@
     <section>
       <h2>Subscriptions</h2>
       <div id="list">Loading…</div>
+    </section>
+
+    <section>
+      <h2>Push Receipts</h2>
+      <div class="buttons">
+        <button id="loadReceipts">Load Receipts</button>
+        <span class="small">Shows whether a push reached the service worker</span>
+      </div>
+      <div id="receipts" class="small"></div>
     </section>
   </main>
 

@@ -4,6 +4,8 @@
 */
 'use strict';
 
+const TMR_SW_VERSION = '20260115c';
+
 self.addEventListener('push', function(event) {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch (e) { payload = { body: event.data ? event.data.text() : '' }; }
@@ -16,7 +18,41 @@ self.addEventListener('push', function(event) {
     data: payload.data || {}
   }, payload.options || {});
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  const receiptId = options && options.data && options.data.receiptId;
+  const receiptUrl = options && options.data && options.data.receiptUrl;
+  const clientPing = clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clientList) => {
+      for (const c of (clientList || [])) {
+        try {
+          c.postMessage({
+            type: 'tmr_push_received',
+            receiptId: receiptId || null,
+            title,
+            body: options && options.body ? options.body : ''
+          });
+        } catch (_) {}
+      }
+    })
+    .catch(() => {});
+  const receiptPromise = receiptId
+    ? (
+        receiptUrl
+          // Cross-origin friendly ping (no-cors) so receipts work even if the SW origin != server origin.
+          ? fetch(String(receiptUrl), { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(() => {})
+          // Same-origin JSON POST
+          : fetch('/push/receipt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ receiptId })
+            }).catch(() => {})
+      )
+    : Promise.resolve();
+
+  event.waitUntil(Promise.allSettled([
+    self.registration.showNotification(title, options),
+    receiptPromise,
+    clientPing
+  ]));
 });
 
 self.addEventListener('notificationclick', function(event) {
@@ -30,5 +66,11 @@ self.addEventListener('notificationclick', function(event) {
   }));
 });
 
-self.addEventListener('install', (e)=>{ self.skipWaiting(); });
-self.addEventListener('activate', (e)=>{ self.clients.claim(); });
+self.addEventListener('install', (e)=>{
+  try { console.log('[TMR SW] install', TMR_SW_VERSION); } catch (_) {}
+  self.skipWaiting();
+});
+self.addEventListener('activate', (e)=>{
+  try { console.log('[TMR SW] activate', TMR_SW_VERSION); } catch (_) {}
+  self.clients.claim();
+});

@@ -2523,7 +2523,7 @@ if (leaveBtn) {
 
                 // fallback to port 3001 on the same host
                 try{
-                    const base = location && location.hostname ? `${location.protocol}//${location.hostname}:3001` : 'http://localhost:3001';
+                    const base = location && location.hostname ? `${location.protocol}//${location.hostname}:3002` : 'http://localhost:3002';
                     const url = base + (path.startsWith('/') ? path : '/' + path);
                     console.debug('[serverFetch] trying fallback', url);
                     const res2 = await fetch(url, finalOpts);
@@ -2546,6 +2546,7 @@ if (leaveBtn) {
                 try{
                     const reg = await navigator.serviceWorker.register('/sw.js');
                     console.log('[TMR] Service Worker registered', reg.scope);
+                    try{ await reg.update(); }catch(_){ }
                     return reg;
                 }catch(err){ console.warn('[TMR] SW register failed', err); return null; }
             }
@@ -2585,6 +2586,20 @@ if (leaveBtn) {
                 }
                 const reg = await registerServiceWorkerIfNeeded();
                 if(!reg) { if(!silent) alert('Service worker registration failed.'); return; }
+
+                // If the SW is installed but not yet controlling this page, a reload is often required.
+                // Do it once to avoid confusing "controller is null" states on desktop.
+                try{
+                    await navigator.serviceWorker.ready;
+                    const controlled = !!navigator.serviceWorker.controller;
+                    const reloaded = sessionStorage.getItem('tmr_sw_reloaded_once') === '1';
+                    if (!controlled && !reloaded) {
+                        sessionStorage.setItem('tmr_sw_reloaded_once', '1');
+                        if(!silent) alert('Finishing setup: reloading to activate push service worker…');
+                        location.reload();
+                        return;
+                    }
+                }catch(_){ }
 
                 try{
                     const existing = await reg.pushManager.getSubscription();
