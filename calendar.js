@@ -586,9 +586,10 @@
       weekdayRow.innerHTML = ''; // clear
       const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       weekdays.forEach(w => {
-        const head = document.createElement('div'); head.className = 'calendar-cell';
-        head.style.background = 'transparent'; head.style.minHeight = 'auto'; head.style.padding = '16px';
-        head.style.fontWeight = '700'; head.style.textAlign = 'center'; head.textContent = w; weekdayRow.appendChild(head);
+        const head = document.createElement('div');
+        head.className = 'calendar-weekday';
+        head.textContent = w;
+        weekdayRow.appendChild(head);
       });
     }
 

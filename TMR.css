@@ -646,19 +646,28 @@ body.triangle-background .tmr-menu {
     max-width: none;
     margin: 0;
     padding: 0;
-    background: rgba(255, 255, 255, 0.5) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+    background: rgba(255, 255, 255, 0.22) !important;
+    backdrop-filter: blur(16px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
     /* Let the calendar height be driven by its grid (no internal scrolling) */
     height: auto;
     max-height: none;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.14) !important;
     overflow: visible;
     position: relative;
+}
+
+/* Desktop: size the grid/tiles by narrowing the calendar panel (≈85% of available space) */
+@media (min-width: 1025px) {
+    .calendar-app {
+        width: clamp(720px, 85%, 1180px);
+        margin-left: auto;
+        margin-right: auto;
+    }
 }
 .todo-app {
     margin: 8px 0 12px 0;
@@ -1021,30 +1030,56 @@ body.triangle-background .tmr-menu {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.5) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    padding: 14px 16px;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.34), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.22), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.12), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 48%, transparent);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    border-bottom: 1px solid rgba(255,255,255,0.22) !important;
+    box-shadow: none !important;
     border-radius: 12px 12px 0 0;
     gap: 8px;
     flex-wrap: wrap;
 }
-.nav-btn {
-    background: var(--accent-color, #0089f1);
-    color: white;
-    border: none;
-    padding: 6px 12px;
+
+.calendar-header .month-year,
+.month-year {
+    font-family: var(--font-family, 'Product Sans', 'Roboto', system-ui, -apple-system, sans-serif);
+    font-weight: 700;
+    font-size: 18px;
+    flex: 1;
+    text-align: center;
+    color: #fff;
+}
+.calendar-header .nav-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 70%, transparent);
+    backdrop-filter: blur(18px) saturate(190%);
+    -webkit-backdrop-filter: blur(18px) saturate(190%);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.22);
     border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
-    transition: background-color 0.15s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background 0.15s ease;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.22);
 }
 
-.nav-btn:active,
-.nav-btn:hover {
-    background: var(--accent-color, #0089f1);
-    color: white;
+.calendar-header .nav-btn:active,
+.calendar-header .nav-btn:hover {
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.48), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.38), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.18), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 78%, transparent);
+    color: #fff;
 }
 
 /* Ensure nav/export/import labels are correct */
@@ -1132,12 +1167,6 @@ body.triangle-background .tmr-menu {
             color-mix(in srgb, var(--accent-color, #0089f1) 78%, transparent) !important;
     }
 }
-.month-year {
-    font-weight: 700;
-    font-size: 16px;
-    flex: 1;
-    text-align: center;
-}
 .weekday-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -1146,11 +1175,12 @@ body.triangle-background .tmr-menu {
     padding: 8px 8px 2px 8px;
     width: 100%;
     box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.5) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: rgba(255, 255, 255, 0.16) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.18) !important;
 }
 
-.weekday-row > div {
+.weekday-row > div,
+.calendar-weekday {
     text-align: center;
     font-weight: 700;
     font-size: 11px;
@@ -1172,8 +1202,15 @@ body.triangle-background .tmr-menu {
     padding: 2px 8px 8px 8px;
     width: 100%;
     box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.3) !important;
+    background: rgba(255, 255, 255, 0.16) !important;
     border-radius: 0 0 12px 12px;
+    border-top: 1px solid rgba(255,255,255,0.18);
+}
+
+/* Desktop: increase spacing between day cells */
+@media (min-width: 1025px) {
+    .weekday-row { gap: 6px; }
+    .calendar-grid { gap: 6px; }
 }
 
 .calendar-grid.month-transition {
@@ -1224,36 +1261,64 @@ body.triangle-background .tmr-menu {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 8px;
-    background: transparent;
-    color: #333;
-    border: none;
-    border-radius: 6px;
+    padding: 6px;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.26), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.18), transparent 55%),
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    color: #222;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 8px;
     box-shadow: none;
     text-align: center;
-    transition: background-color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
     cursor: pointer;
 }
 
-/* Mobile responsive calendar days */
-.calendar-day .day-number { font-size: 25px; font-weight: 700; margin-bottom: 4px; flex: 1; display: flex; align-items: center; justify-content: center; }
-.calendar-day:hover { 
+/* Calendar day number + hover/active states (match mobile look) */
+.calendar-day .day-number {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.calendar-day:hover {
     transform: none !important;
-    background: var(--accent-color, #0089f1);
-    color: white;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.32), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.22), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.12), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 30%, transparent);
+    border-color: rgba(255,255,255,0.26);
+    color: #222;
+}
+
+.calendar-day:active {
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.36), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.26), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 38%, transparent);
+    border-color: rgba(255,255,255,0.30);
+    transform: scale(1.03);
 }
 
 /* Today styling for desktop calendar */
 .calendar-day.today {
-    border: none !important;
     background:
-        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.35), transparent 60%),
-        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.28), transparent 60%),
-        linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%),
-        rgba(var(--today-glass-rgb, 0,137,241), 0.42);
-    backdrop-filter: blur(14px) saturate(165%);
-    -webkit-backdrop-filter: blur(14px) saturate(165%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.18);
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.44), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.30), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 58%, transparent);
+    backdrop-filter: blur(16px) saturate(190%);
+    -webkit-backdrop-filter: blur(16px) saturate(190%);
+    border: 1px solid rgba(255,255,255,0.32);
     color: #fff;
 }
 
@@ -1298,17 +1363,18 @@ body.triangle-background .tmr-menu {
     justify-content: center;
 }
 .event-dot {
-    width: 10px;
-    height: 10px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     display: inline-block;
-    margin-right: 6px;
+    margin-right: 0;
 }
 .cell-events {
     margin-top: auto;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 2px;
+    justify-content: center;
 }
 
 /* Modal (uses unified styling above) */
