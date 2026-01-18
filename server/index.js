@@ -877,6 +877,13 @@ app.post('/debug/reset-password', async (req, res) => {
 
     const hash = await bcrypt.hash(newPassword, 10);
     await dbAsync(db.updateUserPasswordHash, user.id, hash);
+
+    // Force re-login on all devices after a password reset.
+    try {
+      await dbAsync(db.deleteSessionsByUser, user.id);
+    } catch (_) {
+      // Ignore: password reset still succeeded.
+    }
     res.json({ ok: true, user: { id: user.id, username: user.username } });
   } catch (err) {
     logError('[Debug] Reset password error', err, {

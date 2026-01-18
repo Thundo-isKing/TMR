@@ -308,6 +308,20 @@ cd c:\Users\akenj\TMR_Project\TMR_redo\server
 node send_targeted_push.js 11
 ```
 
+**Reset an account password (CLI, local machine):**
+
+This updates the stored password hash and logs the account out on all devices.
+
+```powershell
+cd c:\Users\akenj\TMR_Project\TMR_redo\server
+
+# Option A: provide a password (beware: command history)
+npm run reset-password -- Flavortown "NewStrongPass123"
+
+# Option B: generate a strong password and print it
+npm run reset-password -- --username Flavortown --generate
+```
+
 **Run cleanup via API:**
 ```powershell
 Invoke-RestMethod -Uri 'http://127.0.0.1:3002/admin/cleanup' -Method Post -UseBasicParsing

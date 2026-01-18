@@ -7,7 +7,8 @@
     "start": "node server/index.js",
     "dev": "cd server && npm start",
     "build": "cd server && npm install && npm rebuild",
-    "postinstall": "cd server && npm install && npm rebuild"
+    "postinstall": "cd server && npm install && npm rebuild",
+    "reset-password": "npm --prefix server run reset-password --"
   },
   "engines": {
     "node": ">=14.0.0"

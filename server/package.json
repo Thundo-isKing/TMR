@@ -4,7 +4,8 @@
   "description": "Local push scheduling server for TMR (for development)",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "reset-password": "node reset-password.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.21.1",
