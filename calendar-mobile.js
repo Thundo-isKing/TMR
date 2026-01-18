@@ -28,8 +28,43 @@
     
     // Storage helpers
     function loadEvents() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-        catch (e) { return []; }
+        let events;
+        try { events = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+        catch (e) { events = []; }
+
+        // Be defensive: other codepaths may have written a non-array.
+        if (!Array.isArray(events)) {
+            // Support the export/import payload shape { events: [], todos: [] } if it ever lands here.
+            if (events && typeof events === 'object' && Array.isArray(events.events)) {
+                events = events.events;
+            } else {
+                events = [];
+            }
+        }
+
+        // Ownership tagging/filtering: keep consistent with desktop calendar.
+        try {
+            const uid = (window.AuthClient && typeof window.AuthClient.getUserId === 'function') ? window.AuthClient.getUserId() : null;
+            if (!uid) return events;
+
+            let changed = false;
+            const filtered = [];
+            for (const ev of events) {
+                if (!ev || typeof ev !== 'object') continue;
+                if (ev.ownerUserId && String(ev.ownerUserId) !== String(uid)) continue;
+                if (!ev.ownerUserId) {
+                    ev.ownerUserId = uid;
+                    changed = true;
+                }
+                filtered.push(ev);
+            }
+            if (changed) {
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered)); } catch (e) { }
+            }
+            return filtered;
+        } catch (e) {
+            return events;
+        }
     }
     
     function saveEvents(events) {
@@ -78,6 +113,14 @@
     function addOrUpdateEvent(event) {
         const events = loadEvents();
         const idx = events.findIndex(e => e.id === event.id);
+
+        // Align with desktop: timestamp + ownership when available.
+        try { event.lastModified = Date.now(); } catch (e) { }
+        try {
+            const uid = (window.AuthClient && typeof window.AuthClient.getUserId === 'function') ? window.AuthClient.getUserId() : null;
+            if (uid) event.ownerUserId = uid;
+        } catch (e) { }
+
         if (idx >= 0) events[idx] = event;
         else events.push(event);
         saveEvents(events);
@@ -90,12 +133,31 @@
         saveEvents(events);
         try { window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id } })); } catch (e) { }
     }
+
+    // Debounced render helper: avoids repeated full grid rebuilds during bursts
+    // (storage/visibility/focus changes, sync callbacks, etc.)
+    let __renderQueued = false;
+    function scheduleRender() {
+        if (__renderQueued) return;
+        __renderQueued = true;
+
+        const run = () => {
+            __renderQueued = false;
+            try { renderMobileCalendar(); } catch (e) { }
+        };
+
+        try {
+            window.requestAnimationFrame(run);
+        } catch (e) {
+            setTimeout(run, 0);
+        }
+    }
     
     // Expose to window for Meibot
     window.calendarAddOrUpdateEvent = function(event) {
         addOrUpdateEvent(event);
         try { window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id: event.id } })); } catch (e) { }
-        renderMobileCalendar();
+        scheduleRender();
     };
     
     // DOM refs
@@ -135,76 +197,95 @@
     }
     
     function renderMobileCalendar() {
-        // Update month/year
-        monthYearEl.textContent = formatMonthYear(viewDate);
-        
-        // Render weekday headers
-        weekdayRowEl.innerHTML = '';
-        const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        weekdays.forEach(w => {
-            const el = document.createElement('div');
-            el.className = 'mobile-weekday';
-            el.textContent = w;
-            weekdayRowEl.appendChild(el);
-        });
-        
-        // Render calendar grid
-        gridEl.innerHTML = '';
-        const first = startOfMonth(viewDate);
-        const last = endOfMonth(viewDate);
-        const startWeekday = first.getDay();
-        const totalDays = last.getDate();
-        
-        // Blank cells before month
-        for (let i = 0; i < startWeekday; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'mobile-calendar-cell';
-            gridEl.appendChild(cell);
-        }
-        
-        // Calendar days
-        for (let day = 1; day <= totalDays; day++) {
-            const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-            const dateStr = ymd(d);
-            
-            const cell = document.createElement('div');
-            cell.className = 'mobile-calendar-cell';
-            
-            const btn = document.createElement('button');
-            btn.className = 'mobile-calendar-day';
-            btn.type = 'button';
-            btn.setAttribute('data-date', dateStr);
-            
-            // Check if this is today
-            const today = new Date();
-            const todayStr = ymd(today);
-            if (dateStr === todayStr) {
-                btn.classList.add('today');
+        try {
+            // Snapshot events once per render to avoid repeated JSON.parse calls.
+            const allEvents = loadEvents();
+            const byDate = new Map();
+            for (const ev of allEvents) {
+                if (!ev || typeof ev !== 'object') continue;
+                if (!ev.date) continue;
+                if (!byDate.has(ev.date)) byDate.set(ev.date, []);
+                byDate.get(ev.date).push(ev);
             }
-            
-            // Day number
-            const dayNum = document.createElement('div');
-            dayNum.className = 'mobile-day-number';
-            dayNum.textContent = day;
-            btn.appendChild(dayNum);
-            
-            // Event indicators
-            const events = eventsForDate(dateStr);
-            if (events.length > 0) {
-                const indicators = document.createElement('div');
-                indicators.className = 'mobile-event-indicators';
-                for (let i = 0; i < Math.min(events.length, 3); i++) {
-                    const dot = document.createElement('div');
-                    dot.className = 'mobile-event-dot';
-                    dot.style.background = events[i].color || '#ff922b';
-                    indicators.appendChild(dot);
+
+            // Update month/year
+            monthYearEl.textContent = formatMonthYear(viewDate);
+        
+            // Render weekday headers
+            weekdayRowEl.innerHTML = '';
+            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            weekdays.forEach(w => {
+                const el = document.createElement('div');
+                el.className = 'mobile-weekday';
+                el.textContent = w;
+                weekdayRowEl.appendChild(el);
+            });
+        
+            // Render calendar grid
+            gridEl.innerHTML = '';
+            const first = startOfMonth(viewDate);
+            const last = endOfMonth(viewDate);
+            const startWeekday = first.getDay();
+            const totalDays = last.getDate();
+        
+            // Blank cells before month
+            for (let i = 0; i < startWeekday; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'mobile-calendar-cell';
+                gridEl.appendChild(cell);
+            }
+        
+            // Calendar days
+            for (let day = 1; day <= totalDays; day++) {
+                const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+                const dateStr = ymd(d);
+
+                const cell = document.createElement('div');
+                cell.className = 'mobile-calendar-cell';
+
+                const btn = document.createElement('button');
+                btn.className = 'mobile-calendar-day';
+                btn.type = 'button';
+                btn.setAttribute('data-date', dateStr);
+
+                // Check if this is today
+                const today = new Date();
+                const todayStr = ymd(today);
+                if (dateStr === todayStr) {
+                    btn.classList.add('today');
                 }
-                btn.appendChild(indicators);
+
+                // Day number
+                const dayNum = document.createElement('div');
+                dayNum.className = 'mobile-day-number';
+                dayNum.textContent = day;
+                btn.appendChild(dayNum);
+
+                // Event indicators
+                const events = byDate.get(dateStr) || [];
+                if (events.length > 0) {
+                    const indicators = document.createElement('div');
+                    indicators.className = 'mobile-event-indicators';
+                    for (let i = 0; i < Math.min(events.length, 3); i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'mobile-event-dot';
+                        dot.style.background = (typeof events[i].color === 'string' && events[i].color) ? events[i].color : '#ff922b';
+                        indicators.appendChild(dot);
+                    }
+                    btn.appendChild(indicators);
+                }
+
+                btn.addEventListener('click', () => {
+                    openModalForDate(dateStr);
+                    // Some codepaths may write to localStorage without emitting an in-tab
+                    // notification; ensure day indicators catch up when the user interacts.
+                    scheduleRender();
+                });
+                cell.appendChild(btn);
+                gridEl.appendChild(cell);
             }
-            
-            btn.addEventListener('click', () => openModalForDate(dateStr));
-            cell.appendChild(btn);
-            gridEl.appendChild(cell);
+        } catch (err) {
+            console.error('[calendar-mobile] renderMobileCalendar failed', err);
         }
     }
     
@@ -488,17 +569,33 @@
         if (gcalSyncBtn) gcalSyncBtn.style.display = connected ? 'block' : 'none';
     });
     
-    // Initial render
+    // Initial render (plus short follow-ups to catch late storage writes in this tab)
     renderMobileCalendar();
+    setTimeout(scheduleRender, 50);
+    setTimeout(scheduleRender, 500);
     
     // Listen for event changes
     window.addEventListener('tmr:events:changed', () => {
-        renderMobileCalendar();
+        scheduleRender();
+    });
+
+    // Cross-tab updates and common mobile lifecycle restores.
+    window.addEventListener('storage', (e) => {
+        if (e && e.key === STORAGE_KEY) scheduleRender();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) scheduleRender();
+    });
+    window.addEventListener('pageshow', () => {
+        scheduleRender();
+    });
+    window.addEventListener('focus', () => {
+        scheduleRender();
     });
     
     // Check hourly for day changes to update today styling
     setInterval(() => {
-        renderMobileCalendar();
+        scheduleRender();
     }, 3600000); // 1 hour in milliseconds
     
     };

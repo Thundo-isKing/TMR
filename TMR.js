@@ -1929,9 +1929,14 @@ if (leaveBtn) {
 
         // schedule events
         try{
-            const evs = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+            let evs = JSON.parse(localStorage.getItem('tmr_events') || '[]');
+            // Defensive: support unexpected shapes so scheduling doesn't silently break.
+            if (!Array.isArray(evs)) {
+                if (evs && typeof evs === 'object' && Array.isArray(evs.events)) evs = evs.events;
+                else evs = [];
+            }
             console.log('[rescheduleAll] Found', evs.length, 'events');
-            (evs || []).forEach(ev => {
+            evs.forEach(ev => {
                 if(!ev || !ev.date || !ev.time) return;
                 const [y,mo,d] = (ev.date||'').split('-').map(Number);
                 const [hh,mm] = (ev.time||'').split(':').map(Number);
