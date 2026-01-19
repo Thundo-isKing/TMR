@@ -4,7 +4,7 @@
 */
 'use strict';
 
-const TMR_SW_VERSION = '20260115c';
+const TMR_SW_VERSION = '20260119a';
 
 self.addEventListener('push', function(event) {
   let payload = {};

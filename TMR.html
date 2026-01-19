@@ -11,7 +11,7 @@
         @media (min-width: 1025px) { .page-header { display: flex !important; } }
         @media (max-width: 1024px) { .page-header { display: none !important; } }
     </style>
-    <link rel="stylesheet" href="TMR.css?v=20260108a">
+    <link rel="stylesheet" href="TMR.css?v=20260119f">
     <link rel="stylesheet" href="page-transitions.css?v=20260106a">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
     <link rel="stylesheet" href="calendar-mobile.css?v=20260108a">
@@ -1826,35 +1826,47 @@
             <!-- Day / event modal -->
             <div id="event-modal" class="modal hidden" aria-hidden="true">
                 <div class="modal-content">
-                    <button id="close-modal" class="modal-close" aria-label="Close">&times;</button>
-                    <h3 id="modal-title">Add Event</h3>
+                    <div class="event-modal-header">
+                        <h3 id="modal-title">Add Event</h3>
+                        <button id="close-modal" class="modal-close" aria-label="Close">&times;</button>
+                    </div>
                     <form id="event-form">
                         <input type="hidden" id="event-id">
-                        <label>Title
-                            <input id="event-title" required />
-                        </label>
-                        <label>Date
-                            <input id="event-date" type="date" required />
-                        </label>
-                        <label>Time
-                            <input id="event-time" type="time" />
-                        </label>
-                        <label>Notes
-                            <textarea id="event-notes"></textarea>
-                        </label>
-                        <label>Color
-                            <div id="color-picker" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-                                <button type="button" class="color-btn" data-color="#ff6b6b" title="Red" style="background: #ff6b6b; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#ff922b" title="Orange" style="background: #ff922b; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#ffd43b" title="Yellow" style="background: #ffd43b; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#51cf66" title="Green" style="background: #51cf66; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#0089f1" title="Blue" style="background: #0089f1; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#9775fa" title="Violet" style="background: #9775fa; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#1f1f1f" title="Black" style="background: #1f1f1f; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#999999" title="Grey" style="background: #999999; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
-                                <button type="button" class="color-btn" data-color="#8B4513" title="Brown" style="background: #8B4513; width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;"></button>
+                        <div class="form-group">
+                            <label for="event-title">Title *</label>
+                            <input id="event-title" type="text" required placeholder="Enter event title..." />
+                        </div>
+
+                        <div class="event-form-row">
+                            <div class="form-group">
+                                <label for="event-date">Date</label>
+                                <input id="event-date" type="date" required />
                             </div>
-                        </label>
+                            <div class="form-group">
+                                <label for="event-time">Time</label>
+                                <input id="event-time" type="time" />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="event-notes">Notes</label>
+                            <textarea id="event-notes" placeholder="Add notes..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Color</label>
+                            <div id="color-picker" class="event-color-picker">
+                                <button type="button" class="color-btn" data-color="#ff6b6b" title="Red" style="background: #ff6b6b;"></button>
+                                <button type="button" class="color-btn" data-color="#ff922b" title="Orange" style="background: #ff922b;"></button>
+                                <button type="button" class="color-btn" data-color="#ffd43b" title="Yellow" style="background: #ffd43b;"></button>
+                                <button type="button" class="color-btn" data-color="#51cf66" title="Green" style="background: #51cf66;"></button>
+                                <button type="button" class="color-btn" data-color="#0089f1" title="Blue" style="background: #0089f1;"></button>
+                                <button type="button" class="color-btn" data-color="#9775fa" title="Violet" style="background: #9775fa;"></button>
+                                <button type="button" class="color-btn" data-color="#1f1f1f" title="Black" style="background: #1f1f1f;"></button>
+                                <button type="button" class="color-btn" data-color="#999999" title="Grey" style="background: #999999;"></button>
+                                <button type="button" class="color-btn" data-color="#8B4513" title="Brown" style="background: #8B4513;"></button>
+                            </div>
+                        </div>
                         <div class="modal-actions">
                             <button type="submit" id="save-event" class="tmr-btn">Save</button>
                             <button type="button" id="delete-event" class="tmr-btn danger">Delete</button>
@@ -1908,16 +1920,16 @@
         <div id="todo-view-modal-backdrop" class="todo-modal-backdrop" style="display: none;">
             <div class="todo-modal" role="dialog" aria-modal="true" aria-labelledby="todo-view-modal-title">
                 <h3 id="todo-view-modal-title">View Todo</h3>
-                <div style="padding: 16px; background: #f9f9f9; border-radius: 8px;">
-                    <div style="margin-bottom: 16px;">
+                <div class="todo-view-body">
+                    <div class="todo-view-section">
                         <strong>Title:</strong>
-                        <p id="todo-view-title" style="margin: 8px 0; font-size: 16px;"></p>
+                        <p id="todo-view-title" class="todo-view-title"></p>
                     </div>
-                    <div style="margin-bottom: 16px;">
+                    <div class="todo-view-section">
                         <strong>Notes:</strong>
-                        <p id="todo-view-notes" style="margin: 8px 0; font-size: 14px; white-space: pre-wrap; color: #555;"></p>
+                        <p id="todo-view-notes" class="todo-view-notes"></p>
                     </div>
-                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <div class="todo-view-actions">
                         <button id="todo-view-edit-btn" class="small-tmr-btn">Edit</button>
                         <button id="todo-view-close-btn" class="small-tmr-btn">Close</button>
                     </div>
