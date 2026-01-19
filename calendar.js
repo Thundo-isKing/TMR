@@ -31,6 +31,251 @@
     }
   }
 
+  function getCurrentUserId(){
+    try{
+      if(window.AuthClient){
+        if(typeof window.AuthClient.getCurrentUser === 'function'){
+          const u = window.AuthClient.getCurrentUser();
+          if(u && u.id != null) return String(u.id);
+        }
+        if(typeof window.AuthClient.getUserId === 'function'){
+          const uid = window.AuthClient.getUserId();
+          if(uid != null) return String(uid);
+        }
+      }
+    }catch(e){}
+
+    try{
+      const sid = (sessionStorage.getItem('tmr_last_user_id') || '').trim();
+      if(sid) return sid;
+    }catch(e){}
+    try{
+      const lid = (localStorage.getItem('tmr_last_user_id') || '').trim();
+      if(lid) return lid;
+    }catch(e){}
+    return null;
+  }
+
+  function isAuthed(){
+    return !!getCurrentUserId();
+  }
+
+  async function fetchServerEvents(){
+    const res = await serverFetch('/events', { method: 'GET' });
+    if(!res || !res.ok) return [];
+    const data = await res.json().catch(()=>null);
+    return (data && Array.isArray(data.events)) ? data.events : [];
+  }
+
+  async function createServerEventFromLocal(localEvent){
+    const payload = {
+      title: localEvent.title,
+      date: localEvent.date,
+      startTime: localEvent.time || localEvent.startTime || null,
+      endTime: localEvent.endTime || null,
+      description: localEvent.notes || localEvent.description || '',
+      reminderMinutes: localEvent.reminderMinutes || 0,
+      reminderAt: localEvent.reminderAt || null,
+      syncId: localEvent.id || null
+    };
+    const res = await serverFetch('/events/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: payload })
+    });
+    if(!res || !res.ok) return null;
+    const data = await res.json().catch(()=>null);
+    const id = data && data.eventId != null ? data.eventId : null;
+    return id;
+  }
+
+  async function updateServerEvent(serverId, localEvent){
+    if(serverId == null) return false;
+    const payload = {
+      title: localEvent.title,
+      date: localEvent.date,
+      startTime: localEvent.time || localEvent.startTime || null,
+      endTime: localEvent.endTime || null,
+      description: localEvent.notes || localEvent.description || '',
+      reminderMinutes: localEvent.reminderMinutes || 0,
+      reminderAt: localEvent.reminderAt || null,
+      syncId: localEvent.id || null
+    };
+    const res = await serverFetch('/events/' + encodeURIComponent(String(serverId)), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: payload })
+    });
+    return !!(res && res.ok);
+  }
+
+  async function deleteServerEvent(serverId){
+    if(serverId == null) return false;
+    const res = await serverFetch('/events/' + encodeURIComponent(String(serverId)), { method: 'DELETE' });
+    return !!(res && res.ok);
+  }
+
+  let __tmrSyncInFlight = null;
+  let __tmrLastSyncAt = 0;
+  const __tmrSyncMinIntervalMs = 1500;
+
+  async function syncEventsFromServerIfAuthed({ force = false } = {}){
+    const uid = getCurrentUserId();
+    if(!uid) return false;
+
+    const now = Date.now();
+    if(!force && __tmrSyncInFlight) return __tmrSyncInFlight;
+    if(!force && (now - __tmrLastSyncAt) < __tmrSyncMinIntervalMs) return false;
+    __tmrLastSyncAt = now;
+
+    __tmrSyncInFlight = (async () => {
+      let serverEvents;
+      try{
+        serverEvents = await fetchServerEvents();
+      }catch(e){
+        return false;
+      }
+
+    const serverBySyncId = new Map();
+    for(const se of (serverEvents || [])){
+      if(se && se.syncId != null) serverBySyncId.set(String(se.syncId), se);
+    }
+
+    // Upload legacy local-only events (no serverId) that aren't Google-synced.
+    let local;
+    try{ local = loadEvents(); }catch(e){ local = []; }
+    if(!Array.isArray(local)) local = [];
+
+    let changed = false;
+    let didCreate = false;
+    for(const ev of local){
+      if(!ev || typeof ev !== 'object') continue;
+      if(ev.googleEventId || ev.syncedFromGoogle) continue;
+      if(ev.serverId != null) continue;
+      if(!ev.title || !ev.date) continue;
+
+      const existing = ev.id != null ? serverBySyncId.get(String(ev.id)) : null;
+      if(existing && existing.id != null){
+        ev.serverId = existing.id;
+        changed = true;
+        continue;
+      }
+
+      try{
+        const newId = await createServerEventFromLocal(ev);
+        if(newId != null){
+          ev.serverId = newId;
+          changed = true;
+          didCreate = true;
+        }
+      }catch(e){ /* keep local-only */ }
+    }
+
+    // Re-fetch after any creates so we merge the canonical list.
+    if(didCreate){
+      try{
+        serverEvents = await fetchServerEvents();
+      }catch(e){
+        if(changed){
+          try{ saveEvents(local); }catch(_){ }
+        }
+        return changed;
+      }
+    }
+
+    const serverIds = new Set();
+    const localByServerId = new Map();
+    const localById = new Map();
+    for(const ev of local){
+      if(!ev || typeof ev !== 'object') continue;
+      if(ev.serverId != null) localByServerId.set(String(ev.serverId), ev);
+      if(ev.id != null) localById.set(String(ev.id), ev);
+    }
+
+    for(const se of (serverEvents || [])){
+      if(!se || se.id == null) continue;
+      serverIds.add(String(se.id));
+      const byServer = localByServerId.get(String(se.id));
+      const bySync = (se.syncId != null) ? localById.get(String(se.syncId)) : null;
+      const target = byServer || bySync;
+      if(target){
+        const next = {
+          serverId: se.id,
+          title: se.title || target.title || '',
+          date: se.date || target.date || '',
+          time: se.startTime || target.time || '',
+          notes: (se.description != null) ? String(se.description) : (target.notes || ''),
+          reminderMinutes: (se.reminderMinutes != null) ? se.reminderMinutes : (target.reminderMinutes || 0),
+          reminderAt: (se.reminderAt != null) ? se.reminderAt : (target.reminderAt || null),
+          lastModified: (se.updatedAt != null) ? se.updatedAt : (target.lastModified || Date.now())
+        };
+
+        if(
+          target.serverId !== next.serverId ||
+          target.title !== next.title ||
+          target.date !== next.date ||
+          target.time !== next.time ||
+          target.notes !== next.notes ||
+          target.reminderMinutes !== next.reminderMinutes ||
+          target.reminderAt !== next.reminderAt ||
+          target.lastModified !== next.lastModified
+        ){
+          changed = true;
+        }
+
+        target.serverId = next.serverId;
+        target.title = next.title;
+        target.date = next.date;
+        target.time = next.time;
+        target.notes = next.notes;
+        target.reminderMinutes = next.reminderMinutes;
+        target.reminderAt = next.reminderAt;
+        target.lastModified = next.lastModified;
+        // Only adopt syncId as local id when we created a synthetic local id for a server-only event.
+        if(se.syncId != null && (target.id == null || String(target.id).startsWith('srv_')) && !target.googleEventId){
+          if(String(target.id) !== String(se.syncId)) changed = true;
+          target.id = String(se.syncId);
+        }
+      } else {
+        changed = true;
+        local.push({
+          id: se.syncId != null ? String(se.syncId) : ('srv_' + String(se.id)),
+          serverId: se.id,
+          title: se.title || '',
+          date: se.date || '',
+          time: se.startTime || '',
+          notes: se.description || '',
+          reminderMinutes: se.reminderMinutes || 0,
+          reminderAt: se.reminderAt || null,
+          lastModified: se.updatedAt || Date.now(),
+          ownerUserId: uid
+        });
+      }
+    }
+
+    // Remove local events that were server-backed but no longer exist server-side.
+    const filtered = local.filter(ev => {
+      if(!ev || typeof ev !== 'object') return false;
+      if(ev.googleEventId || ev.syncedFromGoogle) return true;
+      if(ev.serverId == null) return true;
+      return serverIds.has(String(ev.serverId));
+    });
+
+    if(filtered.length !== local.length) changed = true;
+
+    if(changed){
+      try{ saveEvents(filtered); }catch(e){}
+    }
+    return changed;
+    })();
+
+    try{
+      return await __tmrSyncInFlight;
+    }finally{
+      __tmrSyncInFlight = null;
+    }
+  }
+
   // Helpers
   function loadEvents(){
     let events;
@@ -88,7 +333,8 @@
       const [hh, mm] = event.time.split(':').map(Number);
       if(!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return;
       const ts = new Date(y, mo-1, d, hh||0, mm||0).getTime();
-      const payload = { subscriptionId: Number(subscriptionId), userId: null, title: 'Event: ' + (event.title||''), body: event.notes || event.title || '', deliverAt: ts };
+      const accountId = getCurrentUserId();
+      const payload = { subscriptionId: Number(subscriptionId), userId: accountId || null, title: 'Event: ' + (event.title||''), body: event.notes || event.title || '', deliverAt: ts };
       await serverFetch('/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       console.debug('[calendar] posted event reminder to server', event.id);
     }catch(err){
@@ -110,8 +356,27 @@
     
     if(idx >= 0) events[idx] = event; else events.push(event);
     saveEvents(events);
-    // POST reminder to server if event has date/time
-    postEventReminderToServer(event);
+    // Persist to server when signed in so events sync across devices.
+    // (Server will also schedule account-wide reminders.)
+    try{
+      if(isAuthed() && !(event.googleEventId || event.syncedFromGoogle)){
+        if(event.serverId != null){
+          updateServerEvent(event.serverId, event).catch(()=>{});
+        } else {
+          createServerEventFromLocal(event).then((newId)=>{
+            if(newId != null){
+              const after = loadEvents();
+              const ix = after.findIndex(e => e && e.id === event.id);
+              if(ix >= 0){ after[ix].serverId = newId; saveEvents(after); }
+              try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id: event.id, synced: true } })); }catch(e){}
+            }
+          }).catch(()=>{});
+        }
+      } else {
+        // Anonymous mode: best-effort reminder via subscription id.
+        postEventReminderToServer(event);
+      }
+    }catch(e){}
     try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id: event.id } })); }catch(e){}
   }
   function deleteEvent(id){
@@ -134,6 +399,13 @@
       }
     }
     
+    // If this event exists on the server (signed-in), delete it there too.
+    try{
+      if(eventToDelete && eventToDelete.serverId != null && isAuthed() && !(eventToDelete.googleEventId || eventToDelete.syncedFromGoogle)){
+        deleteServerEvent(eventToDelete.serverId).catch(()=>{});
+      }
+    }catch(e){}
+
     const filtered = events.filter(e => e.id !== id);
     saveEvents(filtered);
     try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { id } })); }catch(e){}
@@ -790,6 +1062,28 @@
   // initial render
   renderCalendar();
 
+  // Best-effort: pull latest server events (multi-device sync)
+  // and re-render if anything changes.
+  try{
+    syncEventsFromServerIfAuthed().then((did)=>{
+      if(did) try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { synced: true } })); }catch(e){}
+    }).catch(()=>{});
+  }catch(e){}
+
+  // Refresh on focus so edits from another device show up quickly.
+  window.addEventListener('focus', ()=>{
+    try{
+      syncEventsFromServerIfAuthed().then((did)=>{
+        if(did) try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { synced: true } })); }catch(e){}
+      }).catch(()=>{});
+    }catch(e){}
+  });
+
+  // Light periodic refresh while open.
+  setInterval(()=>{
+    try{ syncEventsFromServerIfAuthed().then((did)=>{ if(did) try{ window.dispatchEvent(new CustomEvent('tmr:events:changed', { detail: { synced: true } })); }catch(e){} }).catch(()=>{}); }catch(e){}
+  }, 60000);
+
   // Listen for event changes (from Meibot or other sources)
   window.addEventListener('tmr:events:changed', () => {
     renderCalendar();
@@ -797,7 +1091,9 @@
 
   // When auth changes/restores, re-render from the correct user-scoped storage.
   window.addEventListener('tmr:auth-changed', () => {
-    renderCalendar();
+    try{
+      syncEventsFromServerIfAuthed().then(()=>{ renderCalendar(); }).catch(()=>{ renderCalendar(); });
+    }catch(e){ renderCalendar(); }
   });
 
   };
