@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="TMR.css?v=20260120a">
     <link rel="stylesheet" href="page-transitions.css?v=20260106a">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
-    <link rel="stylesheet" href="calendar-mobile.css?v=20260108a">
+    <link rel="stylesheet" href="calendar-mobile.css?v=20260121a">
     <script>
         (function () {
             try {
@@ -1762,6 +1762,25 @@
                     <div class="mobile-calendar-grid" id="mobile-calendar-grid"></div>
                 </div>
 
+                <!-- Mobile Day View (phone timeline, mirrors desktop Day View) -->
+                <div id="mobile-day-view" class="day-view" hidden aria-label="Day view">
+                    <div class="day-view-header">
+                        <button id="mobile-day-back" class="day-nav-btn" type="button" title="Back to month">←</button>
+                        <button id="mobile-day-prev" class="day-nav-btn" type="button" title="Previous day">&lt;</button>
+                        <div id="mobile-day-title" class="month-year">Day</div>
+                        <button id="mobile-day-next" class="day-nav-btn" type="button" title="Next day">&gt;</button>
+                    </div>
+                    <div id="mobile-day-view-scroll" class="day-view-scroll" aria-label="Day timeline">
+                        <div class="day-view-grid">
+                            <div id="mobile-day-time-col" class="day-time-col" aria-hidden="true"></div>
+                            <div id="mobile-day-grid" class="day-grid" aria-label="Time grid">
+                                <div id="mobile-day-grid-lines" class="day-grid-lines" aria-hidden="true"></div>
+                                <div id="mobile-day-events-layer" class="day-events-layer" aria-label="Events"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div id="mobile-modal-backdrop" class="mobile-modal-backdrop">
@@ -2023,7 +2042,7 @@
     <script src="theme-video.js?v=20260106a"></script>
     <script src="TMR.js?v=20260108a"></script>
     <script src="calendar.js?v=20260120b"></script>
-    <script src="calendar-mobile.js?v=20260119a"></script>
+    <script src="calendar-mobile.js?v=20260121a"></script>
     <script src="google-calendar-client.js?v=20260106a"></script>
     <script src="meibot.js?v=20260108a"></script>
 

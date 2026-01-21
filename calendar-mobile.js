@@ -368,6 +368,13 @@
     }
 
     // Time helpers (mobile)
+    const __DAY_HOUR_HEIGHT_PX = 64;
+    const __DAY_PX_PER_MIN = __DAY_HOUR_HEIGHT_PX / 60;
+
+    function clamp(n, min, max){
+        return Math.max(min, Math.min(max, n));
+    }
+
     function parseHm(hm){
         if(!hm || typeof hm !== 'string') return null;
         const m = hm.match(/^(\d{1,2}):(\d{2})$/);
@@ -390,6 +397,10 @@
         const next = Math.max(0, Math.min(24*60, m + Number(delta || 0)));
         if(next >= 24*60) return '23:59';
         return minutesToHm(next);
+    }
+
+    function roundToQuarter(totalMinutes){
+        return Math.round(totalMinutes / 15) * 15;
     }
     function normalizeEventTimes(ev, { forceDefaults = false } = {}){
         if(!ev || typeof ev !== 'object') return ev;
@@ -498,7 +509,7 @@
 
         const run = () => {
             __renderQueued = false;
-            try { renderMobileCalendar(); } catch (e) { }
+            try { renderActiveView(); } catch (e) { }
         };
 
         try {
@@ -518,12 +529,28 @@
     // DOM refs
     const container = document.getElementById('mobile-calendar-container');
     if (!container) return; // mobile calendar not on page
+
+    const headerEl = container.querySelector('.mobile-calendar-header');
+    const gridContainerEl = container.querySelector('.mobile-calendar-grid-container');
     
     const monthYearEl = container.querySelector('.month-year');
     const prevBtn = document.getElementById('mobile-prev-month');
     const nextBtn = document.getElementById('mobile-next-month');
     const weekdayRowEl = document.getElementById('mobile-weekday-row');
     const gridEl = document.getElementById('mobile-calendar-grid');
+
+    // Mobile Day View refs (timeline)
+    const mobileDayViewEl = document.getElementById('mobile-day-view');
+    const mobileDayTitleEl = document.getElementById('mobile-day-title');
+    const mobileDayBackBtn = document.getElementById('mobile-day-back');
+    const mobileDayPrevBtn = document.getElementById('mobile-day-prev');
+    const mobileDayNextBtn = document.getElementById('mobile-day-next');
+    const mobileDayScrollEl = document.getElementById('mobile-day-view-scroll');
+    const mobileDayTimeColEl = document.getElementById('mobile-day-time-col');
+    const mobileDayGridEl = document.getElementById('mobile-day-grid');
+    const mobileDayGridLinesEl = document.getElementById('mobile-day-grid-lines');
+    const mobileDayEventsLayerEl = document.getElementById('mobile-day-events-layer');
+
     const modalBackdrop = document.getElementById('mobile-modal-backdrop');
     const modalTitle = document.getElementById('mobile-modal-title');
     const eventListEl = document.getElementById('mobile-event-list');
@@ -543,6 +570,9 @@
     let activeDate = null;
     let activeEventId = null;
     let selectedEventColor = '#ff922b'; // Default color (orange)
+
+    let __mobileViewMode = 'month';
+    let __mobileDayViewDateStr = null;
     
     function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
     function endOfMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
@@ -632,7 +662,7 @@
                 }
 
                 btn.addEventListener('click', () => {
-                    openModalForDate(dateStr);
+                    try { showMobileDayView(dateStr); } catch (_) { openModalForDate(dateStr); }
                     // Some codepaths may write to localStorage without emitting an in-tab
                     // notification; ensure day indicators catch up when the user interacts.
                     scheduleRender();
@@ -644,26 +674,182 @@
             console.error('[calendar-mobile] renderMobileCalendar failed', err);
         }
     }
+
+    function formatDayTitle(dateStr){
+        try{
+            const parts = (dateStr || '').split('-').map(Number);
+            if(parts.length !== 3) return dateStr;
+            const d = new Date(parts[0], parts[1]-1, parts[2]);
+            return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+        }catch(_){
+            return dateStr;
+        }
+    }
+
+    function setMobileViewMode(mode){
+        __mobileViewMode = (mode === 'day') ? 'day' : 'month';
+
+        if(__mobileViewMode === 'day'){
+            if(headerEl) headerEl.hidden = true;
+            if(gridContainerEl) gridContainerEl.hidden = true;
+            if(mobileDayViewEl) mobileDayViewEl.hidden = false;
+        } else {
+            if(headerEl) headerEl.hidden = false;
+            if(gridContainerEl) gridContainerEl.hidden = false;
+            if(mobileDayViewEl) mobileDayViewEl.hidden = true;
+        }
+    }
+
+    function buildMobileDayViewScaffoldIfNeeded(){
+        if(!mobileDayTimeColEl || !mobileDayGridLinesEl) return;
+        if(mobileDayTimeColEl.childElementCount === 24 && mobileDayGridLinesEl.childElementCount === (24*4)) return;
+
+        // Time labels
+        mobileDayTimeColEl.innerHTML = '';
+        for(let h=0; h<24; h++){
+            const el = document.createElement('div');
+            el.className = 'day-time-label';
+            const hour12 = ((h + 11) % 12) + 1;
+            const ampm = (h >= 12) ? 'PM' : 'AM';
+            el.textContent = hour12 + ' ' + ampm;
+            mobileDayTimeColEl.appendChild(el);
+        }
+
+        // Grid lines: 15-minute segments
+        mobileDayGridLinesEl.innerHTML = '';
+        for(let h=0; h<24; h++){
+            for(let q=0; q<4; q++){
+                const seg = document.createElement('div');
+                seg.className = (q === 0) ? 'day-grid-hour' : 'day-grid-quarter';
+                mobileDayGridLinesEl.appendChild(seg);
+            }
+        }
+    }
+
+    function renderMobileDayView(dateStr){
+        if(!mobileDayEventsLayerEl) return;
+        __mobileDayViewDateStr = dateStr;
+        if(mobileDayTitleEl) mobileDayTitleEl.textContent = formatDayTitle(dateStr);
+
+        buildMobileDayViewScaffoldIfNeeded();
+        mobileDayEventsLayerEl.innerHTML = '';
+
+        const events = eventsForDate(dateStr)
+            .map(ev => { normalizeEventTimes(ev); return ev; })
+            .filter(ev => !!ev.time && !!ev.endTime)
+            .sort((a,b) => {
+                const am = parseHm(a.time); const bm = parseHm(b.time);
+                if(am == null && bm == null) return 0;
+                if(am == null) return 1;
+                if(bm == null) return -1;
+                return am - bm;
+            });
+
+        events.forEach(ev => {
+            const sm = parseHm(ev.time);
+            const em = parseHm(ev.endTime);
+            if(sm == null || em == null) return;
+
+            const top = sm * __DAY_PX_PER_MIN;
+            const height = Math.max(28, (em - sm) * __DAY_PX_PER_MIN);
+
+            const block = document.createElement('div');
+            block.className = 'day-event';
+            block.style.top = top + 'px';
+            block.style.height = height + 'px';
+            if(ev.color) {
+                block.style.background =
+                    'radial-gradient(140% 180% at 0% 0%, rgba(255,255,255,0.26), transparent 60%),' +
+                    'radial-gradient(140% 180% at 100% 0%, rgba(255,255,255,0.14), transparent 60%),' +
+                    'linear-gradient(135deg, rgba(255,255,255,0.10), transparent 45%),' +
+                    'color-mix(in srgb, ' + ev.color + ' 45%, rgba(255,255,255,0.10))';
+            }
+
+            const title = document.createElement('div');
+            title.className = 'day-event-title';
+            title.textContent = ev.title || '(no title)';
+
+            const time = document.createElement('div');
+            time.className = 'day-event-time';
+            time.textContent = (ev.time || '') + ' – ' + (ev.endTime || '');
+
+            block.appendChild(title);
+            block.appendChild(time);
+
+            if(ev.notes){
+                const notes = document.createElement('div');
+                notes.className = 'day-event-notes';
+                notes.textContent = String(ev.notes);
+                block.appendChild(notes);
+            }
+
+            block.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openModalForDate(dateStr, { suppressList: true, title: 'Edit Event' });
+                fillFormForEvent(ev);
+            });
+
+            mobileDayEventsLayerEl.appendChild(block);
+        });
+
+        // Default scroll to morning
+        try{
+            if(mobileDayScrollEl && mobileDayScrollEl.scrollTop === 0){
+                mobileDayScrollEl.scrollTop = Math.round(8 * __DAY_HOUR_HEIGHT_PX);
+            }
+        }catch(_){ }
+    }
+
+    function showMobileDayView(dateStr){
+        if(!mobileDayViewEl) return;
+        setMobileViewMode('day');
+        renderMobileDayView(dateStr);
+    }
+
+    function showMobileMonthView(){
+        setMobileViewMode('month');
+        try{
+            if(__mobileDayViewDateStr){
+                const parts = __mobileDayViewDateStr.split('-').map(Number);
+                if(parts.length === 3) viewDate = new Date(parts[0], parts[1]-1, 1);
+            }
+        }catch(_){ }
+        renderMobileCalendar();
+    }
+
+    function renderActiveView(){
+        if(__mobileViewMode === 'day' && __mobileDayViewDateStr){
+            renderMobileDayView(__mobileDayViewDateStr);
+        } else {
+            renderMobileCalendar();
+        }
+    }
     
-    function openModalForDate(dateStr) {
+    function openModalForDate(dateStr, opts = {}) {
         activeDate = dateStr;
         activeEventId = null;
-        const events = eventsForDate(dateStr);
-        
-        // Populate event list
-        eventListEl.innerHTML = '';
-        if (events.length > 0) {
+
+        const suppressList = !!opts.suppressList;
+        const events = suppressList ? [] : eventsForDate(dateStr);
+
+        // Populate (or suppress) event list
+        if (eventListEl) {
+            eventListEl.innerHTML = '';
+            eventListEl.style.display = suppressList ? 'none' : '';
+        }
+
+        if (!suppressList && eventListEl && events.length > 0) {
             events.forEach(ev => {
                 const item = document.createElement('div');
                 item.className = 'mobile-event-item';
-                
+
                 const title = document.createElement('div');
                 title.className = 'mobile-event-item-title';
                 const start = ev.time || '';
                 const end = ev.endTime || '';
                 const range = (start && end) ? (start + '–' + end + ' — ') : (start ? (start + ' — ') : '');
                 title.textContent = range + (ev.title || '');
-                
+
                 const btn = document.createElement('button');
                 btn.className = 'mobile-event-item-btn';
                 btn.textContent = 'Edit';
@@ -671,7 +857,7 @@
                     e.stopPropagation();
                     fillFormForEvent(ev);
                 });
-                
+
                 item.appendChild(title);
                 item.appendChild(btn);
                 eventListEl.appendChild(item);
@@ -693,7 +879,11 @@
         }
         
         deleteBtn.style.display = 'none';
-        modalTitle.textContent = 'Events for ' + dateStr;
+        if (typeof opts.title === 'string' && opts.title) {
+            modalTitle.textContent = opts.title;
+        } else {
+            modalTitle.textContent = suppressList ? 'New Event' : ('Events for ' + dateStr);
+        }
         
         // Show modal
         modalBackdrop.classList.add('active');
@@ -867,6 +1057,25 @@
         viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
         triggerMobileMonthTransition();
     });
+
+    // Day View navigation (mobile)
+    try {
+        if (mobileDayBackBtn) mobileDayBackBtn.addEventListener('click', () => showMobileMonthView());
+        if (mobileDayPrevBtn) mobileDayPrevBtn.addEventListener('click', () => {
+            if(!__mobileDayViewDateStr) __mobileDayViewDateStr = ymd(new Date());
+            const parts = __mobileDayViewDateStr.split('-').map(Number);
+            const d = new Date(parts[0], parts[1]-1, parts[2]);
+            d.setDate(d.getDate() - 1);
+            showMobileDayView(ymd(d));
+        });
+        if (mobileDayNextBtn) mobileDayNextBtn.addEventListener('click', () => {
+            if(!__mobileDayViewDateStr) __mobileDayViewDateStr = ymd(new Date());
+            const parts = __mobileDayViewDateStr.split('-').map(Number);
+            const d = new Date(parts[0], parts[1]-1, parts[2]);
+            d.setDate(d.getDate() + 1);
+            showMobileDayView(ymd(d));
+        });
+    } catch (_) { }
     
     modalCloseBtn.addEventListener('click', closeModal);
     
@@ -922,7 +1131,7 @@
         
         addOrUpdateEvent(event);
         closeModal();
-        renderMobileCalendar();
+        renderActiveView();
     });
     
     deleteBtn.addEventListener('click', () => {
@@ -931,7 +1140,7 @@
         
         deleteEvent(activeEventId);
         closeModal();
-        renderMobileCalendar();
+        renderActiveView();
     });
     
     // Cancel button
@@ -949,6 +1158,124 @@
             closeModal();
         }
     });
+
+    // Day View: tap/drag on grid to create an event (snapped to 15 minutes)
+    try {
+        if (mobileDayGridEl) {
+            const drag = {
+                active: false,
+                pointerId: null,
+                startMinutes: 0,
+                currentMinutes: 0,
+                selectionEl: null
+            };
+
+            const ensureSelectionEl = () => {
+                if (drag.selectionEl && drag.selectionEl.isConnected) return drag.selectionEl;
+                if (!mobileDayEventsLayerEl) return null;
+                const el = document.createElement('div');
+                el.className = 'day-selection';
+                el.style.display = 'none';
+                mobileDayEventsLayerEl.appendChild(el);
+                drag.selectionEl = el;
+                return el;
+            };
+
+            const getSnappedMinutesFromPointerEvent = (e) => {
+                const rect = mobileDayGridEl.getBoundingClientRect();
+                const y = (e.clientY - rect.top);
+                const minutesRaw = y / __DAY_PX_PER_MIN;
+                return clamp(roundToQuarter(minutesRaw), 0, 24*60);
+            };
+
+            const updateSelection = (startMin, endMin) => {
+                const el = ensureSelectionEl();
+                if (!el) return;
+                const s = clamp(Math.min(startMin, endMin), 0, 24*60-15);
+                let e = clamp(Math.max(startMin, endMin), 0, 24*60);
+                if (e <= s) e = Math.min(24*60, s + 15);
+                el.style.display = 'block';
+                el.style.top = (s * __DAY_PX_PER_MIN) + 'px';
+                el.style.height = Math.max(16, (e - s) * __DAY_PX_PER_MIN) + 'px';
+            };
+
+            const hideSelection = () => {
+                const el = ensureSelectionEl();
+                if (!el) return;
+                el.style.display = 'none';
+            };
+
+            const openPrefilledModal = (startMin, endMin) => {
+                if (!__mobileDayViewDateStr) __mobileDayViewDateStr = ymd(new Date());
+                const s = clamp(Math.min(startMin, endMin), 0, 24*60-15);
+                let e = clamp(Math.max(startMin, endMin), 0, 24*60);
+                if (e <= s) e = Math.min(24*60, s + 15);
+                const startHm = minutesToHm(s);
+                const endHm = minutesToHm(e);
+
+                openModalForDate(__mobileDayViewDateStr, { suppressList: true, title: 'New Event' });
+                if (timeInput) timeInput.value = startHm;
+                if (endTimeInput) endTimeInput.value = endHm;
+            };
+
+            mobileDayGridEl.addEventListener('pointerdown', (e) => {
+                if (!__mobileDayViewDateStr) __mobileDayViewDateStr = ymd(new Date());
+                if (e && typeof e.button === 'number' && e.button !== 0) return;
+                if (e && e.target && e.target.closest && e.target.closest('.day-event')) return;
+
+                const startMin = getSnappedMinutesFromPointerEvent(e);
+                drag.active = true;
+                drag.pointerId = e.pointerId;
+                drag.startMinutes = clamp(startMin, 0, 24*60-15);
+                drag.currentMinutes = drag.startMinutes;
+                updateSelection(drag.startMinutes, drag.startMinutes + 15);
+
+                try { mobileDayGridEl.setPointerCapture(e.pointerId); } catch (_) { }
+            });
+
+            mobileDayGridEl.addEventListener('pointermove', (e) => {
+                if (!drag.active) return;
+                if (drag.pointerId != null && e.pointerId !== drag.pointerId) return;
+                if (e && e.target && e.target.closest && e.target.closest('.day-event')) return;
+
+                drag.currentMinutes = getSnappedMinutesFromPointerEvent(e);
+                updateSelection(drag.startMinutes, drag.currentMinutes);
+            });
+
+            const finishDrag = (e) => {
+                if (!drag.active) return;
+                if (drag.pointerId != null && e && e.pointerId !== drag.pointerId) return;
+                drag.active = false;
+
+                try { if (e && e.pointerId != null) mobileDayGridEl.releasePointerCapture(e.pointerId); } catch (_) { }
+
+                const delta = Math.abs((drag.currentMinutes || 0) - (drag.startMinutes || 0));
+                hideSelection();
+
+                if (delta >= 15) {
+                    openPrefilledModal(drag.startMinutes, drag.currentMinutes);
+                } else {
+                    // Tap: default to 60 minutes
+                    openPrefilledModal(drag.startMinutes, clamp(drag.startMinutes + 60, 0, 24*60));
+                }
+
+                drag.pointerId = null;
+            };
+
+            const cancelDrag = (e) => {
+                if (!drag.active) return;
+                if (drag.pointerId != null && e && e.pointerId !== drag.pointerId) return;
+                drag.active = false;
+                try { if (e && e.pointerId != null) mobileDayGridEl.releasePointerCapture(e.pointerId); } catch (_) { }
+                hideSelection();
+                drag.pointerId = null;
+            };
+
+            mobileDayGridEl.addEventListener('pointerup', finishDrag);
+            // If the browser cancels the pointer sequence (commonly due to scrolling), don't open a modal.
+            mobileDayGridEl.addEventListener('pointercancel', cancelDrag);
+        }
+    } catch (_) { }
     
     // Listen for Google Calendar status updates
     window.addEventListener('gcal:status-changed', (e) => {
@@ -958,7 +1285,7 @@
     });
     
     // Initial render (plus short follow-ups to catch late storage writes in this tab)
-    renderMobileCalendar();
+    renderActiveView();
     // Best-effort: pull latest server events for multi-device sync.
     try {
         syncEventsFromServerIfAuthed().then((did) => {

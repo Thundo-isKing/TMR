@@ -110,6 +110,31 @@
     }
 }
 
+/* =============================================
+   Mobile Day View (timeline) - mirrors desktop Day View
+   ============================================= */
+
+@media (max-width: 600px) {
+    #mobile-day-view {
+        margin: 8px;
+    }
+
+    /* Override desktop Day View min-width constraints so it fits phone screens */
+    #mobile-day-view .day-view-grid {
+        min-width: 0;
+        grid-template-columns: 58px 1fr;
+    }
+
+    #mobile-day-view .day-time-label {
+        font-size: 11px;
+        padding: 10px 8px 0 0;
+    }
+
+    #mobile-day-view .day-view-scroll {
+        max-height: 72vh;
+    }
+}
+
 .mobile-weekday-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
