@@ -20,3 +20,8 @@
 ```
 curl -X POST http://localhost:3001/api/meibot -H "Content-Type: application/json" -d '{"message":"What events do I have today?","context":"Meeting at 2pm, Doctor at 4pm","consent":true}'
 ```
+
+## Calendar Sync Docs
+
+- Google Calendar: [GOOGLE_CALENDAR_SETUP.md](GOOGLE_CALENDAR_SETUP.md)
+- Apple Calendar (foundation/contract): [APPLE_CALENDAR_SETUP.md](APPLE_CALENDAR_SETUP.md)

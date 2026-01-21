@@ -6,6 +6,11 @@ The TMR application consists of:
 2. **ngrok tunnel** — exposes the server to the internet (required for mobile & HTTPS)
 3. **Client app** (HTML/JS/CSS) — loads from the push server, includes Service Worker for push
 
+Optional / planned:
+4. **Apple Calendar sync agent (iOS)** — a future native app that uses EventKit on-device and syncs to TMR via `/sync/apple/*` endpoints.
+  - Server-side iCloud login is intentionally not used.
+  - See: [APPLE_CALENDAR_SETUP.md](APPLE_CALENDAR_SETUP.md)
+
 ---
 
 ## Prerequisites

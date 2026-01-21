@@ -97,7 +97,14 @@ const LOWER_TO_CAMEL = Object.freeze({
   endtime: 'endTime',
   reminderminutes: 'reminderMinutes',
   reminderat: 'reminderAt',
-  syncid: 'syncId'
+  syncid: 'syncId',
+  externalid: 'externalId',
+  externalcalendarid: 'externalCalendarId',
+  syncstate: 'syncState',
+  sourcedevice: 'sourceDevice'
+  ,
+  externalupdatedat: 'externalUpdatedAt',
+  deletedat: 'deletedAt'
 });
 
 function normalizeRowKeys(row) {
@@ -132,6 +139,17 @@ async function ensureSchema() {
     token TEXT UNIQUE NOT NULL,
     expiresAt BIGINT NOT NULL,
     createdAt BIGINT NOT NULL
+  )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS device_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    userId BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    deviceId TEXT UNIQUE NOT NULL,
+    tokenHash TEXT UNIQUE NOT NULL,
+    label TEXT,
+    createdAt BIGINT NOT NULL,
+    lastSeenAt BIGINT,
+    revokedAt BIGINT
   )`);
 
   await query(`CREATE TABLE IF NOT EXISTS subscriptions (
@@ -230,9 +248,27 @@ async function ensureSchema() {
     reminderMinutes INTEGER DEFAULT 0,
     reminderAt BIGINT,
     syncId TEXT,
+    provider TEXT,
+    externalId TEXT,
+    externalCalendarId TEXT,
+    syncState TEXT,
+    lastSyncedAt BIGINT,
+    externalUpdatedAt BIGINT,
+    sourceDevice TEXT,
+    deletedAt BIGINT,
     createdAt BIGINT NOT NULL,
     updatedAt BIGINT NOT NULL
   )`);
+
+  // Lightweight migrations for existing installs
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS provider TEXT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS externalId TEXT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS externalCalendarId TEXT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS syncState TEXT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS lastSyncedAt BIGINT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS externalUpdatedAt BIGINT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS sourceDevice TEXT`);
+  await query(`ALTER TABLE user_events ADD COLUMN IF NOT EXISTS deletedAt BIGINT`);
 
   await query(`CREATE TABLE IF NOT EXISTS user_todos (
     id BIGSERIAL PRIMARY KEY,
@@ -481,6 +517,64 @@ module.exports = {
       (async () => {
         await ensureReady();
         const r = await query(`DELETE FROM sessions WHERE expiresAt <= $1`, [Date.now()]);
+        return r.rowCount || 0;
+      })(),
+      cb
+    );
+  },
+
+  // Device tokens (native agent auth)
+  createDeviceToken: function (userId, deviceId, tokenHash, label, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const now = Date.now();
+        const r = await query(
+          `INSERT INTO device_tokens (userId, deviceId, tokenHash, label, createdAt, lastSeenAt, revokedAt)
+           VALUES ($1, $2, $3, $4, $5, $6, NULL) RETURNING id`,
+          [String(userId), String(deviceId), String(tokenHash), label != null ? String(label) : null, now, now]
+        );
+        return r.rows[0] && r.rows[0].id;
+      })(),
+      cb
+    );
+  },
+
+  getDeviceTokenByHash: function (tokenHash, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const r = await query(
+          `SELECT id, userId, deviceId, tokenHash, label, createdAt, lastSeenAt, revokedAt
+           FROM device_tokens
+           WHERE tokenHash = $1
+           LIMIT 1`,
+          [String(tokenHash)]
+        );
+        return r.rows[0] || null;
+      })(),
+      cb
+    );
+  },
+
+  touchDeviceToken: function (id, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const now = Date.now();
+        const r = await query(`UPDATE device_tokens SET lastSeenAt = $1 WHERE id = $2`, [now, id]);
+        return r.rowCount || 0;
+      })(),
+      cb
+    );
+  },
+
+  revokeDeviceToken: function (id, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const now = Date.now();
+        const r = await query(`UPDATE device_tokens SET revokedAt = $1 WHERE id = $2`, [now, id]);
         return r.rowCount || 0;
       })(),
       cb
@@ -1102,8 +1196,8 @@ module.exports = {
         await ensureReady();
         const now = Date.now();
         const r = await query(
-          `INSERT INTO user_events (userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+          `INSERT INTO user_events (userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
           [
             String(userId),
             event.title,
@@ -1114,6 +1208,14 @@ module.exports = {
             event.reminderMinutes || 0,
             event.reminderAt || null,
             event.syncId || null,
+            event.provider || null,
+            event.externalId || null,
+            event.externalCalendarId || null,
+            event.syncState || null,
+            event.lastSyncedAt || null,
+            event.externalUpdatedAt || null,
+            event.sourceDevice || null,
+            event.deletedAt || null,
             now,
             now,
           ]
@@ -1129,7 +1231,7 @@ module.exports = {
       (async () => {
         await ensureReady();
         const r = await query(
-          `SELECT id, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt
+          `SELECT id, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt
            FROM user_events WHERE userId = $1 ORDER BY date DESC, startTime DESC`,
           [String(userId)]
         );
@@ -1144,9 +1246,26 @@ module.exports = {
       (async () => {
         await ensureReady();
         const r = await query(
-          `SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt
+          `SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt
            FROM user_events WHERE id = $1`,
           [eventId]
+        );
+        return r.rows[0] || null;
+      })(),
+      cb
+    );
+  },
+
+  getEventByProviderExternalId: function (userId, provider, externalId, cb) {
+    cbWrap(
+      (async () => {
+        await ensureReady();
+        const r = await query(
+          `SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt
+           FROM user_events
+           WHERE userId = $1 AND provider = $2 AND externalId = $3
+           LIMIT 1`,
+          [String(userId), String(provider), String(externalId)]
         );
         return r.rows[0] || null;
       })(),
@@ -1160,7 +1279,25 @@ module.exports = {
         await ensureReady();
         const now = Date.now();
         const r = await query(
-          `UPDATE user_events SET title=$1, date=$2, startTime=$3, endTime=$4, description=$5, reminderMinutes=$6, reminderAt=$7, syncId=$8, updatedAt=$9 WHERE id=$10`,
+          `UPDATE user_events
+           SET title=$1,
+               date=$2,
+               startTime=$3,
+               endTime=$4,
+               description=$5,
+               reminderMinutes=$6,
+               reminderAt=$7,
+               syncId=COALESCE($8, syncId),
+               provider=COALESCE($9, provider),
+               externalId=COALESCE($10, externalId),
+               externalCalendarId=COALESCE($11, externalCalendarId),
+               syncState=COALESCE($12, syncState),
+               lastSyncedAt=COALESCE($13, lastSyncedAt),
+               externalUpdatedAt=COALESCE($14, externalUpdatedAt),
+               sourceDevice=COALESCE($15, sourceDevice),
+               deletedAt=COALESCE($16, deletedAt),
+               updatedAt=$17
+           WHERE id=$18`,
           [
             event.title,
             event.date,
@@ -1170,6 +1307,14 @@ module.exports = {
             event.reminderMinutes || 0,
             event.reminderAt || null,
             event.syncId || null,
+            event.provider || null,
+            event.externalId || null,
+            event.externalCalendarId || null,
+            event.syncState || null,
+            event.lastSyncedAt || null,
+            event.externalUpdatedAt || null,
+            event.sourceDevice || null,
+            event.deletedAt || null,
             now,
             eventId,
           ]

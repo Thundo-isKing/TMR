@@ -63,6 +63,19 @@ db.serialize(() => {
     FOREIGN KEY (userId) REFERENCES users(id)
   )`);
 
+  // Device tokens (for native agents)
+  db.run(`CREATE TABLE IF NOT EXISTS device_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    deviceId TEXT UNIQUE NOT NULL,
+    tokenHash TEXT UNIQUE NOT NULL,
+    label TEXT,
+    createdAt INTEGER NOT NULL,
+    lastSeenAt INTEGER,
+    revokedAt INTEGER,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId TEXT,
@@ -164,6 +177,14 @@ db.serialize(() => {
     reminderMinutes INTEGER DEFAULT 0,
     reminderAt INTEGER,
     syncId TEXT,
+    provider TEXT,
+    externalId TEXT,
+    externalCalendarId TEXT,
+    syncState TEXT,
+    lastSyncedAt INTEGER,
+    externalUpdatedAt INTEGER,
+    sourceDevice TEXT,
+    deletedAt INTEGER,
     createdAt INTEGER NOT NULL,
     updatedAt INTEGER NOT NULL,
     FOREIGN KEY (userId) REFERENCES users(id)
@@ -189,6 +210,22 @@ db.serialize(() => {
     if (!names.has('notes')) {
       db.run(`ALTER TABLE user_todos ADD COLUMN notes TEXT DEFAULT ''`);
     }
+  });
+
+  db.all(`PRAGMA table_info(user_events)`, [], (err, rows) => {
+    if (err || !Array.isArray(rows)) return;
+    const names = new Set(rows.map((r) => r && r.name).filter(Boolean));
+    const add = (name, type) => {
+      if (!names.has(name)) db.run(`ALTER TABLE user_events ADD COLUMN ${name} ${type}`);
+    };
+    add('provider', 'TEXT');
+    add('externalId', 'TEXT');
+    add('externalCalendarId', 'TEXT');
+    add('syncState', 'TEXT');
+    add('lastSyncedAt', 'INTEGER');
+    add('externalUpdatedAt', 'INTEGER');
+    add('sourceDevice', 'TEXT');
+    add('deletedAt', 'INTEGER');
   });
 });
 
@@ -356,6 +393,55 @@ module.exports = {
     db.run(
       `DELETE FROM sessions WHERE expiresAt <= ?`,
       [Date.now()],
+      function (err) {
+        cb && cb(err, this && this.changes);
+      }
+    );
+  },
+
+  // Device token persistence (native agent auth)
+  createDeviceToken: function (userId, deviceId, tokenHash, label, cb) {
+    const now = Date.now();
+    db.run(
+      `INSERT INTO device_tokens (userId, deviceId, tokenHash, label, createdAt, lastSeenAt, revokedAt)
+       VALUES (?, ?, ?, ?, ?, ?, NULL)` ,
+      [userId, deviceId, tokenHash, label || null, now, now],
+      function (err) {
+        cb && cb(err, this && this.lastID);
+      }
+    );
+  },
+
+  getDeviceTokenByHash: function (tokenHash, cb) {
+    db.get(
+      `SELECT id, userId, deviceId, tokenHash, label, createdAt, lastSeenAt, revokedAt
+       FROM device_tokens
+       WHERE tokenHash = ?
+       LIMIT 1`,
+      [tokenHash],
+      (err, row) => {
+        if (err) return cb && cb(err);
+        cb && cb(null, row || null);
+      }
+    );
+  },
+
+  touchDeviceToken: function (id, cb) {
+    const now = Date.now();
+    db.run(
+      `UPDATE device_tokens SET lastSeenAt = ? WHERE id = ?`,
+      [now, id],
+      function (err) {
+        cb && cb(err, this && this.changes);
+      }
+    );
+  },
+
+  revokeDeviceToken: function (id, cb) {
+    const now = Date.now();
+    db.run(
+      `UPDATE device_tokens SET revokedAt = ? WHERE id = ?`,
+      [now, id],
       function (err) {
         cb && cb(err, this && this.changes);
       }
@@ -862,8 +948,8 @@ module.exports = {
   createEvent: function (userId, event, cb) {
     const now = Date.now();
     db.run(
-      `INSERT INTO user_events (userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO user_events (userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         event.title,
@@ -874,6 +960,14 @@ module.exports = {
         event.reminderMinutes || 0,
         event.reminderAt || null,
         event.syncId || null,
+        event.provider || null,
+        event.externalId || null,
+        event.externalCalendarId || null,
+        event.syncState || null,
+        event.lastSyncedAt || null,
+        event.externalUpdatedAt || null,
+        event.sourceDevice || null,
+        event.deletedAt || null,
         now,
         now,
       ],
@@ -885,7 +979,7 @@ module.exports = {
 
   getEventsByUserId: function (userId, cb) {
     db.all(
-      `SELECT id, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt FROM user_events WHERE userId = ? ORDER BY date DESC, startTime DESC`,
+      `SELECT id, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt FROM user_events WHERE userId = ? ORDER BY date DESC, startTime DESC`,
       [userId],
       (err, rows) => {
         if (err) return cb && cb(err);
@@ -896,8 +990,22 @@ module.exports = {
 
   getEventById: function (eventId, cb) {
     db.get(
-      `SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, createdAt, updatedAt FROM user_events WHERE id = ?`,
+      `SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt FROM user_events WHERE id = ?`,
       [eventId],
+      (err, row) => {
+        if (err) return cb && cb(err);
+        cb && cb(null, row || null);
+      }
+    );
+  },
+
+  getEventByProviderExternalId: function (userId, provider, externalId, cb) {
+    db.get(
+      `SELECT id, userId, title, date, startTime, endTime, description, reminderMinutes, reminderAt, syncId, provider, externalId, externalCalendarId, syncState, lastSyncedAt, externalUpdatedAt, sourceDevice, deletedAt, createdAt, updatedAt
+       FROM user_events
+       WHERE userId = ? AND provider = ? AND externalId = ?
+       LIMIT 1`,
+      [userId, provider, externalId],
       (err, row) => {
         if (err) return cb && cb(err);
         cb && cb(null, row || null);
@@ -908,7 +1016,25 @@ module.exports = {
   updateEvent: function (eventId, event, cb) {
     const now = Date.now();
     db.run(
-      `UPDATE user_events SET title=?, date=?, startTime=?, endTime=?, description=?, reminderMinutes=?, reminderAt=?, syncId=?, updatedAt=? WHERE id=?`,
+      `UPDATE user_events SET
+         title=?,
+         date=?,
+         startTime=?,
+         endTime=?,
+         description=?,
+         reminderMinutes=?,
+         reminderAt=?,
+         syncId=COALESCE(?, syncId),
+         provider=COALESCE(?, provider),
+         externalId=COALESCE(?, externalId),
+         externalCalendarId=COALESCE(?, externalCalendarId),
+         syncState=COALESCE(?, syncState),
+         lastSyncedAt=COALESCE(?, lastSyncedAt),
+         externalUpdatedAt=COALESCE(?, externalUpdatedAt),
+         sourceDevice=COALESCE(?, sourceDevice),
+         deletedAt=COALESCE(?, deletedAt),
+         updatedAt=?
+       WHERE id=?`,
       [
         event.title,
         event.date,
@@ -918,6 +1044,14 @@ module.exports = {
         event.reminderMinutes || 0,
         event.reminderAt || null,
         event.syncId || null,
+        event.provider || null,
+        event.externalId || null,
+        event.externalCalendarId || null,
+        event.syncState || null,
+        event.lastSyncedAt || null,
+        event.externalUpdatedAt || null,
+        event.sourceDevice || null,
+        event.deletedAt || null,
         now,
         eventId,
       ],

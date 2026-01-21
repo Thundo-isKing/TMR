@@ -366,16 +366,54 @@ app.use((req, res, next) => {
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
 // Attach authenticated user from session cookie if present
 const attachUser = async (req, res, next) => {
-  const token = req.cookies ? req.cookies[SESSION_COOKIE] : null;
-  if (!token) return next();
+  let token = req.cookies ? req.cookies[SESSION_COOKIE] : null;
+  let authMode = token ? 'cookie' : null;
+  let deviceRow = null;
+
+  // Also support Authorization: Bearer <sessionToken> for native agents.
+  if (!token) {
+    const auth = (req.get('authorization') || '').trim();
+    if (/^bearer\s+/i.test(auth)) {
+      token = auth.replace(/^bearer\s+/i, '').trim();
+      authMode = 'bearer';
+    }
+
+    // Also support Authorization: Device <deviceToken> (recommended for native agents).
+    if (!token && /^device\s+/i.test(auth)) {
+      const raw = auth.replace(/^device\s+/i, '').trim();
+      if (raw) {
+        const tokenHash = nodeCrypto.createHash('sha256').update(raw).digest('hex');
+        if (db && typeof db.getDeviceTokenByHash === 'function') {
+          deviceRow = await dbAsync(db.getDeviceTokenByHash, tokenHash);
+          if (deviceRow && (Number(deviceRow.revokedAt) || 0) <= 0) {
+            authMode = 'device';
+          } else {
+            deviceRow = null;
+          }
+        }
+      }
+    }
+  }
+
+  if (!token && !deviceRow) return next();
   try {
+    if (deviceRow) {
+      const user = await dbAsync(db.getUserById, deviceRow.userId);
+      if (!user) return next();
+      req.user = { id: user.id, username: user.username };
+      req.device = { id: deviceRow.id, deviceId: deviceRow.deviceId, label: deviceRow.label || null };
+      req.authMode = authMode;
+      try { db.touchDeviceToken && db.touchDeviceToken(deviceRow.id, () => {}); } catch (_) {}
+      return next();
+    }
+
     const session = await dbAsync(db.getSession, token);
     if (!session) return next();
     if (session.expiresAt <= Date.now()) {
@@ -391,6 +429,8 @@ const attachUser = async (req, res, next) => {
 
     req.user = { id: user.id, username: user.username };
     req.sessionToken = token;
+    req.sessionExpiresAt = session.expiresAt;
+    req.authMode = authMode;
   } catch (err) {
     logError('[Auth] Failed to attach user', err);
   }
@@ -641,6 +681,67 @@ app.get('/auth/session', (req, res) => {
     return res.status(401).json({ error: 'not_authenticated' });
   }
   res.json({ user: req.user });
+});
+
+// Returns the active session token so a native agent can use it as
+// Authorization: Bearer <token>. Intended for manual copy/paste during setup.
+app.get('/auth/token', requireAuth, (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      token: req.sessionToken,
+      expiresAt: req.sessionExpiresAt || null,
+      header: 'Authorization: Bearer <token>'
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Register a long-lived device token for a native agent.
+// Returns the plaintext token ONCE; store it securely on-device.
+app.post('/sync/devices/register', requireAuth, async (req, res) => {
+  try {
+    if (!db || typeof db.createDeviceToken !== 'function' || typeof db.getDeviceTokenByHash !== 'function') {
+      return res.status(500).json({ error: 'device_tokens_not_supported' });
+    }
+
+    const label = req.body && req.body.label != null ? String(req.body.label) : null;
+    const deviceId = nodeCrypto.randomBytes(16).toString('hex');
+    const deviceToken = nodeCrypto.randomBytes(32).toString('hex');
+    const tokenHash = nodeCrypto.createHash('sha256').update(deviceToken).digest('hex');
+
+    // Best-effort guard against extremely unlikely collisions.
+    const existing = await dbAsync(db.getDeviceTokenByHash, tokenHash);
+    if (existing) return res.status(500).json({ error: 'token_collision_retry' });
+
+    const id = await dbAsync(db.createDeviceToken, req.user.id, deviceId, tokenHash, label);
+
+    res.json({
+      ok: true,
+      device: { id, deviceId, label },
+      deviceToken,
+      header: 'Authorization: Device <token>'
+    });
+  } catch (err) {
+    logError('[Device] Register error', err, { userId: req.user && req.user.id });
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/sync/devices/revoke', requireAuth, async (req, res) => {
+  try {
+    if (!db || typeof db.revokeDeviceToken !== 'function') {
+      return res.status(500).json({ error: 'device_tokens_not_supported' });
+    }
+    const id = req.body && req.body.id != null ? Number(req.body.id) : null;
+    if (!id) return res.status(400).json({ error: 'Missing required field: id' });
+    const changes = await dbAsync(db.revokeDeviceToken, id);
+    res.json({ ok: true, changes });
+  } catch (err) {
+    logError('[Device] Revoke error', err, { userId: req.user && req.user.id });
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.post('/auth/register', authLimiter, async (req, res) => {
@@ -1891,7 +1992,12 @@ app.get('/events', requireAuth, (req, res) => {
         console.error('[Events] Get error:', err);
         return res.status(500).json({ error: 'Failed to get events' });
       }
-      res.json({ events });
+      const visible = (Array.isArray(events) ? events : []).filter((e) => {
+        if (!e) return false;
+        const deletedAt = Number(e.deletedAt) || 0;
+        return deletedAt <= 0;
+      });
+      res.json({ events: visible });
     });
   } catch (err) {
     console.error('[Events] Get error:', err);
@@ -1945,6 +2051,269 @@ app.delete('/events/:eventId', requireAuth, (req, res) => {
     });
   } catch (err) {
     console.error('[Events] Delete error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ========== APPLE CALENDAR SYNC (FOUNDATION) ==========
+// Note: Apple Calendar access requires an on-device iOS agent using EventKit.
+// These endpoints are the server-side contract for receiving/importing data.
+
+// Generic event change feed (provider-agnostic)
+app.get('/sync/events/changes', requireAuth, (req, res) => {
+  try {
+    const sinceRaw = req.query && req.query.since != null ? req.query.since : 0;
+    const since = Number(sinceRaw) || 0;
+    const includeDeletedRaw = req.query && req.query.includeDeleted != null ? req.query.includeDeleted : 1;
+    const includeDeleted = String(includeDeletedRaw) !== '0';
+
+    const userId = req.user && req.user.id != null ? req.user.id : null;
+    if (userId == null) return res.status(401).json({ error: 'Unauthorized' });
+
+    db.getEventsByUserId(userId, (err, events) => {
+      if (err) {
+        console.error('[Sync] changes error:', err);
+        return res.status(500).json({ error: 'Failed to get events' });
+      }
+
+      const out = (Array.isArray(events) ? events : []).filter((e) => {
+        if (!e) return false;
+        if (!includeDeleted && (Number(e.deletedAt) || 0) > 0) return false;
+        const updatedAt = Number(e.updatedAt) || 0;
+        return updatedAt > since;
+      });
+
+      res.json({
+        ok: true,
+        since,
+        serverNow: Date.now(),
+        events: out
+      });
+    });
+  } catch (err) {
+    console.error('[Sync] changes error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/sync/apple/status', requireAuth, (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      provider: 'apple',
+      auth: ['cookie', 'bearer', 'device'],
+      conflictPolicy: {
+        strategy: 'last-write-wins',
+        clocks: ['server.updatedAt', 'apple.externalUpdatedAt', 'apple.lastSyncedAt(fallback)'],
+        deletesWin: true
+      },
+      endpoints: {
+        upsertEvents: '/sync/apple/events/upsert',
+        getChanges: '/sync/apple/events/changes?since=<ms>'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Minimal "pull" endpoint for native agents.
+// Returns Apple-linked events updated since the provided timestamp.
+app.get('/sync/apple/events/changes', requireAuth, (req, res) => {
+  try {
+    const sinceRaw = req.query && req.query.since != null ? req.query.since : 0;
+    const since = Number(sinceRaw) || 0;
+    const includeDeletedRaw = req.query && req.query.includeDeleted != null ? req.query.includeDeleted : 1;
+    const includeDeleted = String(includeDeletedRaw) !== '0';
+    const userId = req.user && req.user.id != null ? req.user.id : null;
+    if (userId == null) return res.status(401).json({ error: 'Unauthorized' });
+
+    db.getEventsByUserId(userId, (err, events) => {
+      if (err) {
+        console.error('[Apple Sync] changes error:', err);
+        return res.status(500).json({ error: 'Failed to get events' });
+      }
+
+      const out = (Array.isArray(events) ? events : []).filter((e) => {
+        if (!e) return false;
+        if (String(e.provider || '') !== 'apple') return false;
+        if (!includeDeleted && (Number(e.deletedAt) || 0) > 0) return false;
+        const updatedAt = Number(e.updatedAt) || 0;
+        return updatedAt > since;
+      });
+
+      res.json({
+        ok: true,
+        provider: 'apple',
+        since,
+        serverNow: Date.now(),
+        events: out
+      });
+    });
+  } catch (err) {
+    console.error('[Apple Sync] changes error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/sync/apple/events/upsert', requireAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const events = Array.isArray(body.events) ? body.events : null;
+    const sourceDevice = body.sourceDevice != null ? String(body.sourceDevice) : null;
+
+    if (!events) {
+      return res.status(400).json({ error: 'Missing required field: events[]' });
+    }
+
+    const userId = req.user && req.user.id != null ? req.user.id : null;
+    if (userId == null) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const now = Date.now();
+    const results = {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      conflicts: [],
+      errors: []
+    };
+
+    const dbAsync = {
+      getByProviderExternalId: (uid, provider, externalId) => new Promise((resolve, reject) => {
+        if (!db.getEventByProviderExternalId) {
+          return reject(new Error('DB backend missing getEventByProviderExternalId'));
+        }
+        db.getEventByProviderExternalId(uid, provider, externalId, (err, row) => {
+          if (err) return reject(err);
+          resolve(row || null);
+        });
+      }),
+      createEvent: (uid, ev) => new Promise((resolve, reject) => {
+        db.createEvent(uid, ev, (err, id) => {
+          if (err) return reject(err);
+          resolve(id);
+        });
+      }),
+      updateEvent: (id, ev) => new Promise((resolve, reject) => {
+        db.updateEvent(id, ev, (err, changes) => {
+          if (err) return reject(err);
+          resolve(changes);
+        });
+      })
+    };
+
+    for (let i = 0; i < events.length; i++) {
+      const incoming = events[i];
+      try {
+        if (!incoming || typeof incoming !== 'object') {
+          results.skipped++;
+          continue;
+        }
+
+        const deletedFlag = incoming.deleted === true;
+        const undeleteFlag = incoming.deleted === false;
+
+        const externalId = incoming.externalId != null ? String(incoming.externalId).trim() : '';
+        const externalCalendarId = incoming.externalCalendarId != null ? String(incoming.externalCalendarId).trim() : null;
+        const titleIncoming = incoming.title != null ? String(incoming.title) : '';
+        const dateIncoming = incoming.date != null ? String(incoming.date) : '';
+
+        const deletedAtIncoming = incoming.deletedAt != null ? Number(incoming.deletedAt) : null;
+        const isDeleteOp = deletedFlag || (deletedAtIncoming != null && deletedAtIncoming > 0);
+
+        const externalUpdatedAt = incoming.externalUpdatedAt != null
+          ? Number(incoming.externalUpdatedAt)
+          : (incoming.providerUpdatedAt != null ? Number(incoming.providerUpdatedAt) : null);
+
+        if (!externalId) {
+          results.skipped++;
+          results.errors.push({ index: i, error: 'Missing externalId' });
+          continue;
+        }
+
+        const existing = await dbAsync.getByProviderExternalId(userId, 'apple', externalId);
+        const title = titleIncoming || (existing ? String(existing.title || '') : '');
+        const date = dateIncoming || (existing ? String(existing.date || '') : '');
+
+        if (!title || !date) {
+          results.skipped++;
+          results.errors.push({ index: i, error: 'Missing required fields: title/date (provide them or ensure event exists server-side)' });
+          continue;
+        }
+
+        if (isDeleteOp && !existing) {
+          results.skipped++;
+          results.errors.push({ index: i, error: 'Cannot tombstone unknown event (no existing server event for externalId)' });
+          continue;
+        }
+
+        // Conflict policy: prevent older Apple edits from overwriting newer server edits.
+        // Deletes always win (tombstone) and are not blocked.
+        if (!isDeleteOp && existing && existing.id != null) {
+          const serverUpdatedAt = Number(existing.updatedAt) || 0;
+
+          // Prefer Apple provider clock when available, else fall back to lastSyncedAt.
+          const appleClock = (externalUpdatedAt != null && Number.isFinite(externalUpdatedAt))
+            ? Number(externalUpdatedAt)
+            : (incoming.lastSyncedAt != null && Number.isFinite(Number(incoming.lastSyncedAt)) ? Number(incoming.lastSyncedAt) : 0);
+
+          // If we have *any* clock from Apple and server is newer, treat as conflict and skip.
+          if (appleClock > 0 && serverUpdatedAt > appleClock) {
+            results.skipped++;
+            results.conflicts.push({
+              index: i,
+              externalId,
+              eventId: existing.id,
+              reason: 'server_newer_than_apple',
+              serverUpdatedAt,
+              appleClock
+            });
+            continue;
+          }
+        }
+
+        const deletedAtForDb = isDeleteOp
+          ? (deletedAtIncoming != null && deletedAtIncoming > 0 ? deletedAtIncoming : now)
+          : (undeleteFlag ? 0 : null);
+
+        const eventForDb = {
+          title,
+          date,
+          startTime: incoming.startTime != null ? String(incoming.startTime) : (incoming.time != null ? String(incoming.time) : null),
+          endTime: incoming.endTime != null ? String(incoming.endTime) : null,
+          description: incoming.description != null ? String(incoming.description) : (incoming.notes != null ? String(incoming.notes) : ''),
+          reminderMinutes: incoming.reminderMinutes != null ? Number(incoming.reminderMinutes) : 0,
+          reminderAt: incoming.reminderAt != null ? Number(incoming.reminderAt) : null,
+          // Provider sync fields
+          provider: 'apple',
+          externalId,
+          externalCalendarId,
+          syncState: incoming.syncState != null ? String(incoming.syncState) : 'linked',
+          lastSyncedAt: incoming.lastSyncedAt != null ? Number(incoming.lastSyncedAt) : now,
+          externalUpdatedAt: externalUpdatedAt != null && !Number.isNaN(externalUpdatedAt) ? externalUpdatedAt : null,
+          sourceDevice: sourceDevice || (incoming.sourceDevice != null ? String(incoming.sourceDevice) : null),
+          deletedAt: deletedAtForDb,
+          // Preserve optional client-side correlation id if provided
+          syncId: incoming.syncId != null ? String(incoming.syncId) : null
+        };
+
+        if (existing && existing.id != null) {
+          await dbAsync.updateEvent(existing.id, eventForDb);
+          results.updated++;
+        } else {
+          await dbAsync.createEvent(userId, eventForDb);
+          results.created++;
+        }
+      } catch (e) {
+        results.errors.push({ index: i, error: e && e.message ? e.message : String(e) });
+      }
+    }
+
+    res.json({ ok: true, ...results });
+  } catch (err) {
+    console.error('[Apple Sync] upsert error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
