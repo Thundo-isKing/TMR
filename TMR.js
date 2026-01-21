@@ -3087,6 +3087,25 @@ if (leaveBtn) {
             } else {
                 window.addEventListener('load', autoInitPushOnce, { once: true });
             }
+
+            // If the user logs in after the page loads, make sure this device's
+            // push subscription gets rebound to the authenticated account.
+            // Otherwise, account-wide event reminders can reach only the devices
+            // whose subscriptions are already linked to the userId.
+            if (!window.__tmrPushBindOnAuthWired) {
+                window.__tmrPushBindOnAuthWired = true;
+                window.addEventListener('tmr:auth-changed', async (e) => {
+                    try {
+                        const user = e && e.detail ? e.detail.user : null;
+                        if (!user || !('Notification' in window)) return;
+                        if (Notification.permission !== 'granted') return;
+                        await registerServiceWorkerIfNeeded();
+                        await subscribeForPush(true);
+                    } catch (err) {
+                        console.warn('[TMR] Push rebind after auth failed', err && err.message ? err.message : err);
+                    }
+                });
+            }
             
         // initial render (keeps sync with other pages)
         renderTodos();
