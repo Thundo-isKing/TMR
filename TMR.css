@@ -1922,61 +1922,6 @@ body.triangle-background .tmr-menu {
         color-mix(in srgb, #e74c3c 88%, transparent);
 }
 
-.modal .modal-events {
-    max-height: 220px;
-    overflow: auto;
-    margin: 12px 0 12px;
-    padding: 0 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.modal .modal-event-item {
-    padding: 8px;
-    background: #f5f5f5;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-}
-
-.modal .modal-event-item > div:first-child {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-#event-modal .modal-event-item button {
-    padding: 4px 8px;
-    background:
-        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.46), transparent 55%),
-        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 55%),
-        linear-gradient(135deg, rgba(255,255,255,0.18), transparent 45%),
-        color-mix(in srgb, var(--accent-color, #0089f1) 70%, transparent);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    margin-left: 8px;
-    backdrop-filter: blur(14px) saturate(185%);
-    -webkit-backdrop-filter: blur(14px) saturate(185%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
-}
-
-#event-modal .modal-event-item button:hover {
-    background:
-        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.52), transparent 55%),
-        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.38), transparent 55%),
-        linear-gradient(135deg, rgba(255,255,255,0.20), transparent 45%),
-        color-mix(in srgb, var(--accent-color, #0089f1) 78%, transparent);
-}
-
 .modal-close {
     background: transparent;
     border: none;

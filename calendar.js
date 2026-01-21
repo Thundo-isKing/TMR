@@ -866,7 +866,6 @@
   const deleteBtn = document.getElementById('delete-event');
   const cancelBtn = document.getElementById('cancel-event');
   let selectedEventColor = '#ff922b'; // Default color (orange)
-  const dayEventsList = document.createElement('div'); dayEventsList.className = 'modal-events';
 
   // Day view refs
   const viewMonthBtn = document.getElementById('view-month-btn');
@@ -1092,32 +1091,6 @@
 
   function openModalForDate(dateStr){
     activeDate = dateStr;
-    // populate event list
-    const evs = eventsForDate(dateStr);
-    clearChildren(dayEventsList);
-    if(evs.length === 0){
-      // No events - just leave empty
-    } else {
-      evs.forEach(ev => {
-        const item = document.createElement('div'); item.className = 'modal-event-item';
-        normalizeEventTimes(ev);
-        const left = document.createElement('div');
-        const range = (ev.time && ev.endTime) ? (ev.time + '–' + ev.endTime + ' — ') : (ev.time ? (ev.time + ' — ') : '');
-        left.textContent = range + (ev.title || '');
-        const right = document.createElement('div');
-        const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
-        editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); fillFormForEvent(ev); });
-        right.appendChild(editBtn);
-        item.appendChild(left); item.appendChild(right);
-        dayEventsList.appendChild(item);
-      });
-    }
-
-    // insert the list above the form
-    const modalContent = modal.querySelector('.modal-content');
-    const existingList = modalContent.querySelector('.modal-events');
-    if(!existingList) modalContent.insertBefore(dayEventsList, eventForm);
-
     modal.classList.remove('hidden'); modal.setAttribute('aria-hidden','false');
     idInput.value = '';
     titleInput.value = '';
@@ -1136,7 +1109,7 @@
       defaultBtn.style.borderColor = '#333';
     }
     
-    document.getElementById('modal-title').textContent = 'Events for ' + dateStr;
+    document.getElementById('modal-title').textContent = 'New Event';
   }
 
   function fillFormForEvent(ev){
