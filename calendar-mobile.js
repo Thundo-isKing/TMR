@@ -1162,12 +1162,39 @@
     // Day View: tap/drag on grid to create an event (snapped to 15 minutes)
     try {
         if (mobileDayGridEl) {
+            const LONG_PRESS_MS = 1000;
+            const MOVE_CANCEL_PX = 12;
+
             const drag = {
                 active: false,
+                pending: false,
                 pointerId: null,
+                timer: null,
                 startMinutes: 0,
                 currentMinutes: 0,
-                selectionEl: null
+                selectionEl: null,
+                startClientX: 0,
+                startClientY: 0,
+                startScrollTop: 0,
+                lastClientX: 0,
+                lastClientY: 0
+            };
+
+            const setCreateMode = (on) => {
+                try {
+                    if (mobileDayViewEl) mobileDayViewEl.classList.toggle('is-creating', !!on);
+                } catch (_) { }
+            };
+
+            const clearLongPressTimer = () => {
+                if (!drag.timer) return;
+                try { clearTimeout(drag.timer); } catch (_) { }
+                drag.timer = null;
+            };
+
+            const cancelPending = () => {
+                drag.pending = false;
+                clearLongPressTimer();
             };
 
             const ensureSelectionEl = () => {
@@ -1218,44 +1245,123 @@
                 if (endTimeInput) endTimeInput.value = endHm;
             };
 
+            const getSnappedMinutesFromClientY = (clientY) => {
+                const rect = mobileDayGridEl.getBoundingClientRect();
+                const y = (Number(clientY) - rect.top);
+                const minutesRaw = y / __DAY_PX_PER_MIN;
+                return clamp(roundToQuarter(minutesRaw), 0, 24*60);
+            };
+
             mobileDayGridEl.addEventListener('pointerdown', (e) => {
                 if (!__mobileDayViewDateStr) __mobileDayViewDateStr = ymd(new Date());
                 if (e && typeof e.button === 'number' && e.button !== 0) return;
                 if (e && e.target && e.target.closest && e.target.closest('.day-event')) return;
 
-                const startMin = getSnappedMinutesFromPointerEvent(e);
-                drag.active = true;
+                // Touch is handled via touch events below; pointer events are unreliable for long-press drag on some mobile browsers.
+                if (e && e.pointerType === 'touch') return;
+
+                // Reset any prior gesture state
+                clearLongPressTimer();
+                setCreateMode(false);
+
                 drag.pointerId = e.pointerId;
+                drag.startClientX = e.clientX;
+                drag.startClientY = e.clientY;
+                drag.lastClientX = e.clientX;
+                drag.lastClientY = e.clientY;
+                drag.startScrollTop = mobileDayScrollEl ? Number(mobileDayScrollEl.scrollTop || 0) : 0;
+
+                const startMin = getSnappedMinutesFromPointerEvent(e);
                 drag.startMinutes = clamp(startMin, 0, 24*60-15);
                 drag.currentMinutes = drag.startMinutes;
-                updateSelection(drag.startMinutes, drag.startMinutes + 15);
 
-                try { mobileDayGridEl.setPointerCapture(e.pointerId); } catch (_) { }
+                // Mouse/pen: start drag immediately.
+                if (e && e.pointerType && e.pointerType !== 'touch') {
+                    drag.active = true;
+                    drag.pending = false;
+                    setCreateMode(true);
+                    updateSelection(drag.startMinutes, drag.startMinutes + 15);
+                    try { mobileDayGridEl.setPointerCapture(e.pointerId); } catch (_) { }
+                    return;
+                }
+
+                // Touch: allow scroll by default; only enter create-drag after long-press.
+                drag.active = false;
+                drag.pending = true;
+                drag.timer = setTimeout(() => {
+                    if (!drag.pending) return;
+                    drag.pending = false;
+                    drag.active = true;
+                    setCreateMode(true);
+                    // Freeze scroll position at the moment we enter create mode.
+                    try { if (mobileDayScrollEl) mobileDayScrollEl.scrollTop = drag.startScrollTop; } catch (_) { }
+                    updateSelection(drag.startMinutes, drag.startMinutes + 15);
+                    try { mobileDayGridEl.setPointerCapture(drag.pointerId); } catch (_) { }
+                }, LONG_PRESS_MS);
             });
 
             mobileDayGridEl.addEventListener('pointermove', (e) => {
-                if (!drag.active) return;
                 if (drag.pointerId != null && e.pointerId !== drag.pointerId) return;
                 if (e && e.target && e.target.closest && e.target.closest('.day-event')) return;
 
-                drag.currentMinutes = getSnappedMinutesFromPointerEvent(e);
-                updateSelection(drag.startMinutes, drag.currentMinutes);
+                drag.lastClientX = e.clientX;
+                drag.lastClientY = e.clientY;
+
+                if (drag.active) {
+                    drag.currentMinutes = getSnappedMinutesFromPointerEvent(e);
+                    updateSelection(drag.startMinutes, drag.currentMinutes);
+                    // Best-effort: reduce scroll/pan while dragging selection.
+                    try { e.preventDefault(); } catch (_) { }
+                    return;
+                }
+
+                if (drag.pending) {
+                    const dx = Math.abs(drag.lastClientX - drag.startClientX);
+                    const dy = Math.abs(drag.lastClientY - drag.startClientY);
+                    const st = mobileDayScrollEl ? Number(mobileDayScrollEl.scrollTop || 0) : 0;
+                    if (dx > MOVE_CANCEL_PX || dy > MOVE_CANCEL_PX || Math.abs(st - drag.startScrollTop) > 2) {
+                        cancelPending();
+                    }
+                }
             });
 
             const finishDrag = (e) => {
-                if (!drag.active) return;
                 if (drag.pointerId != null && e && e.pointerId !== drag.pointerId) return;
+
+                // Touch short-tap (no long-press): create a default 60-min event only if it was a true tap.
+                if (!drag.active) {
+                    if (drag.pending) {
+                        const dx = Math.abs((e ? e.clientX : drag.lastClientX) - drag.startClientX);
+                        const dy = Math.abs((e ? e.clientY : drag.lastClientY) - drag.startClientY);
+                        const st = mobileDayScrollEl ? Number(mobileDayScrollEl.scrollTop || 0) : 0;
+                        cancelPending();
+
+                        if (dx <= MOVE_CANCEL_PX && dy <= MOVE_CANCEL_PX && Math.abs(st - drag.startScrollTop) <= 2) {
+                            const tapMin = getSnappedMinutesFromPointerEvent(e || { clientY: drag.lastClientY, clientX: drag.lastClientX, pointerId: drag.pointerId });
+                            const s = clamp(tapMin, 0, 24*60-15);
+                            openPrefilledModal(s, clamp(s + 60, 0, 24*60));
+                        }
+                    }
+
+                    drag.pointerId = null;
+                    setCreateMode(false);
+                    hideSelection();
+                    return;
+                }
+
                 drag.active = false;
+                clearLongPressTimer();
 
                 try { if (e && e.pointerId != null) mobileDayGridEl.releasePointerCapture(e.pointerId); } catch (_) { }
 
                 const delta = Math.abs((drag.currentMinutes || 0) - (drag.startMinutes || 0));
                 hideSelection();
+                setCreateMode(false);
 
                 if (delta >= 15) {
                     openPrefilledModal(drag.startMinutes, drag.currentMinutes);
                 } else {
-                    // Tap: default to 60 minutes
+                    // Long-press without drag: default to 60 minutes
                     openPrefilledModal(drag.startMinutes, clamp(drag.startMinutes + 60, 0, 24*60));
                 }
 
@@ -1263,17 +1369,146 @@
             };
 
             const cancelDrag = (e) => {
-                if (!drag.active) return;
                 if (drag.pointerId != null && e && e.pointerId !== drag.pointerId) return;
                 drag.active = false;
+                cancelPending();
                 try { if (e && e.pointerId != null) mobileDayGridEl.releasePointerCapture(e.pointerId); } catch (_) { }
                 hideSelection();
+                setCreateMode(false);
                 drag.pointerId = null;
             };
 
             mobileDayGridEl.addEventListener('pointerup', finishDrag);
             // If the browser cancels the pointer sequence (commonly due to scrolling), don't open a modal.
             mobileDayGridEl.addEventListener('pointercancel', cancelDrag);
+
+            // Touch fallback (non-passive) so we can stop scrolling *after* long-press
+            // without relying on pointer capture.
+            try {
+                let activeTouchId = null;
+
+                const getActiveTouch = (touchList) => {
+                    if (!touchList || activeTouchId == null) return null;
+                    for (let i = 0; i < touchList.length; i++) {
+                        const t = touchList[i];
+                        if (t && t.identifier === activeTouchId) return t;
+                    }
+                    return null;
+                };
+
+                mobileDayGridEl.addEventListener('touchstart', (e) => {
+                    if (!e || !e.changedTouches || !e.changedTouches.length) return;
+                    const t = e.changedTouches[0];
+                    if (!t) return;
+                    if (!__mobileDayViewDateStr) __mobileDayViewDateStr = ymd(new Date());
+
+                    // Ignore if starting on an existing event block
+                    try {
+                        const target = e.target;
+                        if (target && target.closest && target.closest('.day-event')) return;
+                    } catch (_) { }
+
+                    activeTouchId = t.identifier;
+                    clearLongPressTimer();
+                    setCreateMode(false);
+
+                    drag.startClientX = t.clientX;
+                    drag.startClientY = t.clientY;
+                    drag.lastClientX = t.clientX;
+                    drag.lastClientY = t.clientY;
+                    drag.startScrollTop = mobileDayScrollEl ? Number(mobileDayScrollEl.scrollTop || 0) : 0;
+
+                    const startMin = getSnappedMinutesFromClientY(t.clientY);
+                    drag.startMinutes = clamp(startMin, 0, 24*60-15);
+                    drag.currentMinutes = drag.startMinutes;
+                    drag.active = false;
+                    drag.pending = true;
+
+                    drag.timer = setTimeout(() => {
+                        if (!drag.pending) return;
+                        drag.pending = false;
+                        drag.active = true;
+                        setCreateMode(true);
+                        try { if (mobileDayScrollEl) mobileDayScrollEl.scrollTop = drag.startScrollTop; } catch (_) { }
+                        updateSelection(drag.startMinutes, drag.startMinutes + 15);
+                    }, LONG_PRESS_MS);
+                }, { passive: true });
+
+                mobileDayGridEl.addEventListener('touchmove', (e) => {
+                    const t = getActiveTouch(e && e.touches);
+                    if (!t) return;
+                    drag.lastClientX = t.clientX;
+                    drag.lastClientY = t.clientY;
+
+                    if (drag.active) {
+                        // In create mode, prevent scroll and update the selection.
+                        try { e.preventDefault(); } catch (_) { }
+                        try { if (mobileDayScrollEl) mobileDayScrollEl.scrollTop = drag.startScrollTop; } catch (_) { }
+
+                        drag.currentMinutes = getSnappedMinutesFromClientY(t.clientY);
+                        updateSelection(drag.startMinutes, drag.currentMinutes);
+                        return;
+                    }
+
+                    if (drag.pending) {
+                        const dx = Math.abs(t.clientX - drag.startClientX);
+                        const dy = Math.abs(t.clientY - drag.startClientY);
+                        const st = mobileDayScrollEl ? Number(mobileDayScrollEl.scrollTop || 0) : 0;
+                        if (dx > MOVE_CANCEL_PX || dy > MOVE_CANCEL_PX || Math.abs(st - drag.startScrollTop) > 2) {
+                            cancelPending();
+                            activeTouchId = null;
+                        }
+                    }
+                }, { passive: false });
+
+                const finishTouch = (e) => {
+                    const t = getActiveTouch(e && e.changedTouches);
+                    if (!t) return;
+
+                    if (!drag.active) {
+                        if (drag.pending) {
+                            const dx = Math.abs(t.clientX - drag.startClientX);
+                            const dy = Math.abs(t.clientY - drag.startClientY);
+                            const st = mobileDayScrollEl ? Number(mobileDayScrollEl.scrollTop || 0) : 0;
+                            cancelPending();
+
+                            if (dx <= MOVE_CANCEL_PX && dy <= MOVE_CANCEL_PX && Math.abs(st - drag.startScrollTop) <= 2) {
+                                const tapMin = getSnappedMinutesFromClientY(t.clientY);
+                                const s = clamp(tapMin, 0, 24*60-15);
+                                openPrefilledModal(s, clamp(s + 60, 0, 24*60));
+                            }
+                        }
+                        activeTouchId = null;
+                        setCreateMode(false);
+                        hideSelection();
+                        return;
+                    }
+
+                    // Active create-drag
+                    drag.active = false;
+                    clearLongPressTimer();
+                    hideSelection();
+                    setCreateMode(false);
+
+                    const delta = Math.abs((drag.currentMinutes || 0) - (drag.startMinutes || 0));
+                    if (delta >= 15) {
+                        openPrefilledModal(drag.startMinutes, drag.currentMinutes);
+                    } else {
+                        openPrefilledModal(drag.startMinutes, clamp(drag.startMinutes + 60, 0, 24*60));
+                    }
+
+                    activeTouchId = null;
+                };
+
+                mobileDayGridEl.addEventListener('touchend', finishTouch, { passive: false });
+                mobileDayGridEl.addEventListener('touchcancel', (e) => {
+                    try { finishTouch(e); } catch (_) { }
+                    cancelPending();
+                    activeTouchId = null;
+                    hideSelection();
+                    setCreateMode(false);
+                }, { passive: false });
+            } catch (_) { }
         }
     } catch (_) { }
     

@@ -119,6 +119,29 @@
         margin: 8px;
     }
 
+    /* Avoid iOS long-press text callout interfering with gestures */
+    #mobile-day-view,
+    #mobile-day-grid,
+    #mobile-day-events-layer {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Default: allow vertical scrolling gestures in the timeline */
+    #mobile-day-grid {
+        touch-action: pan-y;
+    }
+
+    /* Long-press create mode: stop scroll so drag-to-create works */
+    #mobile-day-view.is-creating #mobile-day-view-scroll {
+        overflow: hidden;
+    }
+
+    #mobile-day-view.is-creating #mobile-day-grid {
+        touch-action: none;
+    }
+
     /* Override desktop Day View min-width constraints so it fits phone screens */
     #mobile-day-view .day-view-grid {
         min-width: 0;
