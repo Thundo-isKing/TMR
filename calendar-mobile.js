@@ -61,6 +61,28 @@
         return (data && Array.isArray(data.events)) ? data.events : [];
     }
 
+    function __applyOptionalProviderSyncFields(targetObj, sourceObj) {
+        if (!targetObj || typeof targetObj !== 'object' || !sourceObj || typeof sourceObj !== 'object') return;
+
+        const addStr = (k) => {
+            if (sourceObj[k] == null) return;
+            const v = String(sourceObj[k]).trim();
+            if (!v) return;
+            targetObj[k] = v;
+        };
+
+        addStr('provider');
+        addStr('externalId');
+        addStr('externalCalendarId');
+        addStr('syncState');
+        addStr('sourceDevice');
+
+        if (sourceObj.lastSyncedAt != null) {
+            const n = Number(sourceObj.lastSyncedAt);
+            if (Number.isFinite(n) && n > 0) targetObj.lastSyncedAt = n;
+        }
+    }
+
     async function createServerEventFromLocal(localEvent) {
         const payload = {
             title: localEvent.title,
@@ -72,6 +94,10 @@
             reminderAt: localEvent.reminderAt || null,
             syncId: localEvent.id || null
         };
+
+        // Only include sync metadata when present.
+        __applyOptionalProviderSyncFields(payload, localEvent);
+
         const res = await serverFetch('/events/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -94,6 +120,10 @@
             reminderAt: localEvent.reminderAt || null,
             syncId: localEvent.id || null
         };
+
+        // Only include sync metadata when present.
+        __applyOptionalProviderSyncFields(payload, localEvent);
+
         const res = await serverFetch('/events/' + encodeURIComponent(String(serverId)), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -187,10 +217,17 @@
                     title: se.title || target.title || '',
                     date: se.date || target.date || '',
                     time: se.startTime || target.time || '',
+                    endTime: se.endTime || target.endTime || '',
                     notes: (se.description != null) ? String(se.description) : (target.notes || ''),
                     reminderMinutes: (se.reminderMinutes != null) ? se.reminderMinutes : (target.reminderMinutes || 0),
                     reminderAt: (se.reminderAt != null) ? se.reminderAt : (target.reminderAt || null),
-                    lastModified: (se.updatedAt != null) ? se.updatedAt : (target.lastModified || Date.now())
+                    lastModified: (se.updatedAt != null) ? se.updatedAt : (target.lastModified || Date.now()),
+                    provider: (se.provider != null) ? String(se.provider) : (target.provider != null ? String(target.provider) : null),
+                    externalId: (se.externalId != null) ? String(se.externalId) : (target.externalId != null ? String(target.externalId) : null),
+                    externalCalendarId: (se.externalCalendarId != null) ? String(se.externalCalendarId) : (target.externalCalendarId != null ? String(target.externalCalendarId) : null),
+                    syncState: (se.syncState != null) ? String(se.syncState) : (target.syncState != null ? String(target.syncState) : null),
+                    lastSyncedAt: (se.lastSyncedAt != null) ? Number(se.lastSyncedAt) : (target.lastSyncedAt != null ? Number(target.lastSyncedAt) : null),
+                    sourceDevice: (se.sourceDevice != null) ? String(se.sourceDevice) : (target.sourceDevice != null ? String(target.sourceDevice) : null)
                 };
 
                 if (
@@ -198,11 +235,17 @@
                     target.title !== next.title ||
                     target.date !== next.date ||
                     target.time !== next.time ||
+                    target.endTime !== next.endTime ||
                     target.notes !== next.notes ||
                     target.reminderMinutes !== next.reminderMinutes ||
                     target.reminderAt !== next.reminderAt ||
-                    target.lastModified !== next.lastModified
-                ) {
+                    target.lastModified !== next.lastModified ||
+                    target.provider !== next.provider ||
+                    target.externalId !== next.externalId ||
+                    target.externalCalendarId !== next.externalCalendarId ||
+                    target.syncState !== next.syncState ||
+                    target.lastSyncedAt !== next.lastSyncedAt ||
+                    target.sourceDevice !== next.sourceDevice) {
                     changed = true;
                 }
 
@@ -210,10 +253,17 @@
                 target.title = next.title;
                 target.date = next.date;
                 target.time = next.time;
+                target.endTime = next.endTime;
                 target.notes = next.notes;
                 target.reminderMinutes = next.reminderMinutes;
                 target.reminderAt = next.reminderAt;
                 target.lastModified = next.lastModified;
+                target.provider = next.provider;
+                target.externalId = next.externalId;
+                target.externalCalendarId = next.externalCalendarId;
+                target.syncState = next.syncState;
+                                target.lastSyncedAt = next.lastSyncedAt;
+                                target.sourceDevice = next.sourceDevice;
                 if (se.syncId != null && (target.id == null || String(target.id).startsWith('srv_')) && !target.googleEventId) {
                     if (String(target.id) !== String(se.syncId)) changed = true;
                     target.id = String(se.syncId);
@@ -226,10 +276,17 @@
                     title: se.title || '',
                     date: se.date || '',
                     time: se.startTime || '',
+                    endTime: se.endTime || '',
                     notes: se.description || '',
                     reminderMinutes: se.reminderMinutes || 0,
                     reminderAt: se.reminderAt || null,
                     lastModified: se.updatedAt || Date.now(),
+                    provider: se.provider != null ? String(se.provider) : null,
+                    externalId: se.externalId != null ? String(se.externalId) : null,
+                    externalCalendarId: se.externalCalendarId != null ? String(se.externalCalendarId) : null,
+                    syncState: se.syncState != null ? String(se.syncState) : null,
+                    lastSyncedAt: se.lastSyncedAt != null ? Number(se.lastSyncedAt) : null,
+                    sourceDevice: se.sourceDevice != null ? String(se.sourceDevice) : null,
                     ownerUserId: uid
                 });
             }
@@ -309,6 +366,48 @@
     function eventsForDate(dateStr) {
         return loadEvents().filter(e => e.date === dateStr);
     }
+
+    // Time helpers (mobile)
+    function parseHm(hm){
+        if(!hm || typeof hm !== 'string') return null;
+        const m = hm.match(/^(\d{1,2}):(\d{2})$/);
+        if(!m) return null;
+        const h = Number(m[1]);
+        const mi = Number(m[2]);
+        if(!Number.isFinite(h) || !Number.isFinite(mi)) return null;
+        if(h < 0 || h > 23 || mi < 0 || mi > 59) return null;
+        return h * 60 + mi;
+    }
+    function minutesToHm(totalMinutes){
+        const m = Math.max(0, Math.min(24*60-1, Math.round(totalMinutes)));
+        const h = Math.floor(m / 60);
+        const mi = m % 60;
+        return String(h).padStart(2,'0') + ':' + String(mi).padStart(2,'0');
+    }
+    function addMinutesToHm(hm, delta){
+        const m = parseHm(hm);
+        if(m == null) return hm;
+        const next = Math.max(0, Math.min(24*60, m + Number(delta || 0)));
+        if(next >= 24*60) return '23:59';
+        return minutesToHm(next);
+    }
+    function normalizeEventTimes(ev, { forceDefaults = false } = {}){
+        if(!ev || typeof ev !== 'object') return ev;
+        if(ev.time && !ev.endTime && ev.duration != null){
+            const dur = Number(ev.duration);
+            if(Number.isFinite(dur) && dur > 0) ev.endTime = addMinutesToHm(ev.time, dur);
+        }
+        if(forceDefaults){
+            if(!ev.time) ev.time = '09:00';
+            if(!ev.endTime) ev.endTime = addMinutesToHm(ev.time, 60);
+        } else {
+            if(ev.time && !ev.endTime) ev.endTime = addMinutesToHm(ev.time, 60);
+        }
+        const sm = parseHm(ev.time);
+        const em = parseHm(ev.endTime);
+        if(sm != null && (em == null || em <= sm)) ev.endTime = addMinutesToHm(ev.time, 60);
+        return ev;
+    }
     
     async function postEventReminderToServer(event) {
         if (!event.date || !event.time) return;
@@ -342,6 +441,7 @@
     }
     
     function addOrUpdateEvent(event) {
+        normalizeEventTimes(event, { forceDefaults: true });
         const events = loadEvents();
         const idx = events.findIndex(e => e.id === event.id);
 
@@ -430,6 +530,7 @@
     const eventForm = document.getElementById('mobile-event-form');
     const titleInput = document.getElementById('mobile-event-title');
     const timeInput = document.getElementById('mobile-event-time');
+    const endTimeInput = document.getElementById('mobile-event-end-time');
     const notesInput = document.getElementById('mobile-event-notes');
     const deleteBtn = document.getElementById('mobile-delete-btn');
     const modalCloseBtn = document.getElementById('mobile-modal-close');
@@ -558,7 +659,10 @@
                 
                 const title = document.createElement('div');
                 title.className = 'mobile-event-item-title';
-                title.textContent = (ev.time ? (ev.time + ' — ') : '') + ev.title;
+                const start = ev.time || '';
+                const end = ev.endTime || '';
+                const range = (start && end) ? (start + '–' + end + ' — ') : (start ? (start + ' — ') : '');
+                title.textContent = range + (ev.title || '');
                 
                 const btn = document.createElement('button');
                 btn.className = 'mobile-event-item-btn';
@@ -577,6 +681,7 @@
         // Reset form
         titleInput.value = '';
         timeInput.value = '';
+        if (endTimeInput) endTimeInput.value = '';
         notesInput.value = '';
         
         // Reset color to default
@@ -595,9 +700,11 @@
     }
     
     function fillFormForEvent(ev) {
+        normalizeEventTimes(ev);
         activeEventId = ev.id;
         titleInput.value = ev.title || '';
         timeInput.value = ev.time || '';
+        if (endTimeInput) endTimeInput.value = ev.endTime || '';
         notesInput.value = ev.notes || '';
         
         // Restore color when editing
@@ -653,14 +760,37 @@
             throw new Error('Imported JSON must be an array or an object with { events, todos }');
         }
 
-        const cleaned = eventsArr.map(item => ({
-            id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
-            title: String(item.title || '(no title)'),
-            date: String(item.date || ''),
-            time: item.time || '',
-            notes: item.notes || '',
-            color: item.color || '#ff922b'
-        })).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
+        const cleaned = eventsArr.map(item => {
+            const ev = {
+                id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+                title: String(item.title || '(no title)'),
+                date: String(item.date || ''),
+                time: item.time || item.startTime || '',
+                endTime: item.endTime || '',
+                notes: item.notes || item.description || '',
+                color: item.color || '#ff922b'
+            };
+
+            // Preserve optional server/provider sync metadata when present.
+            if (item.serverId != null) ev.serverId = item.serverId;
+            if (item.reminderMinutes != null) ev.reminderMinutes = Number(item.reminderMinutes) || 0;
+            if (item.reminderAt != null) ev.reminderAt = Number(item.reminderAt) || null;
+            if (item.lastModified != null) ev.lastModified = Number(item.lastModified) || undefined;
+            if (item.provider != null) ev.provider = String(item.provider);
+            if (item.externalId != null) ev.externalId = String(item.externalId);
+            if (item.externalCalendarId != null) ev.externalCalendarId = String(item.externalCalendarId);
+            if (item.syncState != null) ev.syncState = String(item.syncState);
+            if (item.lastSyncedAt != null) ev.lastSyncedAt = Number(item.lastSyncedAt) || null;
+            if (item.sourceDevice != null) ev.sourceDevice = String(item.sourceDevice);
+
+            // Preserve Google sync metadata if present in exports.
+            if (item.googleEventId != null) ev.googleEventId = String(item.googleEventId);
+            if (item.googleCalendarId != null) ev.googleCalendarId = String(item.googleCalendarId);
+            if (item.syncedFromGoogle != null) ev.syncedFromGoogle = !!item.syncedFromGoogle;
+
+            normalizeEventTimes(ev);
+            return ev;
+        }).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
 
         if (mode === 'replace') {
             saveEvents(cleaned);
@@ -782,10 +912,13 @@
             id: activeEventId || generateId(),
             title: titleInput.value.trim() || '(no title)',
             date: activeDate,
-            time: timeInput.value || '',
+            time: (timeInput && timeInput.value) ? timeInput.value : '09:00',
+            endTime: (endTimeInput && endTimeInput.value) ? endTimeInput.value : '',
             notes: notesInput.value || '',
             color: selectedEventColor
         };
+
+        normalizeEventTimes(event, { forceDefaults: true });
         
         addOrUpdateEvent(event);
         closeModal();

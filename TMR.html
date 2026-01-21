@@ -11,7 +11,7 @@
         @media (min-width: 1025px) { .page-header { display: flex !important; } }
         @media (max-width: 1024px) { .page-header { display: none !important; } }
     </style>
-    <link rel="stylesheet" href="TMR.css?v=20260119f">
+    <link rel="stylesheet" href="TMR.css?v=20260120a">
     <link rel="stylesheet" href="page-transitions.css?v=20260106a">
     <link rel="stylesheet" href="backgrounds.css?v=20251208a">
     <link rel="stylesheet" href="calendar-mobile.css?v=20260108a">
@@ -1718,9 +1718,9 @@
                         <button id="next-month" class="nav-btn tmr-btn small-tmr-btn">&gt;</button>
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <button id="export-btn" class="nav-btn tmr-btn small-tmr-btn">Export</button>
-                        <button id="import-btn" class="nav-btn tmr-btn small-tmr-btn">Import</button>
-                        <input id="import-file" type="file" accept=".json" style="display:none">
+                        <button id="view-month-btn" class="nav-btn tmr-btn small-tmr-btn" title="Month view">Month</button>
+                        <button id="view-day-btn" class="nav-btn tmr-btn small-tmr-btn" title="Day view">Day</button>
+                        <button id="view-today-btn" class="nav-btn tmr-btn small-tmr-btn" title="Jump to today">Today</button>
                         <button id="gcal-auth-btn" class="nav-btn tmr-btn small-tmr-btn" title="Connect to Google Calendar">🔗 Google Calendar</button>
                         <button id="gcal-sync-btn" class="nav-btn tmr-btn small-tmr-btn" style="display:none;" title="Sync with Google Calendar">🔄 Sync</button>
                         <button id="gcal-logout-btn" class="nav-btn tmr-btn small-tmr-btn" style="display:none;" title="Disconnect Google Calendar">⛔ Disconnect</button>
@@ -1728,6 +1728,24 @@
                 </div>
                 <div id="weekday-row" class="weekday-row" aria-hidden="false"></div>
                 <div id="calendar" class="calendar-grid" aria-label="Monthly calendar"></div>
+
+                <!-- Day view (desktop + tablet). Hidden by default; toggled by calendar.js -->
+                <div id="day-view" class="day-view" hidden aria-label="Day view">
+                    <div class="day-view-header">
+                        <button id="day-prev" class="day-nav-btn" type="button" title="Previous day">&lt;</button>
+                        <div id="day-title" class="month-year">Day</div>
+                        <button id="day-next" class="day-nav-btn" type="button" title="Next day">&gt;</button>
+                    </div>
+                    <div id="day-view-scroll" class="day-view-scroll" aria-label="Day timeline">
+                        <div id="day-view-grid" class="day-view-grid">
+                            <div id="day-time-col" class="day-time-col" aria-hidden="true"></div>
+                            <div id="day-grid" class="day-grid" aria-label="Time grid">
+                                <div id="day-grid-lines" class="day-grid-lines" aria-hidden="true"></div>
+                                <div id="day-events-layer" class="day-events-layer" aria-label="Events"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Mobile Calendar Container (hidden on desktop) -->
@@ -1762,6 +1780,10 @@
                             <div class="mobile-form-group">
                                 <label>Time</label>
                                 <input id="mobile-event-time" type="time" />
+                            </div>
+                            <div class="mobile-form-group">
+                                <label>End time</label>
+                                <input id="mobile-event-end-time" type="time" />
                             </div>
                             <div class="mobile-form-group">
                                 <label>Notes</label>
@@ -1845,6 +1867,10 @@
                             <div class="form-group">
                                 <label for="event-time">Time</label>
                                 <input id="event-time" type="time" />
+                            </div>
+                            <div class="form-group">
+                                <label for="event-end-time">End time</label>
+                                <input id="event-end-time" type="time" />
                             </div>
                         </div>
 
@@ -1996,8 +2022,8 @@
     <script src="auth-client.js?v=20260106a"></script>
     <script src="theme-video.js?v=20260106a"></script>
     <script src="TMR.js?v=20260108a"></script>
-    <script src="calendar.js?v=20260108a"></script>
-    <script src="calendar-mobile.js?v=20260108a"></script>
+    <script src="calendar.js?v=20260119d"></script>
+    <script src="calendar-mobile.js?v=20260119a"></script>
     <script src="google-calendar-client.js?v=20260106a"></script>
     <script src="meibot.js?v=20260108a"></script>
 

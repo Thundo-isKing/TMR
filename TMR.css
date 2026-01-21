@@ -1474,6 +1474,217 @@ body.triangle-background .tmr-menu {
     backdrop-filter: blur(4px);
 }
 .modal.hidden { display: none; }
+
+/* Ensure [hidden] always collapses layout (prevents Month + Day views from stacking) */
+[hidden] { display: none !important; }
+
+/* ===== Day View (hour-by-hour timeline) ===== */
+.day-view {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.day-view-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    background:
+        radial-gradient(140% 180% at 0% 0%, rgba(255,255,255,0.22), transparent 60%),
+        radial-gradient(140% 180% at 100% 0%, rgba(255,255,255,0.14), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,0.10), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 18%, rgba(255,255,255,0.14));
+    border: 1px solid rgba(255,255,255,0.16);
+    backdrop-filter: blur(14px) saturate(165%);
+    -webkit-backdrop-filter: blur(14px) saturate(165%);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+
+/* Day View navigation buttons: accent frosted-glass, no shadow, no transition */
+.day-nav-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgba(255,255,255,0.22);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.42), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.34), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.16), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 70%, transparent);
+    backdrop-filter: blur(18px) saturate(190%);
+    -webkit-backdrop-filter: blur(18px) saturate(190%);
+    box-shadow: none;
+    transition: none;
+    transform: none;
+}
+
+.day-nav-btn:hover,
+.day-nav-btn:active {
+    background:
+        radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,0.48), transparent 55%),
+        radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.38), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,0.18), transparent 45%),
+        color-mix(in srgb, var(--accent-color, #0089f1) 78%, transparent);
+    box-shadow: none;
+    transform: none;
+}
+
+.day-nav-btn:focus { outline: none; }
+.day-nav-btn:focus-visible { box-shadow: 0 0 0 3px rgba(0,137,241,0.16); }
+
+.day-view-scroll {
+    margin-top: 10px;
+    border-radius: 14px;
+    overflow: auto;
+    /* Keep Day View compact so users don't have to page-scroll to reach the bottom */
+    max-height: min(56vh, 560px);
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(18px) saturate(175%);
+    -webkit-backdrop-filter: blur(18px) saturate(175%);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+}
+
+.day-view-grid {
+    display: grid;
+    grid-template-columns: 76px 1fr;
+    min-width: 520px;
+}
+
+.day-time-col {
+    position: sticky;
+    left: 0;
+    background: rgba(255,255,255,0.18);
+    border-right: 1px solid rgba(255,255,255,0.16);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    z-index: 3;
+}
+
+.day-time-label {
+    height: 64px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 10px 10px 0 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(70,70,70,0.90);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.14);
+    box-sizing: border-box;
+}
+
+.day-grid {
+    position: relative;
+    min-height: calc(64px * 24);
+}
+
+.day-grid-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.day-grid-hour {
+    height: 16px;
+    border-bottom: 1px solid rgba(80,80,80,0.26);
+    box-sizing: border-box;
+}
+
+.day-grid-quarter {
+    height: 16px;
+    border-bottom: 1px dashed rgba(80,80,80,0.18);
+    box-sizing: border-box;
+}
+
+.day-events-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
+.day-selection {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    border-radius: 12px;
+    pointer-events: none;
+    user-select: none;
+    background:
+        radial-gradient(140% 180% at 0% 0%, rgba(255,255,255,0.18), transparent 60%),
+        radial-gradient(140% 180% at 100% 0%, rgba(255,255,255,0.10), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,0.08), transparent 45%),
+        rgba(255,255,255,0.10);
+    border: 1px dashed rgba(255,255,255,0.40);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.16);
+}
+
+.day-event {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+    background:
+        radial-gradient(140% 180% at 0% 0%, rgba(255,255,255,0.26), transparent 60%),
+        radial-gradient(140% 180% at 100% 0%, rgba(255,255,255,0.14), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,0.10), transparent 45%),
+        rgba(var(--accent-rgb, 0,137,241), 0.28);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(16px) saturate(170%);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.26);
+}
+
+.day-event .day-event-title {
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    line-height: 1.15;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.22);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.day-event .day-event-time {
+    margin-top: 4px;
+    color: rgba(255,255,255,0.92);
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.95;
+}
+
+.day-event .day-event-notes {
+    margin-top: 6px;
+    color: rgba(255,255,255,0.92);
+    font-size: 12px;
+    line-height: 1.25;
+    opacity: 0.95;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.day-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.28);
+}
 .modal-content {
     background: white;
     color: #111;

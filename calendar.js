@@ -67,6 +67,28 @@
     return (data && Array.isArray(data.events)) ? data.events : [];
   }
 
+  function __applyOptionalProviderSyncFields(targetObj, sourceObj){
+    if(!targetObj || typeof targetObj !== 'object' || !sourceObj || typeof sourceObj !== 'object') return;
+
+    const addStr = (k) => {
+      if(sourceObj[k] == null) return;
+      const v = String(sourceObj[k]).trim();
+      if(!v) return;
+      targetObj[k] = v;
+    };
+
+    addStr('provider');
+    addStr('externalId');
+    addStr('externalCalendarId');
+    addStr('syncState');
+    addStr('sourceDevice');
+
+    if(sourceObj.lastSyncedAt != null){
+      const n = Number(sourceObj.lastSyncedAt);
+      if(Number.isFinite(n) && n > 0) targetObj.lastSyncedAt = n;
+    }
+  }
+
   async function createServerEventFromLocal(localEvent){
     const payload = {
       title: localEvent.title,
@@ -78,6 +100,10 @@
       reminderAt: localEvent.reminderAt || null,
       syncId: localEvent.id || null
     };
+
+    // Only include sync metadata when present (avoid nulling/overwriting unintentionally).
+    __applyOptionalProviderSyncFields(payload, localEvent);
+
     const res = await serverFetch('/events/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -101,6 +127,10 @@
       reminderAt: localEvent.reminderAt || null,
       syncId: localEvent.id || null
     };
+
+    // Only include sync metadata when present (server preserves existing values on null).
+    __applyOptionalProviderSyncFields(payload, localEvent);
+
     const res = await serverFetch('/events/' + encodeURIComponent(String(serverId)), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -204,10 +234,17 @@
           title: se.title || target.title || '',
           date: se.date || target.date || '',
           time: se.startTime || target.time || '',
+          endTime: se.endTime || target.endTime || '',
           notes: (se.description != null) ? String(se.description) : (target.notes || ''),
           reminderMinutes: (se.reminderMinutes != null) ? se.reminderMinutes : (target.reminderMinutes || 0),
           reminderAt: (se.reminderAt != null) ? se.reminderAt : (target.reminderAt || null),
-          lastModified: (se.updatedAt != null) ? se.updatedAt : (target.lastModified || Date.now())
+          lastModified: (se.updatedAt != null) ? se.updatedAt : (target.lastModified || Date.now()),
+          provider: (se.provider != null) ? String(se.provider) : (target.provider != null ? String(target.provider) : null),
+          externalId: (se.externalId != null) ? String(se.externalId) : (target.externalId != null ? String(target.externalId) : null),
+          externalCalendarId: (se.externalCalendarId != null) ? String(se.externalCalendarId) : (target.externalCalendarId != null ? String(target.externalCalendarId) : null),
+          syncState: (se.syncState != null) ? String(se.syncState) : (target.syncState != null ? String(target.syncState) : null),
+          lastSyncedAt: (se.lastSyncedAt != null) ? Number(se.lastSyncedAt) : (target.lastSyncedAt != null ? Number(target.lastSyncedAt) : null),
+          sourceDevice: (se.sourceDevice != null) ? String(se.sourceDevice) : (target.sourceDevice != null ? String(target.sourceDevice) : null)
         };
 
         if(
@@ -215,10 +252,17 @@
           target.title !== next.title ||
           target.date !== next.date ||
           target.time !== next.time ||
+          target.endTime !== next.endTime ||
           target.notes !== next.notes ||
           target.reminderMinutes !== next.reminderMinutes ||
           target.reminderAt !== next.reminderAt ||
-          target.lastModified !== next.lastModified
+          target.lastModified !== next.lastModified ||
+          target.provider !== next.provider ||
+          target.externalId !== next.externalId ||
+          target.externalCalendarId !== next.externalCalendarId ||
+          target.syncState !== next.syncState ||
+          target.lastSyncedAt !== next.lastSyncedAt ||
+          target.sourceDevice !== next.sourceDevice
         ){
           changed = true;
         }
@@ -227,10 +271,17 @@
         target.title = next.title;
         target.date = next.date;
         target.time = next.time;
+        target.endTime = next.endTime;
         target.notes = next.notes;
         target.reminderMinutes = next.reminderMinutes;
         target.reminderAt = next.reminderAt;
         target.lastModified = next.lastModified;
+        target.provider = next.provider;
+        target.externalId = next.externalId;
+        target.externalCalendarId = next.externalCalendarId;
+        target.syncState = next.syncState;
+        target.lastSyncedAt = next.lastSyncedAt;
+        target.sourceDevice = next.sourceDevice;
         // Only adopt syncId as local id when we created a synthetic local id for a server-only event.
         if(se.syncId != null && (target.id == null || String(target.id).startsWith('srv_')) && !target.googleEventId){
           if(String(target.id) !== String(se.syncId)) changed = true;
@@ -244,10 +295,17 @@
           title: se.title || '',
           date: se.date || '',
           time: se.startTime || '',
+          endTime: se.endTime || '',
           notes: se.description || '',
           reminderMinutes: se.reminderMinutes || 0,
           reminderAt: se.reminderAt || null,
           lastModified: se.updatedAt || Date.now(),
+          provider: se.provider != null ? String(se.provider) : null,
+          externalId: se.externalId != null ? String(se.externalId) : null,
+          externalCalendarId: se.externalCalendarId != null ? String(se.externalCalendarId) : null,
+          syncState: se.syncState != null ? String(se.syncState) : null,
+          lastSyncedAt: se.lastSyncedAt != null ? Number(se.lastSyncedAt) : null,
+          sourceDevice: se.sourceDevice != null ? String(se.sourceDevice) : null,
           ownerUserId: uid
         });
       }
@@ -318,6 +376,73 @@
   function eventsForDate(dateStr){
     return loadEvents().filter(e => e.date === dateStr);
   }
+
+  // ===== Time helpers (Day View) =====
+  const __DAY_HOUR_HEIGHT_PX = 64;
+  const __DAY_PX_PER_MIN = __DAY_HOUR_HEIGHT_PX / 60;
+
+  function clamp(n, min, max){
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function parseHm(hm){
+    if(!hm || typeof hm !== 'string') return null;
+    const m = hm.match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return null;
+    const h = Number(m[1]);
+    const mi = Number(m[2]);
+    if(!Number.isFinite(h) || !Number.isFinite(mi)) return null;
+    if(h < 0 || h > 23 || mi < 0 || mi > 59) return null;
+    return h * 60 + mi;
+  }
+
+  function minutesToHm(totalMinutes){
+    const m = clamp(Math.round(totalMinutes), 0, 24*60-1);
+    const h = Math.floor(m / 60);
+    const mi = m % 60;
+    return String(h).padStart(2,'0') + ':' + String(mi).padStart(2,'0');
+  }
+
+  function addMinutesToHm(hm, delta){
+    const m = parseHm(hm);
+    if(m == null) return hm;
+    const next = clamp(m + Number(delta || 0), 0, 24*60);
+    // If an event ends at exactly 24:00, clamp to 23:59 for input compatibility.
+    if(next >= 24*60) return '23:59';
+    return minutesToHm(next);
+  }
+
+  function roundToQuarter(totalMinutes){
+    return Math.round(totalMinutes / 15) * 15;
+  }
+
+  function normalizeEventTimes(ev, { forceDefaults = false } = {}){
+    if(!ev || typeof ev !== 'object') return ev;
+
+    // Back-compat: duration -> endTime
+    if(ev.time && !ev.endTime && ev.duration != null){
+      const dur = Number(ev.duration);
+      if(Number.isFinite(dur) && dur > 0) ev.endTime = addMinutesToHm(ev.time, dur);
+    }
+
+    // Ensure start/end exist if we need strict times.
+    if(forceDefaults){
+      if(!ev.time) ev.time = '09:00';
+      if(!ev.endTime) ev.endTime = addMinutesToHm(ev.time, 60);
+    } else {
+      // If a start time exists but endTime is missing, default to +60
+      if(ev.time && !ev.endTime) ev.endTime = addMinutesToHm(ev.time, 60);
+    }
+
+    // If endTime is <= startTime, bump endTime.
+    const sm = parseHm(ev.time);
+    const em = parseHm(ev.endTime);
+    if(sm != null && (em == null || em <= sm)){
+      ev.endTime = addMinutesToHm(ev.time, 60);
+    }
+
+    return ev;
+  }
   async function postEventReminderToServer(event){
     // If event has date and time, calculate timestamp and POST to server
     if(!event.date || !event.time) return; // no time, don't send reminder
@@ -342,6 +467,7 @@
     }
   }
   function addOrUpdateEvent(event){
+    normalizeEventTimes(event, { forceDefaults: true });
     const events = loadEvents();
     const idx = events.findIndex(e => e.id === event.id);
     
@@ -636,14 +762,37 @@
       throw new Error('Imported JSON must be an array or an object with { events, todos }');
     }
 
-    const cleaned = eventsArr.map(item => ({
-      id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2,8)),
-      title: String(item.title || '(no title)'),
-      date: String(item.date || ''),
-      time: item.time || '',
-      notes: item.notes || '',
-      color: item.color || '#ff922b'
-    })).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
+    const cleaned = eventsArr.map(item => {
+      const ev = {
+        id: item.id || ('evt_' + Date.now() + '_' + Math.random().toString(36).slice(2,8)),
+        title: String(item.title || '(no title)'),
+        date: String(item.date || ''),
+        time: item.time || item.startTime || '',
+        endTime: item.endTime || '',
+        notes: item.notes || item.description || '',
+        color: item.color || '#ff922b'
+      };
+
+      // Preserve optional server/provider sync metadata when present.
+      if(item.serverId != null) ev.serverId = item.serverId;
+      if(item.reminderMinutes != null) ev.reminderMinutes = Number(item.reminderMinutes) || 0;
+      if(item.reminderAt != null) ev.reminderAt = Number(item.reminderAt) || null;
+      if(item.lastModified != null) ev.lastModified = Number(item.lastModified) || undefined;
+      if(item.provider != null) ev.provider = String(item.provider);
+      if(item.externalId != null) ev.externalId = String(item.externalId);
+      if(item.externalCalendarId != null) ev.externalCalendarId = String(item.externalCalendarId);
+      if(item.syncState != null) ev.syncState = String(item.syncState);
+      if(item.lastSyncedAt != null) ev.lastSyncedAt = Number(item.lastSyncedAt) || null;
+      if(item.sourceDevice != null) ev.sourceDevice = String(item.sourceDevice);
+
+      // Preserve Google sync metadata if present in exports.
+      if(item.googleEventId != null) ev.googleEventId = String(item.googleEventId);
+      if(item.googleCalendarId != null) ev.googleCalendarId = String(item.googleCalendarId);
+      if(item.syncedFromGoogle != null) ev.syncedFromGoogle = !!item.syncedFromGoogle;
+
+      normalizeEventTimes(ev);
+      return ev;
+    }).filter(i => /^\d{4}-\d{2}-\d{2}$/.test(i.date));
 
     if(mode === 'replace'){
       saveEvents(cleaned);
@@ -711,12 +860,27 @@
   const titleInput = document.getElementById('event-title');
   const dateInput = document.getElementById('event-date');
   const timeInput = document.getElementById('event-time');
+  const endTimeInput = document.getElementById('event-end-time');
   const notesInput = document.getElementById('event-notes');
   const idInput = document.getElementById('event-id');
   const deleteBtn = document.getElementById('delete-event');
   const cancelBtn = document.getElementById('cancel-event');
   let selectedEventColor = '#ff922b'; // Default color (orange)
   const dayEventsList = document.createElement('div'); dayEventsList.className = 'modal-events';
+
+  // Day view refs
+  const viewMonthBtn = document.getElementById('view-month-btn');
+  const viewDayBtn = document.getElementById('view-day-btn');
+  const viewTodayBtn = document.getElementById('view-today-btn');
+  const dayViewEl = document.getElementById('day-view');
+  const dayTitleEl = document.getElementById('day-title');
+  const dayPrevBtn = document.getElementById('day-prev');
+  const dayNextBtn = document.getElementById('day-next');
+  const dayScrollEl = document.getElementById('day-view-scroll');
+  const dayTimeColEl = document.getElementById('day-time-col');
+  const dayGridEl = document.getElementById('day-grid');
+  const dayGridLinesEl = document.getElementById('day-grid-lines');
+  const dayEventsLayerEl = document.getElementById('day-events-layer');
 
   if(!calendarEl) return; // no calendar on page
 
@@ -828,6 +992,8 @@
   // State
   let viewDate = new Date(); // current month view (uses local timezone for month/year)
   let activeDate = null; // currently opened date string
+  let __calendarViewMode = 'month';
+  let __dayViewDateStr = null;
 
   function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
   function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
@@ -908,9 +1074,16 @@
       }
       btn.appendChild(eventsWrap);
 
-      // Click to open modal to add/edit
-      btn.addEventListener('click', () => openModalForDate(dateStr));
-      btn.addEventListener('keydown', (e) => { if(e.key === 'Enter') openModalForDate(dateStr); });
+      // Month -> Day navigation (Shift-click keeps the old "Events for date" modal list)
+      btn.addEventListener('click', (e) => {
+        if(e && e.shiftKey) return openModalForDate(dateStr);
+        try{ showDayView(dateStr); }catch(_){ openModalForDate(dateStr); }
+      });
+      btn.addEventListener('keydown', (e) => {
+        if(e.key !== 'Enter') return;
+        if(e.shiftKey) return openModalForDate(dateStr);
+        try{ showDayView(dateStr); }catch(_){ openModalForDate(dateStr); }
+      });
 
       cell.appendChild(btn);
       calendarEl.appendChild(cell);
@@ -927,7 +1100,10 @@
     } else {
       evs.forEach(ev => {
         const item = document.createElement('div'); item.className = 'modal-event-item';
-        const left = document.createElement('div'); left.textContent = (ev.time ? (ev.time + ' — ') : '') + ev.title;
+        normalizeEventTimes(ev);
+        const left = document.createElement('div');
+        const range = (ev.time && ev.endTime) ? (ev.time + '–' + ev.endTime + ' — ') : (ev.time ? (ev.time + ' — ') : '');
+        left.textContent = range + (ev.title || '');
         const right = document.createElement('div');
         const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
         editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); fillFormForEvent(ev); });
@@ -947,6 +1123,7 @@
     titleInput.value = '';
     dateInput.value = dateStr;
     timeInput.value = '';
+    if(endTimeInput) endTimeInput.value = '';
     notesInput.value = '';
     deleteBtn.style.display = 'none';
     
@@ -963,10 +1140,12 @@
   }
 
   function fillFormForEvent(ev){
+    normalizeEventTimes(ev);
     idInput.value = ev.id;
     titleInput.value = ev.title || '';
     dateInput.value = ev.date || activeDate;
     timeInput.value = ev.time || '';
+    if(endTimeInput) endTimeInput.value = ev.endTime || '';
     notesInput.value = ev.notes || '';
     
     // Restore color when editing event
@@ -994,6 +1173,152 @@
   window.fillFormForEvent = fillFormForEvent;
 
   function closeModal(){ modal.classList.add('hidden'); modal.setAttribute('aria-hidden','true'); activeDate = null; }
+
+  function setViewMode(mode){
+    __calendarViewMode = (mode === 'day') ? 'day' : 'month';
+    const weekdayRow = document.getElementById('weekday-row');
+    if(__calendarViewMode === 'day'){
+      if(calendarEl) calendarEl.hidden = true;
+      if(weekdayRow) weekdayRow.hidden = true;
+      if(dayViewEl) dayViewEl.hidden = false;
+      if(prevBtn) prevBtn.hidden = true;
+      if(nextBtn) nextBtn.hidden = true;
+      if(monthYearEl) monthYearEl.hidden = true;
+    } else {
+      if(calendarEl) calendarEl.hidden = false;
+      if(weekdayRow) weekdayRow.hidden = false;
+      if(dayViewEl) dayViewEl.hidden = true;
+      if(prevBtn) prevBtn.hidden = false;
+      if(nextBtn) nextBtn.hidden = false;
+      if(monthYearEl) monthYearEl.hidden = false;
+    }
+  }
+
+  function formatDayTitle(dateStr){
+    try{
+      const parts = (dateStr || '').split('-').map(Number);
+      if(parts.length !== 3) return dateStr;
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    }catch(_){
+      return dateStr;
+    }
+  }
+
+  function buildDayViewScaffoldIfNeeded(){
+    if(!dayTimeColEl || !dayGridLinesEl) return;
+    if(dayTimeColEl.childElementCount === 24 && dayGridLinesEl.childElementCount === (24*4)) return;
+
+    // Time labels
+    dayTimeColEl.innerHTML = '';
+    for(let h=0; h<24; h++){
+      const el = document.createElement('div');
+      el.className = 'day-time-label';
+      const hour12 = ((h + 11) % 12) + 1;
+      const ampm = (h >= 12) ? 'PM' : 'AM';
+      el.textContent = hour12 + ' ' + ampm;
+      dayTimeColEl.appendChild(el);
+    }
+
+    // Grid lines: 15-minute segments.
+    // Important: keep total height aligned with __DAY_HOUR_HEIGHT_PX (64px/hour).
+    // Each hour = 4 segments of 16px = 64px.
+    dayGridLinesEl.innerHTML = '';
+    for(let h=0; h<24; h++){
+      for(let q=0; q<4; q++){
+        const seg = document.createElement('div');
+        seg.className = (q === 0) ? 'day-grid-hour' : 'day-grid-quarter';
+        dayGridLinesEl.appendChild(seg);
+      }
+    }
+  }
+
+  function renderDayView(dateStr){
+    if(!dayEventsLayerEl) return;
+    __dayViewDateStr = dateStr;
+    if(dayTitleEl) dayTitleEl.textContent = formatDayTitle(dateStr);
+    buildDayViewScaffoldIfNeeded();
+
+    dayEventsLayerEl.innerHTML = '';
+
+    const events = eventsForDate(dateStr)
+      .map(ev => { normalizeEventTimes(ev); return ev; })
+      .filter(ev => !!ev.time && !!ev.endTime)
+      .sort((a,b) => {
+        const am = parseHm(a.time); const bm = parseHm(b.time);
+        if(am == null && bm == null) return 0;
+        if(am == null) return 1;
+        if(bm == null) return -1;
+        return am - bm;
+      });
+
+    events.forEach(ev => {
+      const sm = parseHm(ev.time);
+      const em = parseHm(ev.endTime);
+      if(sm == null || em == null) return;
+      const top = sm * __DAY_PX_PER_MIN;
+      const height = Math.max(28, (em - sm) * __DAY_PX_PER_MIN);
+
+      const block = document.createElement('div');
+      block.className = 'day-event';
+      block.style.top = top + 'px';
+      block.style.height = height + 'px';
+      if(ev.color) {
+        // Tint by event color without losing frosted effect.
+        block.style.background =
+          'radial-gradient(140% 180% at 0% 0%, rgba(255,255,255,0.26), transparent 60%),' +
+          'radial-gradient(140% 180% at 100% 0%, rgba(255,255,255,0.14), transparent 60%),' +
+          'linear-gradient(135deg, rgba(255,255,255,0.10), transparent 45%),' +
+          'color-mix(in srgb, ' + ev.color + ' 45%, rgba(255,255,255,0.10))';
+      }
+
+      const title = document.createElement('div');
+      title.className = 'day-event-title';
+      title.textContent = ev.title || '(no title)';
+
+      const time = document.createElement('div');
+      time.className = 'day-event-time';
+      time.textContent = (ev.time || '') + ' – ' + (ev.endTime || '');
+
+      block.appendChild(title);
+      block.appendChild(time);
+
+      if(ev.notes){
+        const notes = document.createElement('div');
+        notes.className = 'day-event-notes';
+        notes.textContent = String(ev.notes);
+        block.appendChild(notes);
+      }
+
+      block.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Open the existing event modal for editing
+        activeDate = dateStr;
+        openModalForDate(dateStr);
+        fillFormForEvent(ev);
+      });
+
+      dayEventsLayerEl.appendChild(block);
+    });
+
+    // Default scroll to morning
+    try{
+      if(dayScrollEl && dayScrollEl.scrollTop === 0){
+        dayScrollEl.scrollTop = Math.round(8 * __DAY_HOUR_HEIGHT_PX);
+      }
+    }catch(_){ }
+  }
+
+  function showDayView(dateStr){
+    if(!dayViewEl) return;
+    setViewMode('day');
+    renderDayView(dateStr);
+  }
+
+  function showMonthView(){
+    setViewMode('month');
+    renderCalendar();
+  }
 
   function triggerMonthTransition() {
     // Add animation class, render calendar, then remove class
@@ -1031,12 +1356,17 @@
       id: idVal,
       title: titleInput.value.trim() || '(no title)',
       date: dateInput.value,
-      time: timeInput.value || '',
+      time: (timeInput && timeInput.value) ? timeInput.value : '09:00',
+      endTime: (endTimeInput && endTimeInput.value) ? endTimeInput.value : '',
       notes: notesInput.value || '',
       color: selectedEventColor
     };
+    normalizeEventTimes(item, { forceDefaults: true });
     addOrUpdateEvent(item);
     closeModal(); renderCalendar();
+    if(__calendarViewMode === 'day' && __dayViewDateStr){
+      try{ renderDayView(__dayViewDateStr); }catch(_){ }
+    }
   });
 
   // Color picker button handlers
@@ -1061,6 +1391,164 @@
 
   // initial render
   renderCalendar();
+
+  // Day view wiring
+  try{
+    if(viewMonthBtn) viewMonthBtn.addEventListener('click', () => showMonthView());
+    if(viewDayBtn) viewDayBtn.addEventListener('click', () => {
+      const today = ymd(new Date());
+      showDayView(__dayViewDateStr || activeDate || today);
+    });
+    if(viewTodayBtn) viewTodayBtn.addEventListener('click', () => {
+      const today = ymd(new Date());
+      if(__calendarViewMode === 'day') showDayView(today);
+      else {
+        viewDate = new Date();
+        renderCalendar();
+      }
+    });
+    if(dayPrevBtn) dayPrevBtn.addEventListener('click', () => {
+      if(!__dayViewDateStr) __dayViewDateStr = ymd(new Date());
+      const parts = __dayViewDateStr.split('-').map(Number);
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      d.setDate(d.getDate() - 1);
+      showDayView(ymd(d));
+    });
+    if(dayNextBtn) dayNextBtn.addEventListener('click', () => {
+      if(!__dayViewDateStr) __dayViewDateStr = ymd(new Date());
+      const parts = __dayViewDateStr.split('-').map(Number);
+      const d = new Date(parts[0], parts[1]-1, parts[2]);
+      d.setDate(d.getDate() + 1);
+      showDayView(ymd(d));
+    });
+  }catch(_){ }
+
+  // Day View: click or drag to create an event (snapped to 15 minutes)
+  try{
+    if(dayGridEl){
+      const drag = {
+        active: false,
+        pointerId: null,
+        startMinutes: 0,
+        currentMinutes: 0,
+        selectionEl: null
+      };
+
+      const ensureSelectionEl = () => {
+        if(drag.selectionEl && drag.selectionEl.isConnected) return drag.selectionEl;
+        if(!dayEventsLayerEl) return null;
+        const el = document.createElement('div');
+        el.className = 'day-selection';
+        el.style.display = 'none';
+        dayEventsLayerEl.appendChild(el);
+        drag.selectionEl = el;
+        return el;
+      };
+
+      const getSnappedMinutesFromPointerEvent = (e) => {
+        const rect = dayGridEl.getBoundingClientRect();
+        // NOTE: dayGridEl moves inside the scroll container, so rect.top already
+        // shifts with scroll. Adding scrollTop again double-counts and causes
+        // large time offsets later in the day.
+        const y = (e.clientY - rect.top);
+        const minutesRaw = y / __DAY_PX_PER_MIN;
+        return clamp(roundToQuarter(minutesRaw), 0, 24*60);
+      };
+
+      const updateSelection = (startMin, endMin) => {
+        const el = ensureSelectionEl();
+        if(!el) return;
+        const s = clamp(Math.min(startMin, endMin), 0, 24*60-15);
+        let e = clamp(Math.max(startMin, endMin), 0, 24*60);
+        if(e <= s) e = Math.min(24*60, s + 15);
+        el.style.display = 'block';
+        el.style.top = (s * __DAY_PX_PER_MIN) + 'px';
+        el.style.height = Math.max(16, (e - s) * __DAY_PX_PER_MIN) + 'px';
+      };
+
+      const hideSelection = () => {
+        const el = ensureSelectionEl();
+        if(!el) return;
+        el.style.display = 'none';
+      };
+
+      const openPrefilledModal = (startMin, endMin) => {
+        if(!__dayViewDateStr) __dayViewDateStr = ymd(new Date());
+        const s = clamp(Math.min(startMin, endMin), 0, 24*60-15);
+        let e = clamp(Math.max(startMin, endMin), 0, 24*60);
+        if(e <= s) e = Math.min(24*60, s + 15);
+        const startHm = minutesToHm(s);
+        const endHm = minutesToHm(e);
+
+        openModalForDate(__dayViewDateStr);
+        idInput.value = '';
+        titleInput.value = '';
+        dateInput.value = __dayViewDateStr;
+        timeInput.value = startHm;
+        if(endTimeInput) endTimeInput.value = endHm;
+        notesInput.value = '';
+        deleteBtn.style.display = 'none';
+        document.getElementById('modal-title').textContent = 'Add Event';
+      };
+
+      dayGridEl.addEventListener('pointerdown', (e) => {
+        if(!__dayViewDateStr) __dayViewDateStr = ymd(new Date());
+        if(e && typeof e.button === 'number' && e.button !== 0) return;
+        if(e && e.target && e.target.closest && e.target.closest('.day-event')) return;
+
+        const startMin = getSnappedMinutesFromPointerEvent(e);
+        drag.active = true;
+        drag.pointerId = e.pointerId;
+        drag.startMinutes = clamp(startMin, 0, 24*60-15);
+        drag.currentMinutes = drag.startMinutes;
+        updateSelection(drag.startMinutes, drag.startMinutes + 15);
+
+        try{ dayGridEl.setPointerCapture(e.pointerId); }catch(_){ }
+      });
+
+      dayGridEl.addEventListener('pointermove', (e) => {
+        if(!drag.active) return;
+        if(drag.pointerId != null && e.pointerId !== drag.pointerId) return;
+        if(e && e.target && e.target.closest && e.target.closest('.day-event')) return;
+
+        drag.currentMinutes = getSnappedMinutesFromPointerEvent(e);
+        updateSelection(drag.startMinutes, drag.currentMinutes);
+      });
+
+      const finishDrag = (e) => {
+        if(!drag.active) return;
+        if(drag.pointerId != null && e && e.pointerId !== drag.pointerId) return;
+        drag.active = false;
+
+        try{ if(e && e.pointerId != null) dayGridEl.releasePointerCapture(e.pointerId); }catch(_){ }
+
+        const delta = Math.abs((drag.currentMinutes || 0) - (drag.startMinutes || 0));
+        hideSelection();
+
+        if(delta >= 15) {
+          openPrefilledModal(drag.startMinutes, drag.currentMinutes);
+        } else {
+          // Click: default to 60-minute block
+          openPrefilledModal(drag.startMinutes, clamp(drag.startMinutes + 60, 0, 24*60));
+        }
+
+        drag.pointerId = null;
+      };
+
+      const cancelDrag = (e) => {
+        if(!drag.active) return;
+        if(drag.pointerId != null && e && e.pointerId !== drag.pointerId) return;
+        drag.active = false;
+        try{ if(e && e.pointerId != null) dayGridEl.releasePointerCapture(e.pointerId); }catch(_){ }
+        hideSelection();
+        drag.pointerId = null;
+      };
+
+      dayGridEl.addEventListener('pointerup', finishDrag);
+      // If the browser cancels the pointer sequence (commonly due to scrolling), don't open a modal.
+      dayGridEl.addEventListener('pointercancel', cancelDrag);
+    }
+  }catch(_){ }
 
   // Best-effort: pull latest server events (multi-device sync)
   // and re-render if anything changes.
@@ -1087,6 +1575,9 @@
   // Listen for event changes (from Meibot or other sources)
   window.addEventListener('tmr:events:changed', () => {
     renderCalendar();
+    if(__calendarViewMode === 'day' && __dayViewDateStr){
+      try{ renderDayView(__dayViewDateStr); }catch(_){ }
+    }
   });
 
   // When auth changes/restores, re-render from the correct user-scoped storage.
